@@ -9,7 +9,8 @@
 │                               ├─ AppViewModel            │
 │                               ├─ ConfigFileViewModel     │
 │                               ├─ ConfigEntryViewModel    │
-│                               └─ ScanConfigViewModel     │
+│                               ├─ ScanConfigViewModel     │
+│                               └─ ScanProgramViewModel    │
 └───────────────────────────┬──────────────────────────────┘
                             │ chỉ gọi xuống, không có chiều ngược
 ┌───────────────────────────▼──────────────────────────────┐
@@ -20,7 +21,7 @@
 │                     ScheduleEvaluator  FileLogger        │
 │  Configuration/     JsonConfigEditor  IniConfigEditor    │
 │                     XmlConfigEditor   ConfigFileService  │
-│                     ConfigFileScanner                    │
+│                     ConfigFileScanner ProgramScanner     │
 │  Models/            ManagedApp  ScheduleRule  …          │
 │  Validation/        AppValidator                         │
 └───────────────────────────┬──────────────────────────────┘
@@ -31,7 +32,7 @@
 ```
 
 `Cowork.Core` **không tham chiếu WPF**. Đó là ràng buộc cố ý: nếu sau này muốn làm bản CLI hoặc
-Windows Service, toàn bộ logic dùng lại được nguyên vẹn. Cũng nhờ vậy mà 99 test chạy trong 1 giây
+Windows Service, toàn bộ logic dùng lại được nguyên vẹn. Cũng nhờ vậy mà 118 test chạy trong 1 giây
 mà không cần dựng cửa sổ nào.
 
 ## Composition root
@@ -182,6 +183,30 @@ Hậu tố mẫu được bóc trước khi đọc phần mở rộng: `config.e
 Kết quả luôn là *gợi ý*: chỉ mức Cao được tick sẵn, và không file nào được thêm khi người dùng chưa
 xác nhận. Đoán sai ở đây dẫn tới ghi đè nhầm file, nên chi phí của một cú tick thừa rẻ hơn nhiều so
 với chi phí của một lần đoán sai.
+
+### Dò tìm chương trình
+
+`ProgramScanner` trả lời câu hỏi song song: "file nào trong thư mục này chạy được". Chỉ nhận
+`.exe`, `.com`, `.bat`, `.cmd`, `.ps1` — đúng những gì `ProcessManager` khởi chạy được.
+
+Điểm dễ sai nhất khi làm bộ quét thứ hai này là **copy nguyên danh sách thư mục nhiễu từ bộ quét
+cấu hình**. Hai danh sách gần như ngược nhau:
+
+| Thư mục | Quét cấu hình | Quét chương trình |
+|---|---|---|
+| `bin`, `dist`, `build`, `publish` | rác — bỏ qua | **chính là nơi file .exe nằm** |
+| `obj`, `node_modules`, `.git`, `.vs` | bỏ qua | bỏ qua |
+| `.config`, `.ssh` | nơi quan trọng nhất | không liên quan |
+
+Chấm điểm: tên file trùng tên thư mục gốc (`gcm\gcm.exe`) hoặc là từ khoá khởi chạy
+(`run`, `start`, `main`, `chay`…) → **Cao**; nằm ngay thư mục gốc hoặc trong thư mục build →
+**Vừa**; nằm sâu → **Thấp**. Trình cài đặt (`unins*`, `setup*`, `vcredist*`) bị hạ xuống Thấp;
+tàn dư build (`*.vshost.exe`, `crashpad_handler.exe`) bị loại hẳn.
+
+`ProgramScanner.BuildCommand` dựng lệnh cuối cùng. File `.ps1` **không khởi chạy trực tiếp được**
+nên được bọc thành `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<đường dẫn>"`. Nếu
+thiếu bước này, bộ quét sẽ gợi ý ra những app lỗi ngay lần chạy đầu — gợi ý sai còn tệ hơn không
+gợi ý.
 
 `ConfigFileService` bọc bên ngoài và lo phần I/O: nhận diện BOM để ghi lại đúng encoding cũ (quan
 trọng với file có tiếng Việt), tạo `.cowork.bak`, và ghi qua file tạm rồi `File.Replace` để mất điện

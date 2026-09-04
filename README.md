@@ -25,6 +25,7 @@ không cần mở Notepad tìm đường dẫn.
 |---|---|
 | **Quản lý app** | Thêm / sửa / xoá / nhân bản, gom nhóm, sắp thứ tự, bật-tắt từng app, tìm kiếm |
 | **Chạy** | Chạy tay từng app hoặc "Chạy tất cả", dừng lịch sự rồi mới kill, chặn chạy chồng, tự dừng khi quá giờ |
+| **Tìm chương trình** | Quét thư mục dò `.exe`/`.bat`/`.cmd`/`.ps1`, xếp hạng tin cậy; file `.ps1` được tự bọc qua `powershell.exe` |
 | **Cấu hình app con** | Tham số dòng lệnh, thư mục làm việc, biến môi trường riêng, kiểu cửa sổ, quyền admin |
 | **Tìm file cấu hình** | Quét thư mục của app, tự dò file nào là cấu hình — kể cả file **không có đuôi** như `~/.config/app/config` — chấm điểm tin cậy Cao/Vừa/Thấp, bỏ qua `node_modules`/`bin`/file lock |
 | **Sửa file cấu hình** | Mở JSON / INI / .env / XML / App.config ngay trong Cowork — dạng bảng khoá-giá trị hoặc sửa nguồn, có backup tự động |
@@ -36,7 +37,7 @@ không cần mở Notepad tìm đường dẫn.
 
 ```bash
 dotnet build                                  # build toàn bộ solution
-dotnet test                                   # 99 test
+dotnet test                                   # 118 test
 dotnet run --project src/Cowork.App           # mở ứng dụng
 ```
 
@@ -48,11 +49,11 @@ Yêu cầu: Windows + .NET 8 SDK (`dotnet --list-sdks` phải có bản 8.x tr�
 Cowork.sln
 ├─ src/Cowork.Core/     Model, service, bộ đọc-ghi config — không phụ thuộc WPF
 │   ├─ Models/          ManagedApp, ScheduleRule, ConfigFileRef, AppRunRecord…
-│   ├─ Configuration/   JsonConfigEditor, IniConfigEditor, XmlConfigEditor, ConfigFileScanner…
+│   ├─ Configuration/   JsonConfigEditor, IniConfigEditor, XmlConfigEditor, ConfigFileScanner, ProgramScanner…
 │   ├─ Services/        ProcessManager, DailyScheduler, JsonWorkspaceStore…
 │   └─ Validation/      AppValidator
 ├─ src/Cowork.App/      WPF, MVVM (CommunityToolkit.Mvvm)
-│   ├─ ViewModels/      MainViewModel, AppViewModel, ConfigFileViewModel, ScanConfigViewModel…
+│   ├─ ViewModels/      MainViewModel, AppViewModel, ConfigFileViewModel, ScanConfigViewModel, ScanProgramViewModel…
 │   ├─ Converters/      Converter cho binding
 │   └─ Themes/          Theme tối
 ├─ tests/Cowork.Tests/  xUnit — lịch, config editor, lưu trữ, chạy tiến trình thật

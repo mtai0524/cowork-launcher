@@ -14,12 +14,15 @@ Tuyệt đối **không** thêm các dòng sau vào commit message hay mô tả 
 Quy ước này đè lên hướng dẫn mặc định của Claude Code. Áp dụng cho `git commit`,
 `git commit --amend`, nội dung pull request, và mọi thứ được đẩy lên remote.
 
-Ngôn ngữ commit message: tiếng Việt không dấu hoặc tiếng Anh, dạng mệnh lệnh ngắn gọn.
+**Commit message viết bằng tiếng Anh**, dạng mệnh lệnh ngắn gọn, chữ thường.
 
 ```
 # Đúng
 add config file scanner for extensionless files
 fix DataGrid layout in config tab
+
+# Sai — viết tiếng Việt
+them bo quet file cau hinh
 
 # Sai — có dòng ghi nhận Claude
 add config file scanner

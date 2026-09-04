@@ -103,6 +103,7 @@ song: app nào chọn "lịch hệ thống" thì đăng ký sang Task Scheduler.
 | Kiểu lịch mới | Thêm giá trị vào `ScheduleKind`, xử lý trong `ScheduleRule.GetNextOccurrence` và `ScheduleEvaluator.IsDue`, thêm RadioButton ở tab Lịch chạy |
 | Quy tắc kiểm tra mới | `AppValidator.Validate` — nhớ phân biệt lỗi (chặn lưu) và cảnh báo |
 | Mẫu nhận diện file cấu hình mới | `ConfigFileScanner`: thêm vào `CandidateExtensions`, `NoiseDirectories` hoặc hàm `Score` |
+| Mẫu nhận diện chương trình mới | `ProgramScanner`: thêm vào `RunnableExtensions`, `LauncherNames` hoặc hàm `Score`. Lưu ý danh sách thư mục nhiễu ở đây **ngược** với bộ quét cấu hình |
 | Trường mới trên app | `ManagedApp` + `Clone()` + `AppViewModel` + XAML. `JsonWorkspaceStore.Normalize` lo phần tương thích ngược |
 
 **Ràng buộc phải giữ**
@@ -117,7 +118,7 @@ song: app nào chọn "lịch hệ thống" thì đăng ký sang Task Scheduler.
 **Chạy test**
 
 ```bash
-dotnet test                                        # toàn bộ 99 test
+dotnet test                                        # toàn bộ 118 test
 dotnet test --filter FullyQualifiedName~Schedule   # chỉ nhóm lịch
 ```
 

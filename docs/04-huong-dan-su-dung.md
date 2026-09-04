@@ -39,9 +39,31 @@ Phím tắt: `Ctrl+S` lưu · `F5` chạy app đang chọn · `Ctrl+N` thêm app
 5. Bấm **▶ Chạy** để thử ngay. Sang tab **Nhật ký** xem output.
 6. **Lưu** (`Ctrl+S`).
 
+### Tìm chương trình tự động
+
+Nếu chỉ nhớ mang máng app nằm ở thư mục nào, bấm **Quét thư mục…** cạnh ô *Chương trình*. Cowork dò
+mọi file `.exe` / `.bat` / `.cmd` / `.ps1` trong thư mục đó và xếp hạng:
+
+| Mức | Căn cứ | Ví dụ |
+|---|---|---|
+| **Cao** | Tên trùng tên thư mục, hoặc là từ khoá khởi chạy | `mytool\mytool.exe`, `run.bat`, `start.cmd`, `chay-backup.bat` |
+| **Vừa** | Nằm ngay thư mục gốc, hoặc trong thư mục build | `helper.exe`, `bin\Release\app.exe`, `dist\packer.exe` |
+| **Thấp** | Nằm sâu trong cây thư mục, hoặc là trình cài đặt | `unins000.exe`, `setup.exe`, `tools\deep\misc.exe` |
+
+Chọn một dòng (hoặc nháy đúp) rồi bấm **Dùng chương trình này**. Khung *Lệnh sẽ được điền vào app*
+phía dưới cho xem trước chính xác thứ sẽ được ghi vào.
+
+Khác với quét file cấu hình, ở đây `bin`, `dist`, `build`, `publish` **được** quét — đó chính là nơi
+file `.exe` nằm. Cowork bỏ qua `node_modules`, `obj`, `.git`, và tàn dư build (`*.vshost.exe`,
+`crashpad_handler.exe`).
+
+Sau khi chọn, Cowork tự điền thêm *Thư mục làm việc* (thư mục chứa chương trình) và *Tên app* nếu
+bạn chưa đặt.
+
 ### Chạy file PowerShell
 
-`.ps1` không tự chạy được bằng cách gọi trực tiếp. Khai báo như sau:
+`.ps1` không tự chạy được bằng cách gọi trực tiếp. Nếu chọn `.ps1` từ hộp thoại quét, **Cowork tự
+bọc giúp** — bạn không phải làm gì thêm. Khai báo tay thì như sau:
 
 | Ô | Giá trị |
 |---|---|
