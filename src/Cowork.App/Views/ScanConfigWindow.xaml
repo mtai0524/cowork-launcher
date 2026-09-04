@@ -56,7 +56,7 @@
         <!-- === Bảng kết quả === -->
         <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0" Padding="1">
             <DataGrid ItemsSource="{Binding Candidates}" BorderThickness="0"
-                      CanUserSortColumns="True">
+                      CanUserSortColumns="True" RowHeight="46">
                 <DataGrid.Columns>
                     <DataGridTemplateColumn Header="" Width="40" CanUserSort="False">
                         <DataGridTemplateColumn.CellTemplate>
@@ -67,8 +67,19 @@
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
-                    <DataGridTextColumn Header="Đường dẫn" Width="3*" IsReadOnly="True"
-                                        Binding="{Binding RelativePath}" />
+                    <DataGridTemplateColumn Header="Đường dẫn" Width="3*" SortMemberPath="RelativePath">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,3">
+                                    <TextBlock Text="{Binding FileName}" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding FolderLabel}" FontSize="11"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
                     <DataGridTemplateColumn Header="Tin cậy" Width="80"
                                             SortMemberPath="Confidence">

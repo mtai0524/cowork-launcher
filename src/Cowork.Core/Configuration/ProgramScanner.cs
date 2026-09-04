@@ -244,11 +244,35 @@ public sealed class ProgramScanner : IProgramScanner
         if (isAtRoot)
             return (ScanConfidence.Medium, "Nằm ngay thư mục gốc");
 
-        var parent = Path.GetFileName(directory);
-        if (OutputDirectoryNames.Contains(parent))
-            return (ScanConfidence.Medium, $"Nằm trong thư mục kết quả build \"{parent}\"");
+        // Phải xét cả cây tổ tiên chứ không chỉ thư mục cha: đường dẫn build của .NET là
+        // bin\Debug\net8.0-windows\app.exe — cha trực tiếp là tên framework, "bin" nằm
+        // cao hơn hai cấp.
+        if (FindOutputAncestor(root, directory) is { } outputName)
+            return (ScanConfidence.Medium, $"Nằm trong thư mục kết quả build \"{outputName}\"");
 
         return (ScanConfidence.Low, "Nằm sâu trong cây thư mục");
+    }
+
+    /// <summary>
+    /// Tìm ngược lên cây thư mục (chỉ trong phạm vi thư mục quét) xem có tổ tiên nào
+    /// là thư mục kết quả build không. Trả về tên thư mục đó, hoặc null.
+    /// </summary>
+    private static string? FindOutputAncestor(string root, string directory)
+    {
+        var current = directory;
+
+        while (!string.IsNullOrEmpty(current)
+               && current.Length > root.Length
+               && current.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+        {
+            var name = Path.GetFileName(current);
+            if (OutputDirectoryNames.Contains(name))
+                return name;
+
+            current = Path.GetDirectoryName(current);
+        }
+
+        return null;
     }
 
     /// <summary>

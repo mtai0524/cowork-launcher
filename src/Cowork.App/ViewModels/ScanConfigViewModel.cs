@@ -27,6 +27,19 @@ public sealed partial class ScanCandidateViewModel : ObservableObject
     public string Reason => Candidate.Reason;
     public ScanConfidence Confidence => Candidate.Confidence;
 
+    /// <summary>Tên file — phần quan trọng nhất, không được để bị cắt mất.</summary>
+    public string FileName => Path.GetFileName(RelativePath);
+
+    /// <summary>Thư mục chứa, hiển thị mờ ở dòng dưới.</summary>
+    public string FolderLabel
+    {
+        get
+        {
+            var folder = Path.GetDirectoryName(RelativePath);
+            return string.IsNullOrEmpty(folder) ? "(thư mục gốc)" : folder;
+        }
+    }
+
     public string ConfidenceLabel => Candidate.Confidence switch
     {
         ScanConfidence.High => "Cao",

@@ -59,10 +59,22 @@
             <DataGrid ItemsSource="{Binding Candidates}"
                       SelectedItem="{Binding SelectedCandidate}"
                       SelectionMode="Single" IsReadOnly="True" BorderThickness="0"
-                      CanUserSortColumns="True"
+                      CanUserSortColumns="True" RowHeight="46"
                       MouseDoubleClick="OnRowDoubleClick">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Đường dẫn" Width="3*" Binding="{Binding RelativePath}" />
+                    <DataGridTemplateColumn Header="Đường dẫn" Width="3*" SortMemberPath="RelativePath">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,3">
+                                    <TextBlock Text="{Binding FileName}" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding FolderLabel}" FontSize="11"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
                     <DataGridTemplateColumn Header="Tin cậy" Width="80" SortMemberPath="Confidence">
                         <DataGridTemplateColumn.CellTemplate>
@@ -109,7 +121,9 @@
                 <TextBlock Text="{Binding CommandPreview}" TextWrapping="Wrap"
                            FontFamily="Cascadia Mono, Consolas, monospace" FontSize="12" />
                 <TextBlock Style="{StaticResource HintText}"
-                           Text="File .ps1 không tự chạy được nên Cowork gọi qua powershell.exe." />
+                           Text="File .ps1 không tự chạy được nên Cowork gọi qua powershell.exe."
+                           Visibility="{Binding IsPowerShellSelected,
+                               Converter={StaticResource BoolToVisibility}}" />
             </StackPanel>
         </Border>
 

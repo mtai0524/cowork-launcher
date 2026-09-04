@@ -18,6 +18,19 @@ public sealed class ProgramCandidateViewModel
     public string Reason => Candidate.Reason;
     public ScanConfidence Confidence => Candidate.Confidence;
 
+    /// <summary>Tên file — phần quan trọng nhất, không được để bị cắt mất.</summary>
+    public string FileName => Path.GetFileName(RelativePath);
+
+    /// <summary>Thư mục chứa, hiển thị mờ ở dòng dưới.</summary>
+    public string FolderLabel
+    {
+        get
+        {
+            var folder = Path.GetDirectoryName(RelativePath);
+            return string.IsNullOrEmpty(folder) ? "(thư mục gốc)" : folder;
+        }
+    }
+
     public string KindLabel => Candidate.Kind switch
     {
         ProgramKind.BatchScript => "Batch",
@@ -70,7 +83,12 @@ public sealed partial class ScanProgramViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(CommandPreview));
+        OnPropertyChanged(nameof(IsPowerShellSelected));
     }
+
+    /// <summary>Chỉ giải thích chuyện bọc powershell.exe khi thật sự đang chọn file .ps1.</summary>
+    public bool IsPowerShellSelected
+        => SelectedCandidate?.Candidate.Kind == ProgramKind.PowerShellScript;
 
     partial void OnIncludeLowConfidenceChanged(bool value) => ScanCommand.Execute(null);
 

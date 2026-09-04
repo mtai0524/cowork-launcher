@@ -96,6 +96,36 @@ public class ProgramScannerTests
     }
 
     [Fact]
+    public void RecognisesBuildOutputThroughTheFrameworkFolder()
+    {
+        using var temp = new TempDirectory();
+        // Đường dẫn build thật của .NET: thư mục cha trực tiếp là tên framework,
+        // "bin" nằm cao hơn hai cấp — phải xét cả cây tổ tiên mới nhận ra.
+        Write(temp.Path, Path.Combine("MyApp", "bin", "Debug", "net8.0-windows", "MyApp.exe"));
+
+        var candidate = Assert.Single(new ProgramScanner().Scan(temp.Path).Candidates);
+
+        Assert.Equal(ScanConfidence.Medium, candidate.Confidence);
+        // Tổ tiên khớp đầu tiên tính từ dưới lên là "Debug", cũng là thư mục kết quả build.
+        Assert.Contains("kết quả build", candidate.Reason);
+    }
+
+    [Fact]
+    public void DoesNotLookForOutputFoldersAboveTheScanRoot()
+    {
+        using var temp = new TempDirectory();
+        // Thư mục quét nằm sẵn trong "bin"; chuyện đó không được biến mọi file
+        // nằm sâu bên trong thành mức Vừa.
+        var scanRoot = Path.Combine(temp.Path, "bin", "tools");
+        Directory.CreateDirectory(scanRoot);
+        Write(scanRoot, Path.Combine("nested", "deep", "misc.exe"));
+
+        var candidate = Assert.Single(new ProgramScanner().Scan(scanRoot).Candidates);
+
+        Assert.Equal(ScanConfidence.Low, candidate.Confidence);
+    }
+
+    [Fact]
     public void SkipsToolingDirectories()
     {
         using var temp = new TempDirectory();

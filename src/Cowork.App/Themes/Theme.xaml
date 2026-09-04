@@ -264,6 +264,8 @@
     <Style TargetType="DataGridCell">
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="8,0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template">
             <Setter.Value>
@@ -274,6 +276,14 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <!-- Không đặt lại màu ở đây thì WPF dùng màu chọn mặc định của hệ thống,
+                 sáng trắng và chọi hẳn với theme tối. -->
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="#243044" />
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style TargetType="ScrollViewer">
