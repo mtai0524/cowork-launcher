@@ -1,0 +1,23 @@
+## Build
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+publish/
+*.user
+*.suo
+
+## IDE
+.vs/
+.idea/
+.vscode/
+*.DotSettings.user
+
+## Test
+TestResults/
+*.trx
+coverage*.json
+coverage*.xml
+
+## Khác
+*.log

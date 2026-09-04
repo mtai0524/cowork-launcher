@@ -1,0 +1,408 @@
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Globalization;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Cowork.Core.Configuration;
+using Cowork.Core.Models;
+using Cowork.Core.Services;
+using Cowork.Core.Validation;
+
+namespace Cowork.App.ViewModels;
+
+/// <summary>
+/// Bọc một <see cref="ManagedApp"/> cho tầng giao diện. Mọi thay đổi được ghi thẳng
+/// vào model, nên chỉ cần lưu workspace một lần là đủ.
+/// </summary>
+public sealed partial class AppViewModel : ObservableObject
+{
+    private readonly IConfigFileService _configService;
+    private bool _suspendSync;
+
+    public AppViewModel(ManagedApp model, IConfigFileService configService)
+    {
+        Model = model;
+        _configService = configService;
+
+        _suspendSync = true;
+
+        _name = model.Name;
+        _description = model.Description;
+        _group = model.Group;
+        _executablePath = model.ExecutablePath;
+        _arguments = model.Arguments;
+        _workingDirectory = model.WorkingDirectory;
+        _isEnabled = model.Enabled;
+        _runAsAdministrator = model.RunAsAdministrator;
+        _captureOutput = model.CaptureOutput;
+        _singleInstance = model.SingleInstance;
+        _windowStyle = model.WindowStyle;
+        _timeoutMinutes = model.TimeoutMinutes;
+
+        _scheduleEnabled = model.Schedule.Enabled;
+        _scheduleKind = model.Schedule.Kind;
+        _timesText = FormatTimes(model.Schedule.Times);
+        _intervalMinutes = (int)Math.Max(1, model.Schedule.Interval.TotalMinutes);
+        _windowStart = FormatTime(model.Schedule.WindowStart);
+        _windowEnd = FormatTime(model.Schedule.WindowEnd);
+        _catchUpMissedRun = model.Schedule.CatchUpMissedRun;
+
+        Days = new ObservableCollection<DayToggleViewModel>(
+            new[]
+            {
+                DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday,
+                DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday,
+            }.Select(d => new DayToggleViewModel(d, model.Schedule.DaysOfWeek.Contains(d))));
+
+        foreach (var day in Days)
+            day.PropertyChanged += OnDayToggled;
+
+        EnvironmentVariables = new ObservableCollection<EnvironmentVariableViewModel>(
+            model.EnvironmentVariables.Select(p => new EnvironmentVariableViewModel(p.Key, p.Value)));
+        EnvironmentVariables.CollectionChanged += OnEnvCollectionChanged;
+        foreach (var variable in EnvironmentVariables)
+            variable.PropertyChanged += OnEnvItemChanged;
+
+        ConfigFiles = new ObservableCollection<ConfigFileViewModel>(
+            model.ConfigFiles.Select(CreateConfigViewModel));
+        SelectedConfigFile = ConfigFiles.FirstOrDefault();
+
+        OutputLines = new ObservableCollection<AppOutputLine>();
+
+        _suspendSync = false;
+    }
+
+    public ManagedApp Model { get; }
+
+    public Guid Id => Model.Id;
+
+    // ---------- Thông tin chung ----------
+
+    [ObservableProperty] private string _name;
+    [ObservableProperty] private string _description;
+    [ObservableProperty] private string _group;
+    [ObservableProperty] private string _executablePath;
+    [ObservableProperty] private string _arguments;
+    [ObservableProperty] private string _workingDirectory;
+    [ObservableProperty] private bool _isEnabled;
+    [ObservableProperty] private bool _runAsAdministrator;
+    [ObservableProperty] private bool _captureOutput;
+    [ObservableProperty] private bool _singleInstance;
+    [ObservableProperty] private AppWindowStyle _windowStyle;
+    [ObservableProperty] private int _timeoutMinutes;
+
+    partial void OnNameChanged(string value)
+    {
+        Sync(() => Model.Name = value);
+        OnPropertyChanged(nameof(DisplayTitle));
+    }
+
+    partial void OnDescriptionChanged(string value) => Sync(() => Model.Description = value);
+
+    partial void OnGroupChanged(string value)
+    {
+        Sync(() => Model.Group = value);
+        OnPropertyChanged(nameof(GroupLabel));
+    }
+
+    partial void OnExecutablePathChanged(string value)
+    {
+        Sync(() => Model.ExecutablePath = value);
+        RefreshConfigPaths();
+    }
+
+    partial void OnArgumentsChanged(string value) => Sync(() => Model.Arguments = value);
+
+    partial void OnWorkingDirectoryChanged(string value)
+    {
+        Sync(() => Model.WorkingDirectory = value);
+        RefreshConfigPaths();
+    }
+
+    partial void OnIsEnabledChanged(bool value)
+    {
+        Sync(() => Model.Enabled = value);
+        OnPropertyChanged(nameof(StatusText));
+    }
+
+    partial void OnRunAsAdministratorChanged(bool value) => Sync(() => Model.RunAsAdministrator = value);
+    partial void OnCaptureOutputChanged(bool value) => Sync(() => Model.CaptureOutput = value);
+    partial void OnSingleInstanceChanged(bool value) => Sync(() => Model.SingleInstance = value);
+    partial void OnWindowStyleChanged(AppWindowStyle value) => Sync(() => Model.WindowStyle = value);
+    partial void OnTimeoutMinutesChanged(int value) => Sync(() => Model.TimeoutMinutes = Math.Max(0, value));
+
+    /// <summary>Nguồn cho ComboBox chọn kiểu cửa sổ.</summary>
+    public static IReadOnlyList<AppWindowStyle> WindowStyleOptions { get; } = new[]
+    {
+        AppWindowStyle.Normal, AppWindowStyle.Minimized, AppWindowStyle.Hidden,
+    };
+
+    public string DisplayTitle => string.IsNullOrWhiteSpace(Name) ? "(chưa đặt tên)" : Name;
+
+    public string GroupLabel => string.IsNullOrWhiteSpace(Group) ? "Chưa phân nhóm" : Group;
+
+    // ---------- Lịch chạy ----------
+
+    [ObservableProperty] private bool _scheduleEnabled;
+    [ObservableProperty] private ScheduleKind _scheduleKind;
+    [ObservableProperty] private string _timesText;
+    [ObservableProperty] private int _intervalMinutes;
+    [ObservableProperty] private string _windowStart;
+    [ObservableProperty] private string _windowEnd;
+    [ObservableProperty] private bool _catchUpMissedRun;
+
+    public ObservableCollection<DayToggleViewModel> Days { get; }
+
+    public bool IsDailyKind => ScheduleKind == ScheduleKind.DailyAtTimes;
+    public bool IsIntervalKind => ScheduleKind == ScheduleKind.Interval;
+
+    partial void OnScheduleEnabledChanged(bool value)
+    {
+        Sync(() => Model.Schedule.Enabled = value);
+        RefreshSchedule();
+    }
+
+    partial void OnScheduleKindChanged(ScheduleKind value)
+    {
+        Sync(() => Model.Schedule.Kind = value);
+        OnPropertyChanged(nameof(IsDailyKind));
+        OnPropertyChanged(nameof(IsIntervalKind));
+        RefreshSchedule();
+    }
+
+    partial void OnTimesTextChanged(string value)
+    {
+        Sync(() => Model.Schedule.Times = ParseTimes(value));
+        RefreshSchedule();
+    }
+
+    partial void OnIntervalMinutesChanged(int value)
+    {
+        Sync(() => Model.Schedule.Interval = TimeSpan.FromMinutes(Math.Max(1, value)));
+        RefreshSchedule();
+    }
+
+    partial void OnWindowStartChanged(string value)
+    {
+        Sync(() => Model.Schedule.WindowStart = ParseTime(value));
+        RefreshSchedule();
+    }
+
+    partial void OnWindowEndChanged(string value)
+    {
+        Sync(() => Model.Schedule.WindowEnd = ParseTime(value));
+        RefreshSchedule();
+    }
+
+    partial void OnCatchUpMissedRunChanged(bool value) => Sync(() => Model.Schedule.CatchUpMissedRun = value);
+
+    private void OnDayToggled(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(DayToggleViewModel.IsSelected))
+            return;
+
+        Sync(() => Model.Schedule.DaysOfWeek = Days.Where(d => d.IsSelected).Select(d => d.Day).ToList());
+        RefreshSchedule();
+    }
+
+    /// <summary>Chấp nhận "07:30, 13:00" hoặc "7:30 13:00"; bỏ qua phần nhập sai.</summary>
+    private static List<TimeSpan> ParseTimes(string text)
+    {
+        var result = new List<TimeSpan>();
+        if (string.IsNullOrWhiteSpace(text))
+            return result;
+
+        foreach (var token in text.Split(new[] { ',', ';', ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (TimeSpan.TryParse(token.Trim(), CultureInfo.InvariantCulture, out var value)
+                && value >= TimeSpan.Zero && value < TimeSpan.FromDays(1))
+            {
+                result.Add(value);
+            }
+        }
+
+        return result.Distinct().OrderBy(t => t).ToList();
+    }
+
+    private static TimeSpan? ParseTime(string text)
+        => TimeSpan.TryParse((text ?? string.Empty).Trim(), CultureInfo.InvariantCulture, out var value)
+            ? value
+            : null;
+
+    private static string FormatTimes(IEnumerable<TimeSpan> times)
+        => string.Join(", ", times.OrderBy(t => t).Select(t => t.ToString(@"hh\:mm")));
+
+    private static string FormatTime(TimeSpan? value)
+        => value?.ToString(@"hh\:mm") ?? string.Empty;
+
+    // ---------- Biến môi trường ----------
+
+    public ObservableCollection<EnvironmentVariableViewModel> EnvironmentVariables { get; }
+
+    [RelayCommand]
+    private void AddEnvironmentVariable()
+        => EnvironmentVariables.Add(new EnvironmentVariableViewModel("TEN_BIEN", string.Empty));
+
+    [RelayCommand]
+    private void RemoveEnvironmentVariable(EnvironmentVariableViewModel? item)
+    {
+        if (item is not null)
+            EnvironmentVariables.Remove(item);
+    }
+
+    private void OnEnvCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        foreach (var item in e.NewItems?.OfType<EnvironmentVariableViewModel>() ?? Enumerable.Empty<EnvironmentVariableViewModel>())
+            item.PropertyChanged += OnEnvItemChanged;
+
+        foreach (var item in e.OldItems?.OfType<EnvironmentVariableViewModel>() ?? Enumerable.Empty<EnvironmentVariableViewModel>())
+            item.PropertyChanged -= OnEnvItemChanged;
+
+        SyncEnvironment();
+    }
+
+    private void OnEnvItemChanged(object? sender, PropertyChangedEventArgs e) => SyncEnvironment();
+
+    private void SyncEnvironment() => Sync(() =>
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in EnvironmentVariables.Where(v => v.IsValid))
+            map[item.Name.Trim()] = item.Value ?? string.Empty;
+
+        Model.EnvironmentVariables = map;
+    });
+
+    // ---------- File cấu hình ----------
+
+    public ObservableCollection<ConfigFileViewModel> ConfigFiles { get; }
+
+    [ObservableProperty]
+    private ConfigFileViewModel? _selectedConfigFile;
+
+    partial void OnSelectedConfigFileChanged(ConfigFileViewModel? value) => value?.Reload();
+
+    private ConfigFileViewModel CreateConfigViewModel(ConfigFileRef reference)
+        => new(reference, _configService, Model.ResolveWorkingDirectory);
+
+    [RelayCommand]
+    private void AddConfigFile()
+    {
+        var reference = new ConfigFileRef { Path = string.Empty, Format = ConfigFormat.Auto };
+        Model.ConfigFiles.Add(reference);
+        SelectedConfigFile = AttachConfigFile(reference);
+    }
+
+    /// <summary>
+    /// Bọc một <see cref="ConfigFileRef"/> đã có trong model thành view-model và đưa lên danh sách.
+    /// Dùng khi thêm file bằng tay lẫn khi thêm hàng loạt từ kết quả quét thư mục.
+    /// </summary>
+    public ConfigFileViewModel AttachConfigFile(ConfigFileRef reference)
+    {
+        var viewModel = CreateConfigViewModel(reference);
+        ConfigFiles.Add(viewModel);
+        return viewModel;
+    }
+
+    [RelayCommand]
+    private void RemoveConfigFile(ConfigFileViewModel? item)
+    {
+        if (item is null)
+            return;
+
+        Model.ConfigFiles.Remove(item.Model);
+        ConfigFiles.Remove(item);
+        SelectedConfigFile = ConfigFiles.FirstOrDefault();
+    }
+
+    /// <summary>Đường dẫn tương đối phụ thuộc thư mục làm việc — nạp lại khi thư mục đổi.</summary>
+    private void RefreshConfigPaths()
+    {
+        foreach (var config in ConfigFiles)
+            config.NotifyPathChanged();
+    }
+
+    // ---------- Trạng thái lúc chạy ----------
+
+    [ObservableProperty]
+    private AppRuntimeState _runtimeState = AppRuntimeState.Idle;
+
+    [ObservableProperty]
+    private int _processId;
+
+    [ObservableProperty]
+    private string? _lastError;
+
+    public ObservableCollection<AppOutputLine> OutputLines { get; }
+
+    partial void OnRuntimeStateChanged(AppRuntimeState value)
+    {
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(IsRunning));
+    }
+
+    public bool IsRunning => RuntimeState is AppRuntimeState.Running or AppRuntimeState.Starting;
+
+    public string StatusText
+    {
+        get
+        {
+            if (!IsEnabled)
+                return "Đã tắt";
+
+            return RuntimeState switch
+            {
+                AppRuntimeState.Starting => "Đang khởi động…",
+                AppRuntimeState.Running => $"Đang chạy (PID {ProcessId})",
+                AppRuntimeState.Stopping => "Đang dừng…",
+                AppRuntimeState.Failed => "Lỗi",
+                _ => Model.LastRunAt is { } last
+                    ? $"Chạy lần cuối {last:dd/MM HH:mm}"
+                    : "Chưa chạy lần nào",
+            };
+        }
+    }
+
+    public string ScheduleSummary => Model.Schedule.Describe();
+
+    public string NextRunText
+    {
+        get
+        {
+            var next = ScheduleEvaluator.NextRun(Model, DateTimeOffset.Now);
+            if (next is null)
+                return Model.Schedule.Kind == ScheduleKind.OnCoworkStartup ? "Khi mở Cowork" : "—";
+
+            var today = next.Value.Date == DateTime.Today ? "hôm nay" : next.Value.ToString("dd/MM");
+            return $"{today} {next.Value:HH:mm}";
+        }
+    }
+
+    public string LastRunText => Model.LastRunAt is { } last
+        ? $"{last:dd/MM/yyyy HH:mm:ss}" + (Model.LastExitCode is { } code ? $" · mã {code}" : string.Empty)
+        : "Chưa chạy";
+
+    /// <summary>Cập nhật các ô phụ thuộc lịch sau khi người dùng đổi cấu hình.</summary>
+    public void RefreshSchedule()
+    {
+        OnPropertyChanged(nameof(ScheduleSummary));
+        OnPropertyChanged(nameof(NextRunText));
+    }
+
+    public void RefreshRunInfo()
+    {
+        OnPropertyChanged(nameof(LastRunText));
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(NextRunText));
+    }
+
+    public IReadOnlyList<ValidationIssue> Validate() => AppValidator.Validate(Model);
+
+    /// <summary>Chặn ghi ngược vào model trong lúc khởi tạo view-model.</summary>
+    private void Sync(Action action)
+    {
+        if (_suspendSync)
+            return;
+        action();
+    }
+}

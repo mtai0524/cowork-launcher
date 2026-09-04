@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Cowork</AssemblyName>
+    <RootNamespace>Cowork.App</RootNamespace>
+    <ApplicationIcon>Assets\cowork.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Product>Cowork</Product>
+    <Description>Quản lý và chạy các ứng dụng hằng ngày</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\cowork.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cowork.Core\Cowork.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
+  </ItemGroup>
+
+</Project>

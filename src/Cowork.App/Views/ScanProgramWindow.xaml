@@ -1,0 +1,128 @@
+<Window x:Class="Cowork.App.Views.ScanProgramWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Quét thư mục tìm chương trình"
+        Height="620" Width="940" MinHeight="460" MinWidth="700"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource BackgroundBrush}"
+        FontFamily="Segoe UI" FontSize="13">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- === Thư mục và tuỳ chọn === -->
+        <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="Thư mục cần quét" Style="{StaticResource LabelText}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" Text="{Binding RootDirectory, UpdateSourceTrigger=PropertyChanged}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,0,0">
+                        <Button Content="Đổi thư mục…" Click="OnBrowseClick" />
+                        <Button Content="Quét" Style="{StaticResource PrimaryButton}" Margin="0"
+                                Command="{Binding ScanCommand}" MinWidth="80" />
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                    <CheckBox Content="Hiện cả kết quả tin cậy Thấp"
+                              IsChecked="{Binding IncludeLowConfidence}" Margin="0,0,20,0"
+                              ToolTip="Chương trình nằm sâu trong cây thư mục, hoặc trình cài đặt" />
+                    <TextBlock Text="Độ sâu tối đa:" Foreground="{StaticResource MutedBrush}"
+                               Margin="0,0,8,0" />
+                    <TextBox Text="{Binding MaxDepth, UpdateSourceTrigger=LostFocus}" Width="56" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- === Thông báo === -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,10">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource MutedBrush}" />
+            <Border Background="#3A1D22" BorderBrush="{StaticResource DangerBrush}" BorderThickness="1"
+                    CornerRadius="6" Padding="10" Margin="0,8,0,0"
+                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
+                <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="#FFB4B7" />
+            </Border>
+        </StackPanel>
+
+        <!-- === Bảng kết quả === -->
+        <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0" Padding="1">
+            <DataGrid ItemsSource="{Binding Candidates}"
+                      SelectedItem="{Binding SelectedCandidate}"
+                      SelectionMode="Single" IsReadOnly="True" BorderThickness="0"
+                      CanUserSortColumns="True"
+                      MouseDoubleClick="OnRowDoubleClick">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Đường dẫn" Width="3*" Binding="{Binding RelativePath}" />
+
+                    <DataGridTemplateColumn Header="Tin cậy" Width="80" SortMemberPath="Confidence">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border CornerRadius="4" Padding="7,2" HorizontalAlignment="Left">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="#2B3542" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ConfidenceLabel}" Value="Cao">
+                                                    <Setter Property="Background" Value="#1E3A2C" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ConfidenceLabel}" Value="Vừa">
+                                                    <Setter Property="Background" Value="#3A3320" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding ConfidenceLabel}" FontSize="11" FontWeight="SemiBold" />
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridTextColumn Header="Loại" Width="110" Binding="{Binding KindLabel}" />
+                    <DataGridTextColumn Header="Cỡ" Width="80" Binding="{Binding SizeLabel}" />
+                    <DataGridTextColumn Header="Vì sao" Width="2*" Binding="{Binding Reason}" />
+                </DataGrid.Columns>
+
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                        <Setter Property="ToolTip" Value="{Binding FullPath}" />
+                    </Style>
+                </DataGrid.RowStyle>
+            </DataGrid>
+        </Border>
+
+        <!-- === Xem trước lệnh sẽ được điền === -->
+        <Border Grid.Row="3" Background="{StaticResource SurfaceAltBrush}" CornerRadius="6"
+                Padding="12" Margin="0,12,0,0"
+                Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel>
+                <TextBlock Text="Lệnh sẽ được điền vào app" Style="{StaticResource LabelText}" Margin="0,0,0,6" />
+                <TextBlock Text="{Binding CommandPreview}" TextWrapping="Wrap"
+                           FontFamily="Cascadia Mono, Consolas, monospace" FontSize="12" />
+                <TextBlock Style="{StaticResource HintText}"
+                           Text="File .ps1 không tự chạy được nên Cowork gọi qua powershell.exe." />
+            </StackPanel>
+        </Border>
+
+        <!-- === Nút hành động === -->
+        <DockPanel Grid.Row="4" Margin="0,12,0,0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Content="Huỷ" Click="OnCancelClick" MinWidth="90" />
+                <Button Content="Dùng chương trình này" Style="{StaticResource PrimaryButton}"
+                        Click="OnAcceptClick" Margin="0" MinWidth="170"
+                        IsEnabled="{Binding HasSelection}" />
+            </StackPanel>
+            <TextBlock Foreground="{StaticResource MutedBrush}" FontSize="12"
+                       Text="Nháy đúp vào một dòng để chọn nhanh." />
+        </DockPanel>
+    </Grid>
+</Window>
