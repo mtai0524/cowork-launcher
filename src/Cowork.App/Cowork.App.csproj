@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Cowork.Core\Cowork.Core.csproj" />
+    <ProjectReference Include="..\Cowork.Remote\Cowork.Remote.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -2,6 +2,8 @@
   <Folder Name="/src/">
     <Project Path="src/Cowork.App/Cowork.App.csproj" />
     <Project Path="src/Cowork.Core/Cowork.Core.csproj" />
+    <Project Path="src/Cowork.Hub/Cowork.Hub.csproj" />
+    <Project Path="src/Cowork.Remote/Cowork.Remote.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Cowork.Tests/Cowork.Tests.csproj" />

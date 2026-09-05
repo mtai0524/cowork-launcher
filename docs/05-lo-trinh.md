@@ -57,6 +57,12 @@ webhook — app lỗi lúc 2h sáng thì sáng ra vẫn phải nhìn khay hoặc
 Keep-alive chỉ nhìn thấy tiến trình *thoát*. App còn sống nhưng đơ (deadlock, treo mạng) thì Cowork
 vẫn coi là đang chạy. Cách vòng: đặt *Tự dừng sau N phút* để ép khởi động lại định kỳ.
 
+### Quản lý từ xa mới ở mức xem và ra lệnh
+
+Web chỉ hiện trạng thái và bấm Chạy / Dừng / Khởi động lại. Không sửa config hay lịch, không xem
+output, hub không lưu lịch sử, một tài khoản duy nhất. Chi tiết ở [06-quan-ly-tu-xa.md](06-quan-ly-tu-xa.md).
+Phần "không sửa từ xa" là chủ ý bảo mật chứ không phải chưa kịp làm.
+
 ## Hướng phát triển
 
 Xếp theo giá trị mang lại trên công sức bỏ ra.
@@ -75,6 +81,11 @@ tuần tự.
 báo "file đã đổi trên đĩa, tải lại?" — bịt đúng lỗ hổng ghi đè nói ở trên.
 
 ### Ưu tiên trung bình
+
+**Xem output từ xa.** Agent đẩy các dòng output lên hub theo lô, web hiện cho app đang chọn. Cần
+giới hạn tốc độ vì output có thể rất dày.
+
+**Lịch sử chạy trên hub.** Agent gửi `AppRunRecord` khi kết thúc; hub lưu SQLite để xem xuyên máy.
 
 **Thêm/xoá khoá trong chế độ bảng.** Bắt đầu từ INI (dễ nhất: chèn dòng vào section), rồi JSON.
 

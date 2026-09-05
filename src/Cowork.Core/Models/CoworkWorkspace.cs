@@ -49,6 +49,12 @@ public sealed class WorkspaceSettings
     /// <summary>Hiện thông báo ở khay hệ thống khi app chạy lỗi hoặc không giữ chạy được.</summary>
     public bool NotifyOnFailure { get; set; } = true;
 
+    /// <summary>Địa chỉ hub quản lý từ xa (https://…). Trống = không kết nối.</summary>
+    public string HubUrl { get; set; } = string.Empty;
+
+    /// <summary>Mã agent do hub cấp cho máy này.</summary>
+    public string HubToken { get; set; } = string.Empty;
+
     /// <summary>Chủ đề màu đang dùng.</summary>
     public AppTheme Theme { get; set; } = AppTheme.Dark;
 

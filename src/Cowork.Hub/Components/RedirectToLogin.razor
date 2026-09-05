@@ -1,0 +1,7 @@
+@inject NavigationManager Navigation
+
+@code {
+    // forceLoad: trang đăng nhập là form POST thường, phải nạp lại toàn trang để cookie
+    // được đặt qua HTTP chứ không qua mạch Blazor.
+    protected override void OnInitialized() => Navigation.NavigateTo("/login", forceLoad: true);
+}

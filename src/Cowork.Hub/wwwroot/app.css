@@ -1,0 +1,113 @@
+/* Cùng bảng màu "Tối" với desktop (Themes/Palettes/Dark.xaml), để hai mặt nhìn là một. */
+:root {
+    --bg: #12161C;
+    --surface: #1A2029;
+    --surface-alt: #232C39;
+    --hover: #2C3746;
+    --border: #3A4759;
+    --divider: #2A3441;
+    --text: #EAEFF7;
+    --muted: #AFBBCB;
+    --accent: #5CA0FF;
+    --accent-fill: #2A64D2;
+    --accent-fill-hover: #3070E2;
+    --on-accent: #FFFFFF;
+    --success: #4ADE9B;
+    --warning: #F5C33B;
+    --danger: #FF8086;
+    --success-surface: #173328;
+    --danger-surface: #3A1D22;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.45 "Segoe UI", system-ui, sans-serif;
+}
+
+a { color: var(--accent); text-decoration: none; }
+
+.shell { min-height: 100vh; display: flex; flex-direction: column; }
+
+.topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.topbar-right { display: flex; gap: 8px; align-items: center; }
+.topbar-right form { margin: 0; }
+
+.brand { font-size: 17px; font-weight: 700; color: var(--accent); }
+
+.content { padding: 20px; max-width: 1100px; width: 100%; margin: 0 auto; }
+
+h1 { font-size: 20px; margin: 0 0 16px; }
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+}
+
+.card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.dot.online { background: var(--success); }
+.dot.offline { background: var(--muted); opacity: .6; }
+
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.error { color: var(--danger); }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 10px; border-top: 1px solid var(--divider); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; border-top: none; }
+tr.disabled td { opacity: .55; }
+
+.app-name { font-weight: 600; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+.badge {
+    font-size: 11px; font-weight: 600;
+    padding: 1px 7px; border-radius: 4px;
+    background: var(--surface-alt); color: var(--muted);
+}
+
+.state { font-weight: 600; }
+.state.running { color: var(--success); }
+.state.starting, .state.stopping, .state.waitingrestart { color: var(--warning); }
+.state.failed { color: var(--danger); }
+.state.idle { color: var(--muted); }
+
+.actions { white-space: nowrap; text-align: right; }
+
+.btn {
+    background: var(--surface-alt); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 12px; cursor: pointer; font: inherit;
+}
+.btn:hover:not(:disabled) { background: var(--hover); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.primary { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); font-weight: 600; }
+.btn.primary:hover:not(:disabled) { background: var(--accent-fill-hover); }
+.btn + .btn, .actions .btn + .btn { margin-left: 6px; }
+
+.notice { padding: 10px 12px; border-radius: 6px; margin-bottom: 14px; border: 1px solid; }
+.notice.ok { background: var(--success-surface); border-color: var(--success); }
+.notice.bad { background: var(--danger-surface); border-color: var(--danger); }
+
+.login { max-width: 360px; margin: 60px auto; }
+.login form { display: flex; flex-direction: column; gap: 10px; }
+.login label { color: var(--muted); font-size: 12px; }
+.login input {
+    background: var(--surface-alt); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 10px; font: inherit;
+}
+.login input:focus { outline: none; border-color: var(--accent); }

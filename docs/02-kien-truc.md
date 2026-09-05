@@ -174,6 +174,32 @@ vì nó kéo theo package và đăng ký AUMID, trong khi bong bóng khay có s�
 Chạy tay thì không thông báo — người dùng đang nhìn thanh trạng thái. Thông báo chỉ dành cho lúc
 Cowork nằm dưới khay: lịch, khởi động, và mọi app bật keep-alive.
 
+## Quản lý từ xa
+
+Hai dự án thêm vào, cố ý tách để phần quyết định vẫn test được như Core:
+
+```
+Cowork.App ──┐
+             ├──▶ Cowork.Remote  (hợp đồng dữ liệu, MachineRegistry, AgentDirectory, HubClient)
+Cowork.Hub ──┘         │
+                       └──▶ Cowork.Core  (model, ScheduleEvaluator, Loc)
+```
+
+- **`Cowork.Remote`** không dính WPF lẫn ASP.NET. `MachineRegistry` là sổ máy thuần trạng thái,
+  `AgentDirectory` tra token → tên máy, `HubClient` là client SignalR nói chuyện qua giao diện
+  `IAgentHost` — nên test tích hợp có thể nối một agent giả vào hub thật.
+- **`Cowork.Hub`** là lớp mỏng: `AgentHub` xác thực token lúc nối rồi chuyển mọi thứ cho registry;
+  giao diện Blazor Server chỉ đọc registry và gọi `SendAsync`.
+- **`MainViewModel` cài `IAgentHost`**: hai phương thức của nó bị gọi từ luồng mạng nên đều nhảy về
+  `Dispatcher` — đúng ràng buộc số 2. Lệnh từ xa đi qua cùng `RunApp` với mọi nguồn khác, ghi lịch
+  sử với nguồn `Remote`.
+
+Hai chọn lựa đáng biết: agent gọi **ra** hub (máy sau NAT không nhận kết nối vào được), và hub
+**không lưu gì** — agent là nguồn sự thật, hub chỉ phản ánh. `Loc` được thêm bản nhận ngôn ngữ tường
+minh `Loc.T(language, key)` vì server phục vụ nhiều người thì biến tĩnh `Loc.Current` là sai.
+
+Chi tiết cài đặt, bảo mật và giới hạn: [06-quan-ly-tu-xa.md](06-quan-ly-tu-xa.md).
+
 ## Bộ đọc-ghi cấu hình
 
 Tất cả cài `IConfigEditor` với hai thao tác: `Parse` (text → bảng khoá-giá trị) và `ApplyChanges`

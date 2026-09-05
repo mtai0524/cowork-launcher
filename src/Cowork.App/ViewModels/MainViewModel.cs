@@ -14,6 +14,8 @@ using Cowork.Core.Validation;
 using Cowork.Core.Localization;
 using Cowork.App.Localization;
 using Cowork.App.Themes;
+using Cowork.Remote;
+using Cowork.Remote.Contracts;
 
 namespace Cowork.App.ViewModels;
 
@@ -21,7 +23,7 @@ namespace Cowork.App.ViewModels;
 /// View-model gốc: giữ danh sách app, điều phối tiến trình và lịch chạy,
 /// đồng thời là <see cref="IAppSource"/> cho bộ lập lịch.
 /// </summary>
-public sealed partial class MainViewModel : ObservableObject, IAppSource, IDisposable
+public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgentHost, IDisposable
 {
     private readonly IWorkspaceStore _store;
     private readonly IProcessManager _processManager;
@@ -33,6 +35,8 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
     private readonly CoworkPaths _paths;
     private readonly DailyScheduler _scheduler;
     private readonly KeepAliveSupervisor _keepAlive;
+    private readonly HubClient _hubClient;
+    private HubLinkState _hubState = HubLinkState.Disabled;
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _uiRefreshTimer;
 
@@ -77,6 +81,8 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         _startWithWindows = _workspace.Settings.StartWithWindows;
         _historyRetentionDays = _workspace.Settings.HistoryRetentionDays;
         _notifyOnFailure = _workspace.Settings.NotifyOnFailure;
+        _hubUrl = _workspace.Settings.HubUrl;
+        _hubToken = _workspace.Settings.HubToken;
 
         ThemeOptions = ThemeManager.Available
             .Select(t => new ChoiceViewModel<AppTheme>(t, x => Loc.T(ThemeManager.LabelKey(x))))
@@ -102,6 +108,9 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         _keepAlive.RestartDue += OnRestartDue;
         _keepAlive.GaveUp += OnKeepAliveGaveUp;
 
+        _hubClient = new HubClient(this, _logger);
+        _hubClient.StateChanged += OnHubStateChanged;
+
         // Làm tươi cột "chạy kế tiếp" mỗi 30 giây để đồng hồ trên dashboard không đứng yên.
         _uiRefreshTimer = new DispatcherTimer(TimeSpan.FromSeconds(30), DispatcherPriority.Background,
             (_, _) => RefreshAllRunInfo(), _dispatcher);
@@ -111,6 +120,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
             _scheduler.Start();
 
         _scheduler.RunStartupApps();
+        ConnectHub();
     }
 
     public ObservableCollection<AppViewModel> Apps { get; }
@@ -243,6 +253,114 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
     {
         _workspace.Settings.NotifyOnFailure = value;
         MarkDirty();
+    }
+
+    // ---------- Quản lý từ xa ----------
+
+    [ObservableProperty] private string _hubUrl = string.Empty;
+    [ObservableProperty] private string _hubToken = string.Empty;
+
+    /// <summary>Nhãn trạng thái kết nối hub, dịch theo ngôn ngữ hiện tại.</summary>
+    public string HubStatusText => _hubState == HubLinkState.Failed
+        ? Loc.T("HubLink.Failed", _hubClient.LastError ?? string.Empty)
+        : Loc.T("HubLink." + _hubState);
+
+    partial void OnHubUrlChanged(string value)
+    {
+        _workspace.Settings.HubUrl = value.Trim();
+        MarkDirty();
+    }
+
+    partial void OnHubTokenChanged(string value)
+    {
+        _workspace.Settings.HubToken = value.Trim();
+        MarkDirty();
+    }
+
+    // Không tự nối lại khi gõ từng ký tự vào ô địa chỉ; người dùng bấm nút khi đã sửa xong.
+    [RelayCommand]
+    private void ReconnectHub() => ConnectHub();
+
+    private void ConnectHub()
+    {
+        var settings = _workspace.Settings;
+        if (string.IsNullOrWhiteSpace(settings.HubUrl) || string.IsNullOrWhiteSpace(settings.HubToken))
+        {
+            _ = _hubClient.StopAsync();
+            return;
+        }
+
+        _ = _hubClient.StartAsync(settings.HubUrl, settings.HubToken);
+    }
+
+    private void OnHubStateChanged(object? sender, HubLinkState state)
+        => _dispatcher.BeginInvoke(() =>
+        {
+            _hubState = state;
+            OnPropertyChanged(nameof(HubStatusText));
+        });
+
+    /// <summary>Đẩy trạng thái một app lên hub. Không nối thì im lặng bỏ qua.</summary>
+    private void PushToHub(AppViewModel app)
+        => _ = _hubClient.PushAppAsync(app.ToSnapshot(DateTimeOffset.Now));
+
+    private static readonly string AgentVersion =
+        typeof(MainViewModel).Assembly.GetName().Version?.ToString() ?? "?";
+
+    // Hai phương thức dưới được HubClient gọi từ luồng mạng — phải nhảy về luồng giao diện.
+    MachineSnapshot IAgentHost.BuildSnapshot()
+        => _dispatcher.Invoke(() =>
+        {
+            var now = DateTimeOffset.Now;
+            return new MachineSnapshot(
+                Environment.MachineName, AgentVersion, now, Apps.Select(a => a.ToSnapshot(now)).ToList());
+        });
+
+    async Task<CommandResult> IAgentHost.ExecuteAsync(RemoteCommand command)
+        => await await _dispatcher.InvokeAsync(() => ExecuteRemoteAsync(command));
+
+    private async Task<CommandResult> ExecuteRemoteAsync(RemoteCommand command)
+    {
+        var app = FindApp(command.AppId);
+        if (app is null)
+            return new CommandResult(command.RequestId, false, Loc.T("Msg.RemoteUnknownApp"));
+
+        switch (command.Kind)
+        {
+            case RemoteCommandKind.Run:
+                StatusMessage = Loc.T("Msg.RemoteRun", app.DisplayTitle);
+                return RunApp(app, RunTrigger.Remote)
+                    ? new CommandResult(command.RequestId, true, Loc.T("Msg.RemoteDone"))
+                    : new CommandResult(command.RequestId, false, app.LastError ?? StatusMessage);
+
+            case RemoteCommandKind.Stop:
+                StatusMessage = Loc.T("Msg.RemoteStop", app.DisplayTitle);
+                if (CancelPendingRestart(app))
+                    return new CommandResult(command.RequestId, true, Loc.T("Msg.RestartCancelled", app.DisplayTitle));
+
+                if (!_processManager.IsRunning(app.Id))
+                    return new CommandResult(command.RequestId, false, Loc.T("Msg.NotRunning"));
+
+                app.RuntimeState = AppRuntimeState.Stopping;
+                await _processManager.StopAsync(app.Id).ConfigureAwait(true);
+                return new CommandResult(command.RequestId, true, Loc.T("Msg.RemoteDone"));
+
+            case RemoteCommandKind.Restart:
+                StatusMessage = Loc.T("Msg.RemoteRestart", app.DisplayTitle);
+                CancelPendingRestart(app);
+                if (_processManager.IsRunning(app.Id))
+                {
+                    app.RuntimeState = AppRuntimeState.Stopping;
+                    await _processManager.StopAsync(app.Id).ConfigureAwait(true);
+                }
+
+                return RunApp(app, RunTrigger.Remote)
+                    ? new CommandResult(command.RequestId, true, Loc.T("Msg.RemoteDone"))
+                    : new CommandResult(command.RequestId, false, app.LastError ?? StatusMessage);
+
+            default:
+                return new CommandResult(command.RequestId, false, command.Kind.ToString());
+        }
     }
 
     partial void OnSearchTextChanged(string value) => AppsView.Refresh();
@@ -503,6 +621,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
             app.LastError = message;
             app.RuntimeState = AppRuntimeState.Failed;
             StatusMessage = Loc.T("Msg.CannotRun", app.DisplayTitle);
+            PushToHub(app);
             _logger.Warning($"Bỏ qua '{app.Name}' vì cấu hình lỗi: {message}");
             return false;
         }
@@ -516,6 +635,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
             app.LastError = result.Error;
             app.RuntimeState = AppRuntimeState.Failed;
             StatusMessage = Loc.T("Msg.RunFailed", app.DisplayTitle, result.Error);
+            PushToHub(app);
             return false;
         }
 
@@ -548,6 +668,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
                 app.LastError = e.Message;
 
             app.RefreshRunInfo();
+            PushToHub(app);
         });
 
     private void OnOutputReceived(object? sender, AppOutputLine line)
@@ -591,6 +712,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
             }
 
             MarkDirty();
+            PushToHub(app);
         });
 
     private void OnAppDue(object? sender, ScheduleDueEventArgs e)
@@ -629,6 +751,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         {
             app.PendingRestartAttempt = 0;
             app.RuntimeState = AppRuntimeState.Idle;
+            PushToHub(app);
         }
 
         return cancelled;
@@ -644,6 +767,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
             app.PendingRestartSeconds = Math.Max(0, app.Model.RestartDelaySeconds);
             app.PendingRestartAttempt = e.Attempt;
             app.RuntimeState = AppRuntimeState.WaitingRestart;
+            PushToHub(app);
         });
 
     private void OnRestartDue(object? sender, RestartDueEventArgs e)
@@ -669,6 +793,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
             app.LastError = message;
             app.RuntimeState = AppRuntimeState.Failed;
             StatusMessage = message;
+            PushToHub(app);
             Notify(Loc.T("Notify.GaveUpTitle"), message, NotificationSeverity.Error);
         });
 
@@ -700,6 +825,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
             _store.Save(_workspace);
             HasUnsavedChanges = false;
             StatusMessage = Loc.T("Msg.Saved", DateTime.Now.ToString("HH:mm:ss"));
+            _ = _hubClient.PushSnapshotAsync();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -1052,6 +1178,16 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         _keepAlive.RestartDue -= OnRestartDue;
         _keepAlive.GaveUp -= OnKeepAliveGaveUp;
         _keepAlive.Dispose();
+
+        _hubClient.StateChanged -= OnHubStateChanged;
+        try
+        {
+            // Đóng lịch sự để hub thấy máy ngoại tuyến ngay, nhưng không giữ cửa sổ quá lâu.
+            _hubClient.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(3));
+        }
+        catch (AggregateException)
+        {
+        }
 
         _processManager.StatusChanged -= OnProcessStatusChanged;
         _processManager.OutputReceived -= OnOutputReceived;

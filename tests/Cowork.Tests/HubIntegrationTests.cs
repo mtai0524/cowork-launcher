@@ -1,0 +1,135 @@
+using Cowork.Core.Models;
+using Cowork.Core.Services;
+using Cowork.Remote;
+using Cowork.Remote.Contracts;
+using Microsoft.AspNetCore.Http.Connections;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+
+namespace Cowork.Tests;
+
+/// <summary>
+/// Dựng hub thật trong tiến trình và nối một agent giả vào bằng chính <see cref="HubClient"/>
+/// mà Cowork dùng — kiểm cả đường mạng, xác thực token, và vòng lệnh đi–về.
+/// TestServer không nói WebSocket nên client dùng long-polling; token khi đó đi qua header,
+/// đúng nhánh thứ hai của <c>AgentHub.ExtractToken</c>.
+/// </summary>
+public sealed class HubIntegrationTests : IDisposable
+{
+    private const string Token = "token-test-0123456789abc";
+    private static readonly TimeSpan Patience = TimeSpan.FromSeconds(10);
+
+    private readonly WebApplicationFactory<Program> _factory;
+
+    // Với minimal hosting, cấu hình thêm qua WithWebHostBuilder bị nạp TRƯỚC appsettings.json
+    // nên bị file đó đè lại; biến môi trường thì được nạp sau, nên đè được giá trị mẫu.
+    private static readonly Dictionary<string, string> Environment = new()
+    {
+        ["Web__Password"] = "mat-khau-test-123",
+        ["Agents__0__Name"] = "may-test",
+        ["Agents__0__Token"] = Token,
+    };
+
+    public HubIntegrationTests()
+    {
+        foreach (var (key, value) in Environment)
+            System.Environment.SetEnvironmentVariable(key, value);
+
+        _factory = new WebApplicationFactory<Program>();
+    }
+
+    private sealed class FakeAgent : IAgentHost
+    {
+        public Guid AppId { get; } = Guid.NewGuid();
+
+        public List<RemoteCommand> Received { get; } = new();
+
+        public MachineSnapshot BuildSnapshot() => new("PC-TEST", "test", DateTimeOffset.Now, new[]
+        {
+            new AppSnapshot(AppId, "echo", string.Empty, true, false, AppRuntimeState.Idle, 0,
+                null, null, null, "Thủ công", null),
+        });
+
+        public Task<CommandResult> ExecuteAsync(RemoteCommand command)
+        {
+            lock (Received)
+                Received.Add(command);
+
+            return Task.FromResult(new CommandResult(command.RequestId, true, "da chay"));
+        }
+    }
+
+    private HubClient CreateClient(IAgentHost agent)
+        => new(agent, NullLogger.Instance, builder =>
+            builder.WithUrl(HubClient.BuildUrl(BaseAddress), options =>
+            {
+                options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
+                options.Transports = HttpTransportType.LongPolling;
+            }));
+
+    private string BaseAddress => _factory.Server.BaseAddress.ToString();
+
+    private MachineRegistry Registry => _factory.Services.GetRequiredService<MachineRegistry>();
+
+    private static async Task WaitUntilAsync(Func<bool> condition, string what)
+    {
+        var deadline = DateTime.UtcNow + Patience;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (condition())
+                return;
+            await Task.Delay(50);
+        }
+
+        Assert.Fail("Chờ quá lâu: " + what);
+    }
+
+    [Fact]
+    public async Task Agent_RegistersOverTheWire_AndAnswersCommands()
+    {
+        var agent = new FakeAgent();
+        await using var client = CreateClient(agent);
+
+        await client.StartAsync(BaseAddress, Token);
+        await WaitUntilAsync(
+            () => Registry.Machines.Any(m => m.Name == "may-test" && m.Online && m.Apps.Count == 1),
+            "máy lên trực tuyến kèm một app");
+
+        var machine = Registry.Machines.Single(m => m.Name == "may-test");
+        Assert.Equal("PC-TEST", machine.HostName);
+        Assert.Equal("echo", machine.Apps[0].Name);
+
+        var outcome = await Registry.SendAsync("may-test", agent.AppId, RemoteCommandKind.Run, Patience);
+
+        Assert.True(outcome.Ok, outcome.AgentMessage);
+        Assert.Equal("da chay", outcome.AgentMessage);
+        var received = Assert.Single(agent.Received);
+        Assert.Equal(agent.AppId, received.AppId);
+        Assert.Equal(RemoteCommandKind.Run, received.Kind);
+
+        await client.StopAsync();
+        await WaitUntilAsync(() => !Registry.Machines.Single(m => m.Name == "may-test").Online, "máy ngoại tuyến");
+    }
+
+    [Fact]
+    public async Task WrongToken_IsRejected_AndTheMachineNeverShowsOnline()
+    {
+        var states = new List<HubLinkState>();
+        await using var client = CreateClient(new FakeAgent());
+        client.StateChanged += (_, state) => { lock (states) states.Add(state); };
+
+        await client.StartAsync(BaseAddress, "token-sai-0123456789abcdef");
+        await WaitUntilAsync(() => { lock (states) return states.Contains(HubLinkState.Failed); }, "client báo thất bại");
+
+        Assert.False(Registry.Machines.Single(m => m.Name == "may-test").Online);
+    }
+
+    public void Dispose()
+    {
+        _factory.Dispose();
+        foreach (var key in Environment.Keys)
+            System.Environment.SetEnvironmentVariable(key, null);
+    }
+}

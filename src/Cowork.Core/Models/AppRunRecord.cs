@@ -10,6 +10,9 @@ public enum RunTrigger
 
     /// <summary>Cowork tự khởi động lại vì app bật "giữ luôn chạy".</summary>
     KeepAlive = 4,
+
+    /// <summary>Lệnh gửi từ web qua hub.</summary>
+    Remote = 5,
 }
 
 public enum RunOutcome

@@ -46,18 +46,26 @@ public static class Loc
         _ => "Tiếng Việt",
     };
 
-    /// <summary>Tra một chuỗi. Thiếu khoá thì lùi về tiếng Việt, cuối cùng trả chính khoá.</summary>
-    public static string T(string key)
+    /// <summary>Tra một chuỗi theo ngôn ngữ đang bật. Thiếu khoá thì lùi về tiếng Việt, cuối cùng trả chính khoá.</summary>
+    public static string T(string key) => T(_current, key);
+
+    public static string T(string key, params object?[] args) => T(_current, key, args);
+
+    /// <summary>
+    /// Tra theo một ngôn ngữ chỉ định, không đụng <see cref="Current"/>. Dành cho server phục vụ
+    /// nhiều người cùng lúc, mỗi người một ngôn ngữ — ở đó biến tĩnh toàn cục là sai.
+    /// </summary>
+    public static string T(AppLanguage language, string key)
     {
-        var table = _current == AppLanguage.English ? StringsEn.Table : StringsVi.Table;
+        var table = language == AppLanguage.English ? StringsEn.Table : StringsVi.Table;
         if (table.TryGetValue(key, out var value))
             return value;
 
         return StringsVi.Table.TryGetValue(key, out var fallback) ? fallback : key;
     }
 
-    public static string T(string key, params object?[] args)
-        => string.Format(CultureInfo.CurrentCulture, T(key), args);
+    public static string T(AppLanguage language, string key, params object?[] args)
+        => string.Format(CultureInfo.CurrentCulture, T(language, key), args);
 
     /// <summary>
     /// Mọi biến thể ngôn ngữ của một khoá. Dùng khi cần nhận ra chuỗi do chính Cowork

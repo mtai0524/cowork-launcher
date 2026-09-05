@@ -95,7 +95,7 @@ Lưu trong `history.json`, tối đa 5000 bản ghi (trần cứng, ngoài cấu
 |---|---|---|
 | `Id` | `Guid` | Khoá; ghi lại cùng `Id` = **cập nhật**, không tạo bản ghi mới |
 | `AppId` / `AppName` | `Guid` / `string` | Tên được chụp lại tại thời điểm chạy, nên đổi tên app sau này không làm sai lịch sử |
-| `Trigger` | `RunTrigger` | `Manual` / `Schedule` / `Startup` / `RunAll` / `KeepAlive` |
+| `Trigger` | `RunTrigger` | `Manual` / `Schedule` / `Startup` / `RunAll` / `KeepAlive` / `Remote` |
 | `Outcome` | `RunOutcome` | `Running` / `Succeeded` / `Failed` / `Cancelled` / `TimedOut` / `NotStarted` |
 | `StartedAt` / `FinishedAt` | `DateTimeOffset` | Mốc thời gian |
 | `ExitCode` | `int?` | Mã thoát; `0` = thành công |
@@ -114,6 +114,8 @@ Lưu trong `history.json`, tối đa 5000 bản ghi (trần cứng, ngoài cấu
 | `NotifyOnFailure` | `true` | Bong bóng ở khay khi app chạy lỗi hoặc không giữ chạy được |
 | `Theme` | `Dark` | `Dark` / `Light` / `Midnight` / `HighContrast` |
 | `Language` | `Vietnamese` | `Vietnamese` / `English` |
+| `HubUrl` | `""` | Địa chỉ hub quản lý từ xa; trống = không kết nối |
+| `HubToken` | `""` | Token của máy này, khớp với một dòng trong `Agents` của hub. **Lưu dạng thường** |
 
 ## Schema `workspace.json`
 
@@ -175,6 +177,8 @@ Enum ghi thành chuỗi, `TimeSpan` ghi dạng `"HH:mm:ss"` — file đọc và 
     "OutputBufferLines": 2000,
     "HistoryRetentionDays": 30,
     "NotifyOnFailure": true,
+    "HubUrl": "",
+    "HubToken": "",
     "Theme": "Dark",
     "Language": "Vietnamese"
   }

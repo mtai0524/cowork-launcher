@@ -60,6 +60,7 @@ public class LocalizationTests
             AssertAllNamed<AppTheme>("Theme.");
             AssertAllNamed<DayOfWeek>("Day.");
             AssertAllNamed<ScanConfidence>("Confidence.");
+            AssertAllNamed<AppRuntimeState>("WebState.");
         });
     }
 

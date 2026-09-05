@@ -33,6 +33,7 @@ không cần mở Notepad tìm đường dẫn.
 | **Lịch chạy** | Mốc giờ cố định trong ngày, chu kỳ lặp, chạy khi mở Cowork; lọc theo ngày trong tuần; chạy bù khi lỡ |
 | **Theo dõi** | Nhật ký output realtime, lịch sử chạy có mã thoát và thời lượng, log ra file, thông báo ở khay khi app chạy lỗi |
 | **Chạy nền** | Thu nhỏ xuống khay hệ thống, khởi động cùng Windows |
+| **Quản lý từ xa** | Nhiều máy nối ra một hub web: xem trạng thái, bấm Chạy / Dừng / Khởi động lại từ trình duyệt — xem [docs/06](docs/06-quan-ly-tu-xa.md) |
 
 ## Chạy thử
 
@@ -40,6 +41,7 @@ không cần mở Notepad tìm đường dẫn.
 dotnet build                                  # build toàn bộ solution
 dotnet test                                   # toàn bộ test
 dotnet run --project src/Cowork.App           # mở ứng dụng
+dotnet run --project src/Cowork.Hub           # hub quản lý từ xa (đặt mật khẩu trong appsettings.json trước)
 ```
 
 Yêu cầu: Windows + .NET 8 SDK (`dotnet --list-sdks` phải có bản 8.x trở lên).
@@ -58,7 +60,9 @@ Cowork.sln
 │   ├─ Converters/      Converter cho binding
 │   ├─ Localization/    Nhãn đa ngôn ngữ cho XAML
 │   └─ Themes/          Kiểu dáng điều khiển + bốn bảng màu
-├─ tests/Cowork.Tests/  xUnit — lịch, config editor, lưu trữ, chạy tiến trình thật
+├─ src/Cowork.Remote/   Hợp đồng dữ liệu, sổ máy, client SignalR — dùng chung cho agent và hub, không WPF/ASP.NET
+├─ src/Cowork.Hub/      Hub quản lý từ xa: ASP.NET Core + Blazor Server, chạy được trên Linux
+├─ tests/Cowork.Tests/  xUnit — lịch, config editor, lưu trữ, chạy tiến trình thật, hub trong tiến trình
 └─ docs/                Tài liệu chi tiết
 ```
 

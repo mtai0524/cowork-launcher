@@ -9,6 +9,8 @@ using Cowork.Core.Models;
 using Cowork.Core.Services;
 using Cowork.Core.Validation;
 using Cowork.Core.Localization;
+using Cowork.Remote;
+using Cowork.Remote.Contracts;
 
 namespace Cowork.App.ViewModels;
 
@@ -436,6 +438,10 @@ public sealed partial class AppViewModel : ObservableObject
     }
 
     public IReadOnlyList<ValidationIssue> Validate() => AppValidator.Validate(Model);
+
+    /// <summary>Ảnh chụp gửi lên hub quản lý từ xa.</summary>
+    public AppSnapshot ToSnapshot(DateTimeOffset now)
+        => SnapshotBuilder.Build(Model, RuntimeState, ProcessId, LastError, now);
 
     /// <summary>
     /// Nạp lại mọi nhãn sau khi đổi ngôn ngữ. Bắn PropertyChanged với tên rỗng là

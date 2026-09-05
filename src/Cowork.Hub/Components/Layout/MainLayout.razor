@@ -1,0 +1,30 @@
+@inherits LayoutComponentBase
+@inject UiLanguage Lang
+@implements IDisposable
+
+<div class="shell">
+    <header class="topbar">
+        <a class="brand" href="/">Cowork Hub</a>
+        <div class="topbar-right">
+            <button class="btn" type="button" @onclick="Lang.Toggle">@Lang.T("Web.SwitchLanguage")</button>
+            <AuthorizeView>
+                <Authorized>
+                    <form method="post" action="/auth/logout">
+                        <button class="btn" type="submit">@Lang.T("Web.Logout")</button>
+                    </form>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+    </header>
+    <main class="content">
+        @Body
+    </main>
+</div>
+
+@code {
+    protected override void OnInitialized() => Lang.Changed += OnLanguageChanged;
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Lang.Changed -= OnLanguageChanged;
+}

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Phần dùng chung giữa agent (Cowork.App) và hub (Cowork.Hub): hợp đồng dữ liệu, sổ máy,
+    client SignalR. Cố ý không đụng WPF lẫn ASP.NET để toàn bộ logic ở đây test được
+    bằng cùng bộ test với Cowork.Core.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cowork.Core\Cowork.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Cowork.Tests" />
+  </ItemGroup>
+
+</Project>

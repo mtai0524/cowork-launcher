@@ -39,10 +39,13 @@ Một cửa sổ duy nhất chứa đủ ba việc:
 - Giữ app luôn chạy: tự khởi động lại khi app thoát, có trần số lần mỗi giờ.
 - Nhật ký output, lịch sử chạy, log ra file, thông báo ở khay khi app lỗi.
 - Chạy nền dưới khay hệ thống, khởi động cùng Windows.
+- Quản lý từ xa: nhiều máy nối ra một hub web, xem trạng thái và bấm Chạy / Dừng / Khởi động lại.
 
 ### Không làm (có chủ ý)
 
-- **Không quản lý máy từ xa.** Cowork chỉ chạy app trên chính máy đang mở nó.
+- **Không sửa cấu hình từ xa.** Hub web chỉ xem trạng thái và ra lệnh Chạy / Dừng; sửa đường dẫn,
+  tham số, lịch hay file cấu hình vẫn phải làm trên chính máy đó. Đây là chủ ý về bảo mật: tài khoản
+  web bị lộ thì cũng chỉ kích hoạt được app đã khai sẵn — xem [06-quan-ly-tu-xa.md](06-quan-ly-tu-xa.md).
 - **Không thay thế Windows Service.** Cowork phải đang chạy thì lịch mới hoạt động — đây là đánh đổi
   để mọi thứ nằm trong quyền người dùng, không cần cài dịch vụ hệ thống. Xem
   [05-lo-trinh.md](05-lo-trinh.md).

@@ -904,6 +904,31 @@
                                                Text="{loc:Tr Settings.DataHint}" />
                                 </StackPanel>
                             </Border>
+
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="{loc:Tr Settings.RemoteCard}"
+                                               Style="{StaticResource HeadingText}" />
+                                    <TextBlock Text="{loc:Tr Settings.HubUrl}" Style="{StaticResource LabelText}" />
+                                    <TextBox Text="{Binding HubUrl, UpdateSourceTrigger=LostFocus}"
+                                             ToolTip="https://hub.example.com" />
+                                    <TextBlock Text="{loc:Tr Settings.HubToken}" Style="{StaticResource LabelText}"
+                                               Margin="0,12,0,4" />
+                                    <TextBox Text="{Binding HubToken, UpdateSourceTrigger=LostFocus}"
+                                             FontFamily="Cascadia Mono, Consolas, monospace" />
+                                    <DockPanel Margin="0,12,0,0">
+                                        <Button DockPanel.Dock="Right" Content="{loc:Tr Settings.HubReconnect}"
+                                                Command="{Binding ReconnectHubCommand}" Margin="0" />
+                                        <TextBlock Foreground="{DynamicResource MutedBrush}" FontSize="12">
+                                            <Run Text="{loc:Tr Settings.HubStatus}" />
+                                            <Run Text="{Binding HubStatusText, Mode=OneWay}"
+                                                 Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" />
+                                        </TextBlock>
+                                    </DockPanel>
+                                    <TextBlock Style="{StaticResource HintText}"
+                                               Text="{loc:Tr Settings.HubHint}" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

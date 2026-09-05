@@ -1,0 +1,24 @@
+@page "/login"
+@inject UiLanguage Lang
+
+<div class="login">
+    <h1>@Lang.T("Web.Login")</h1>
+
+    @if (Failed)
+    {
+        <div class="notice bad">@Lang.T("Web.LoginFailed")</div>
+    }
+
+    <form method="post" action="/auth/login">
+        <label for="password">@Lang.T("Web.Password")</label>
+        <input id="password" name="password" type="password" autofocus autocomplete="current-password" />
+        <button class="btn primary" type="submit">@Lang.T("Web.Login")</button>
+    </form>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "failed")]
+    public string? FailedFlag { get; set; }
+
+    private bool Failed => FailedFlag == "1";
+}
