@@ -13,6 +13,9 @@ public enum RunTrigger
 
     /// <summary>Lệnh gửi từ web qua hub.</summary>
     Remote = 5,
+
+    /// <summary>Cowork tự chạy lại vì lần chạy trước kết thúc lỗi và app có đặt số lần thử lại.</summary>
+    Retry = 6,
 }
 
 public enum RunOutcome

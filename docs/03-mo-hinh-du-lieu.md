@@ -40,6 +40,10 @@ Một app do Cowork quản lý.
 | `KeepAlive` | `bool` | Tự khởi động lại khi tiến trình tự thoát (không áp dụng khi bấm Dừng) |
 | `RestartDelaySeconds` | `int` | Chờ ngần này giây trước khi khởi động lại (mặc định `5`) |
 | `MaxRestartsPerHour` | `int` | Trần số lần khởi động lại mỗi giờ, chạm trần thì bỏ cuộc; `0` = không giới hạn (mặc định `10`) |
+| `RetryCount` | `int` | Số lần chạy lại khi một lần chạy kết thúc lỗi hoặc quá giờ; `0` = không thử lại (mặc định). Bị bỏ qua khi bật `KeepAlive` |
+| `RetryDelaySeconds` | `int` | Chờ ngần này giây trước mỗi lần thử lại (mặc định `30`) |
+| `SuccessExitCodes` | `List<int>` | Các mã thoát được coi là thành công (mặc định `[0]`); thiếu hoặc rỗng ⇒ vá về `[0]` khi nạp |
+| `StopGraceSeconds` | `int` | Khi bấm Dừng: chờ ngần này giây cho app tự thoát sau khi được đóng cửa sổ / gửi Ctrl+C, rồi mới kill (mặc định `5`) |
 | `Order` | `int` | Thứ tự hiển thị **và** thứ tự khi bấm "Chạy tất cả" |
 | `LastScheduledRunAt` | `DateTimeOffset?` | Lần cuối **scheduler** kích hoạt — dùng để tính mốc kế tiếp |
 | `LastRunAt` | `DateTimeOffset?` | Lần cuối chạy (kể cả chạy tay) |
@@ -95,10 +99,10 @@ Lưu trong `history.json`, tối đa 5000 bản ghi (trần cứng, ngoài cấu
 |---|---|---|
 | `Id` | `Guid` | Khoá; ghi lại cùng `Id` = **cập nhật**, không tạo bản ghi mới |
 | `AppId` / `AppName` | `Guid` / `string` | Tên được chụp lại tại thời điểm chạy, nên đổi tên app sau này không làm sai lịch sử |
-| `Trigger` | `RunTrigger` | `Manual` / `Schedule` / `Startup` / `RunAll` / `KeepAlive` / `Remote` |
+| `Trigger` | `RunTrigger` | `Manual` / `Schedule` / `Startup` / `RunAll` / `KeepAlive` / `Remote` / `Retry` |
 | `Outcome` | `RunOutcome` | `Running` / `Succeeded` / `Failed` / `Cancelled` / `TimedOut` / `NotStarted` |
 | `StartedAt` / `FinishedAt` | `DateTimeOffset` | Mốc thời gian |
-| `ExitCode` | `int?` | Mã thoát; `0` = thành công |
+| `ExitCode` | `int?` | Mã thoát; thành công khi nằm trong `SuccessExitCodes` của app (mặc định chỉ `0`) |
 | `ProcessId` | `int` | PID |
 | `Error` | `string?` | Lý do lỗi ở dạng đọc được |
 
@@ -111,6 +115,7 @@ Lưu trong `history.json`, tối đa 5000 bản ghi (trần cứng, ngoài cấu
 | `StartWithWindows` | `false` | Ghi khoá `HKCU\...\Run` (không cần quyền admin) |
 | `OutputBufferLines` | `2000` | Số dòng output giữ trong RAM mỗi app |
 | `HistoryRetentionDays` | `30` | Số ngày giữ lịch sử chạy |
+| `LogRetentionDays` | `30` | Số ngày giữ file log trong thư mục `logs`; dọn lúc mở Cowork và đầu mỗi ngày |
 | `NotifyOnFailure` | `true` | Bong bóng ở khay khi app chạy lỗi hoặc không giữ chạy được |
 | `Theme` | `Dark` | `Dark` / `Light` / `Midnight` / `HighContrast` |
 | `Language` | `Vietnamese` | `Vietnamese` / `English` |
@@ -163,6 +168,10 @@ Enum ghi thành chuỗi, `TimeSpan` ghi dạng `"HH:mm:ss"` — file đọc và 
       "KeepAlive": false,
       "RestartDelaySeconds": 5,
       "MaxRestartsPerHour": 10,
+      "RetryCount": 2,
+      "RetryDelaySeconds": 60,
+      "SuccessExitCodes": [0, 1],
+      "StopGraceSeconds": 5,
       "Order": 0,
       "CreatedAt": "2026-09-04T14:00:00+07:00",
       "LastScheduledRunAt": "2026-09-04T02:15:00+07:00",
@@ -176,6 +185,7 @@ Enum ghi thành chuỗi, `TimeSpan` ghi dạng `"HH:mm:ss"` — file đọc và 
     "StartWithWindows": false,
     "OutputBufferLines": 2000,
     "HistoryRetentionDays": 30,
+    "LogRetentionDays": 30,
     "NotifyOnFailure": true,
     "HubUrl": "",
     "HubToken": "",

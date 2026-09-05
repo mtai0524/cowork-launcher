@@ -35,6 +35,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     private readonly CoworkPaths _paths;
     private readonly DailyScheduler _scheduler;
     private readonly KeepAliveSupervisor _keepAlive;
+    private readonly RetrySupervisor _retry;
     private readonly HubClient _hubClient;
     private HubLinkState _hubState = HubLinkState.Disabled;
     private readonly Dispatcher _dispatcher;
@@ -63,7 +64,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         _dispatcher = dispatcher;
 
         _workspace = _store.Load();
-        _history.Prune(_workspace.Settings.HistoryRetentionDays);
+        PruneStoredData(DateTime.Today);
 
         Apps = new ObservableCollection<AppViewModel>();
         AppsView = CollectionViewSource.GetDefaultView(Apps);
@@ -80,6 +81,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         _minimizeToTray = _workspace.Settings.MinimizeToTray;
         _startWithWindows = _workspace.Settings.StartWithWindows;
         _historyRetentionDays = _workspace.Settings.HistoryRetentionDays;
+        _logRetentionDays = _workspace.Settings.LogRetentionDays;
         _notifyOnFailure = _workspace.Settings.NotifyOnFailure;
         _hubUrl = _workspace.Settings.HubUrl;
         _hubToken = _workspace.Settings.HubToken;
@@ -108,12 +110,18 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         _keepAlive.RestartDue += OnRestartDue;
         _keepAlive.GaveUp += OnKeepAliveGaveUp;
 
+        _retry = new RetrySupervisor(_processManager, this, _logger);
+        _retry.RetryScheduled += OnRetryScheduled;
+        _retry.RetryDue += OnRetryDue;
+        _retry.RetriesExhausted += OnRetriesExhausted;
+
         _hubClient = new HubClient(this, _logger);
         _hubClient.StateChanged += OnHubStateChanged;
 
-        // Làm tươi cột "chạy kế tiếp" mỗi 30 giây để đồng hồ trên dashboard không đứng yên.
+        // Làm tươi cột "chạy kế tiếp" mỗi 30 giây để đồng hồ trên dashboard không đứng yên; cùng
+        // nhịp đó dọn lịch sử và log khi sang ngày mới, vì Cowork có thể nằm dưới khay hàng tháng.
         _uiRefreshTimer = new DispatcherTimer(TimeSpan.FromSeconds(30), DispatcherPriority.Background,
-            (_, _) => RefreshAllRunInfo(), _dispatcher);
+            (_, _) => OnUiTick(), _dispatcher);
         _uiRefreshTimer.Start();
 
         if (_schedulerEnabled)
@@ -207,6 +215,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     [ObservableProperty] private bool _minimizeToTray;
     [ObservableProperty] private bool _startWithWindows;
     [ObservableProperty] private int _historyRetentionDays;
+    [ObservableProperty] private int _logRetentionDays;
     [ObservableProperty] private bool _notifyOnFailure;
 
     /// <summary>Thông báo cần đưa ra ngoài cửa sổ (khay hệ thống). Cửa sổ chính lắng nghe.</summary>
@@ -246,6 +255,12 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     partial void OnHistoryRetentionDaysChanged(int value)
     {
         _workspace.Settings.HistoryRetentionDays = Math.Max(1, value);
+        MarkDirty();
+    }
+
+    partial void OnLogRetentionDaysChanged(int value)
+    {
+        _workspace.Settings.LogRetentionDays = Math.Max(1, value);
         MarkDirty();
     }
 
@@ -342,7 +357,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
                     return new CommandResult(command.RequestId, false, Loc.T("Msg.NotRunning"));
 
                 app.RuntimeState = AppRuntimeState.Stopping;
-                await _processManager.StopAsync(app.Id).ConfigureAwait(true);
+                await _processManager.StopAsync(app.Id, GraceMs(app)).ConfigureAwait(true);
                 return new CommandResult(command.RequestId, true, Loc.T("Msg.RemoteDone"));
 
             case RemoteCommandKind.Restart:
@@ -351,7 +366,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
                 if (_processManager.IsRunning(app.Id))
                 {
                     app.RuntimeState = AppRuntimeState.Stopping;
-                    await _processManager.StopAsync(app.Id).ConfigureAwait(true);
+                    await _processManager.StopAsync(app.Id, GraceMs(app)).ConfigureAwait(true);
                 }
 
                 return RunApp(app, RunTrigger.Remote)
@@ -412,6 +427,9 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             or nameof(AppViewModel.SelectedWindowStyle)
             or nameof(AppViewModel.PendingRestartAttempt)
             or nameof(AppViewModel.PendingRestartSeconds)
+            or nameof(AppViewModel.PendingIsRetry)
+            or nameof(AppViewModel.PendingRetryLimit)
+            or nameof(AppViewModel.RetryAvailable)
             or nameof(AppViewModel.IsRunning))
         {
             return;
@@ -487,7 +505,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             return;
 
         if (_processManager.IsRunning(app.Id))
-            await _processManager.StopAsync(app.Id).ConfigureAwait(true);
+            await _processManager.StopAsync(app.Id, GraceMs(app)).ConfigureAwait(true);
 
         app.PropertyChanged -= OnAppPropertyChanged;
         _workspace.Apps.Remove(app.Model);
@@ -553,14 +571,15 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         if (SelectedApp is not { } app)
             return;
 
+        var wasRetry = app.PendingIsRetry;
         if (CancelPendingRestart(app))
         {
-            StatusMessage = Loc.T("Msg.RestartCancelled", app.DisplayTitle);
+            StatusMessage = Loc.T(wasRetry ? "Msg.RetryCancelled" : "Msg.RestartCancelled", app.DisplayTitle);
             return;
         }
 
         app.RuntimeState = AppRuntimeState.Stopping;
-        var stopped = await _processManager.StopAsync(app.Id).ConfigureAwait(true);
+        var stopped = await _processManager.StopAsync(app.Id, GraceMs(app)).ConfigureAwait(true);
         StatusMessage = stopped
             ? Loc.T("Msg.StopRequested", app.DisplayTitle)
             : Loc.T("Msg.NotRunning");
@@ -591,7 +610,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         if (_processManager.IsRunning(app.Id))
         {
             app.RuntimeState = AppRuntimeState.Stopping;
-            await _processManager.StopAsync(app.Id).ConfigureAwait(true);
+            await _processManager.StopAsync(app.Id, GraceMs(app)).ConfigureAwait(true);
         }
 
         StatusMessage = Loc.T("Msg.RestartRequested", app.DisplayTitle);
@@ -604,13 +623,22 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         foreach (var app in Apps)
             CancelPendingRestart(app);
 
-        await _processManager.StopAllAsync().ConfigureAwait(true);
+        // Mỗi app có thời gian ân hạn riêng, nên dừng từng app thay vì gọi StopAllAsync chung.
+        var stops = Apps
+            .Where(app => _processManager.IsRunning(app.Id))
+            .Select(app => _processManager.StopAsync(app.Id, GraceMs(app)))
+            .ToList();
+
+        await Task.WhenAll(stops).ConfigureAwait(true);
         StatusMessage = Loc.T("Msg.StopAllRequested");
     }
 
     private bool RunApp(AppViewModel app, RunTrigger trigger)
     {
-        CancelPendingRestart(app);
+        // Lần chạy do chính bộ thử lại kích hoạt thì không được khép chuỗi của nó — nếu không, số lần
+        // đã thử bị xoá và một app hỏng hẳn sẽ được thử lại vô tận.
+        if (trigger != RunTrigger.Retry)
+            CancelPendingRestart(app);
 
         var issues = app.Validate();
         if (AppValidator.HasErrors(issues))
@@ -705,9 +733,11 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
                 app.LastError = record.Error ?? Loc.T("Msg.ExitedWithCode", record.ExitCode);
                 StatusMessage = Loc.T("Msg.ExitedWithError", app.DisplayTitle, record.ExitCode);
 
-                // Chạy tay thì người dùng đang nhìn; còn lại (lịch, khởi động, giữ chạy)
-                // thường xảy ra lúc Cowork đang nằm dưới khay.
-                if (record.Trigger != RunTrigger.Manual || app.Model.KeepAlive)
+                // App có đặt thử lại thì RetrySupervisor lo phần này: hẹn giờ chạy lại trong im lặng,
+                // và chỉ khi hết lượt vẫn lỗi mới báo (OnRetriesExhausted). Còn lại: chạy tay thì
+                // người dùng đang nhìn; lịch, khởi động, giữ chạy thường xảy ra lúc Cowork nằm dưới khay.
+                var retryOwnsIt = RetryPolicy.AppliesTo(app.Model) && RetryPolicy.IsRetryable(record.Outcome);
+                if (!retryOwnsIt && (record.Trigger != RunTrigger.Manual || app.Model.KeepAlive))
                     Notify(Loc.T("Notify.FailedTitle"), DescribeFailure(app, record), NotificationSeverity.Error);
             }
 
@@ -743,18 +773,24 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
 
     // ---------- Giữ app luôn chạy ----------
 
-    /// <summary>Huỷ lần khởi động lại đang chờ của app, trả về true nếu có cái để huỷ.</summary>
+    /// <summary>
+    /// Huỷ lần khởi động lại (keep-alive) hoặc thử lại đang chờ của app, trả về true nếu có cái để huỷ.
+    /// Hai supervisor không bao giờ cùng chờ một app, nên chỉ cần một chỗ dọn trạng thái hiển thị.
+    /// </summary>
     private bool CancelPendingRestart(AppViewModel app)
     {
-        var cancelled = _keepAlive.Cancel(app.Id);
+        var cancelledRestart = _keepAlive.Cancel(app.Id);
+        var cancelledRetry = _retry.Cancel(app.Id);
+
         if (app.RuntimeState == AppRuntimeState.WaitingRestart)
         {
             app.PendingRestartAttempt = 0;
+            app.PendingIsRetry = false;
             app.RuntimeState = AppRuntimeState.Idle;
             PushToHub(app);
         }
 
-        return cancelled;
+        return cancelledRestart || cancelledRetry;
     }
 
     private void OnRestartScheduled(object? sender, RestartScheduledEventArgs e)
@@ -766,6 +802,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
 
             app.PendingRestartSeconds = Math.Max(0, app.Model.RestartDelaySeconds);
             app.PendingRestartAttempt = e.Attempt;
+            app.PendingIsRetry = false;
             app.RuntimeState = AppRuntimeState.WaitingRestart;
             PushToHub(app);
         });
@@ -795,6 +832,60 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             StatusMessage = message;
             PushToHub(app);
             Notify(Loc.T("Notify.GaveUpTitle"), message, NotificationSeverity.Error);
+        });
+
+    // ---------- Thử lại khi lỗi ----------
+
+    private void OnRetryScheduled(object? sender, RetryScheduledEventArgs e)
+        => _dispatcher.Invoke(() =>
+        {
+            var app = FindApp(e.App.Id);
+            if (app is null)
+                return;
+
+            var seconds = (int)e.Delay.TotalSeconds;
+            app.PendingRestartSeconds = seconds;
+            app.PendingRestartAttempt = e.Attempt;
+            app.PendingRetryLimit = e.Limit;
+            app.PendingIsRetry = true;
+            app.RuntimeState = AppRuntimeState.WaitingRestart;
+            StatusMessage = Loc.T("Msg.RetryScheduled", app.DisplayTitle, seconds, e.Attempt, e.Limit);
+            PushToHub(app);
+        });
+
+    private void OnRetryDue(object? sender, RetryDueEventArgs e)
+        => _dispatcher.Invoke(() =>
+        {
+            var app = FindApp(e.App.Id);
+            if (app is null)
+                return;
+
+            app.PendingRestartAttempt = 0;
+            app.PendingIsRetry = false;
+            StatusMessage = Loc.T("Msg.Retrying", app.DisplayTitle, e.Attempt, e.Limit);
+            RunApp(app, RunTrigger.Retry);
+        });
+
+    private void OnRetriesExhausted(object? sender, RetriesExhaustedEventArgs e)
+        => _dispatcher.Invoke(() =>
+        {
+            var app = FindApp(e.App.Id);
+            if (app is null)
+                return;
+
+            var message = Loc.T("Msg.RetryGaveUp", app.DisplayTitle, e.Attempts);
+            app.LastError = message;
+            app.RuntimeState = AppRuntimeState.Failed;
+            StatusMessage = message;
+            PushToHub(app);
+
+            // Đây là thông báo duy nhất của cả chuỗi, nên nói rõ vì sao lần cuối cũng lỗi.
+            var reason = e.Record.Outcome == RunOutcome.TimedOut
+                ? Loc.T("Notify.ReasonTimedOut")
+                : Loc.T("Notify.ReasonExitCode", e.Record.ExitCode);
+            Notify(Loc.T("Notify.RetryGaveUpTitle"),
+                Loc.T("Notify.RetryGaveUpBody", app.DisplayTitle, e.Attempts, reason),
+                NotificationSeverity.Error);
         });
 
     // ---------- IAppSource ----------
@@ -1146,6 +1237,37 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             app.RefreshRunInfo();
     }
 
+    private DateTime _lastPruneDay;
+
+    /// <summary>Nhịp 30 giây của giao diện: làm tươi đồng hồ, và dọn dữ liệu cũ khi vừa sang ngày mới.</summary>
+    private void OnUiTick()
+    {
+        RefreshAllRunInfo();
+
+        var today = DateTime.Today;
+        if (today == _lastPruneDay)
+            return;
+
+        PruneStoredData(today);
+
+        // Bảng lịch sử vẽ từ bản sao trong bộ nhớ; nạp lại để các dòng vừa bị dọn biến mất luôn.
+        var records = _history.All();
+        History.Clear();
+        foreach (var record in records)
+            History.Add(record);
+    }
+
+    /// <summary>Xoá lịch sử và file log quá hạn theo thiết lập. Nhận <paramref name="today"/> để không tự đọc đồng hồ.</summary>
+    private void PruneStoredData(DateTime today)
+    {
+        _lastPruneDay = today;
+        _history.Prune(_workspace.Settings.HistoryRetentionDays);
+        LogPruner.Prune(_paths, today, _workspace.Settings.LogRetentionDays, _logger);
+    }
+
+    /// <summary>Thời gian ân hạn khi dừng, tính bằng mili giây theo thiết lập của từng app.</summary>
+    private static int GraceMs(AppViewModel app) => Math.Max(0, app.Model.StopGraceSeconds) * 1000;
+
     private void RefreshAppCommands()
     {
         DuplicateAppCommand.NotifyCanExecuteChanged();
@@ -1178,6 +1300,11 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         _keepAlive.RestartDue -= OnRestartDue;
         _keepAlive.GaveUp -= OnKeepAliveGaveUp;
         _keepAlive.Dispose();
+
+        _retry.RetryScheduled -= OnRetryScheduled;
+        _retry.RetryDue -= OnRetryDue;
+        _retry.RetriesExhausted -= OnRetriesExhausted;
+        _retry.Dispose();
 
         _hubClient.StateChanged -= OnHubStateChanged;
         try

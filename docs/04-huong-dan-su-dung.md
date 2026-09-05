@@ -212,6 +212,48 @@ chỉ lo phần *giữ*, không lo phần *khởi động lần đầu*.
 > Mẹo: **Giữ luôn chạy** + **Tự dừng sau N phút** = tự khởi động lại định kỳ mỗi N phút, tiện cho
 > app rò rỉ bộ nhớ.
 
+## Thử lại khi job lỗi
+
+Dành cho job **chạy xong là thoát** — sao lưu, đồng bộ, xuất báo cáo — thứ hay lỗi vì mạng chập chờn
+hay server bận rồi tự hết. Tab **Tổng quan → Tuỳ chọn khi chạy → Thử lại khi lỗi**: đặt *Số lần thử
+lại* và *Chờ trước khi thử lại (giây)*.
+
+Khi một lần chạy kết thúc **lỗi** (mã thoát không nằm trong danh sách thành công) hoặc bị **quá giờ**,
+Cowork chờ rồi chạy lại, tối đa số lần đã đặt. Danh sách app hiện *Sẽ thử lại sau 30s (lần 1/3)*;
+lịch sử ghi nguồn kích hoạt là **Thử lại**. Lần nào thành công thì chuỗi kết thúc. Hết lượt mà vẫn lỗi
+thì app chuyển sang trạng thái lỗi và khay hệ thống báo **một lần** — các lần lỗi giữa chừng không báo,
+vì xử lý chúng chính là việc của thử lại.
+
+Ba chỗ Cowork **không** thử lại, cố ý:
+
+- **Bạn bấm Dừng.** Bấm trong lúc đang đếm ngược thì lần chờ bị huỷ luôn.
+- **App chưa hề chạy được** (thiếu file, bị từ chối quyền). Chạy lại cũng thế.
+- **App đang bật Giữ app luôn chạy.** Keep-alive đã khởi động lại rồi, hai cơ chế chồng nhau chỉ gây
+  rối; mục này bị mờ đi khi keep-alive đang bật.
+
+Bấm **Chạy** tay trong lúc chờ sẽ huỷ lần thử lại đang chờ và mở một chuỗi mới.
+
+## Mã thoát coi là thành công
+
+Mặc định chỉ mã `0` là thành công. Một số công cụ dùng mã khác để báo "xong việc": `robocopy` trả `1`
+khi đã sao chép được file, trình cài đặt trả `3010` khi cần khởi động lại máy. Với những app đó, điền
+*Mã thoát coi là thành công* ở **Tổng quan → Tuỳ chọn khi chạy**, cách nhau bằng dấu phẩy: `0, 1`.
+Lịch sử, thông báo ở khay và thử lại đều dựa trên danh sách này.
+
+## Dừng app thế nào
+
+Bấm **Dừng**, Cowork làm theo thứ tự:
+
+1. App có cửa sổ chính ⇒ gửi yêu cầu đóng cửa sổ, như bấm nút X.
+2. App console (node, python, script `.bat`…) không có cửa sổ ⇒ gửi **Ctrl+C**, đúng tín hiệu mà
+   server console dùng để đóng kết nối, ghi nốt dữ liệu rồi thoát. Tín hiệu tới cả cây tiến trình,
+   nên server nằm trong một file `.bat` cũng nhận được.
+3. Chờ *Chờ dừng lịch sự tối đa (giây)* — mặc định 5 — rồi mới buộc dừng cả cây tiến trình.
+
+Đặt số giây này cao hơn cho app cần thời gian dọn dẹp (server đang xả kết nối, job đang ghi file).
+Nếu cả đóng cửa sổ lẫn Ctrl+C đều không gửi được (app GUI chưa lên cửa sổ, app chạy quyền admin),
+Cowork buộc dừng ngay.
+
 ## Khởi động lại nhanh
 
 Nút **↻ Khởi động lại** trên thanh công cụ dừng app đang chọn (lịch sự rồi mới kill) và chạy lại
@@ -238,7 +280,8 @@ Mã thoát `0` = thành công.
 
 **Thông báo ở khay** — khi một app chạy theo lịch (hoặc app đang giữ luôn chạy) kết thúc lỗi, Cowork
 hiện bong bóng ở khay hệ thống kể cả khi đang thu nhỏ; bấm vào bong bóng để mở lại cửa sổ. Chạy tay
-thì không báo, vì bạn đang nhìn thanh trạng thái. Tắt ở tab **Thiết lập → Chạy nền** nếu thấy phiền.
+thì không báo, vì bạn đang nhìn thanh trạng thái. App có đặt *Thử lại khi lỗi* chỉ báo khi hết lượt
+vẫn lỗi. Tắt ở tab **Thiết lập → Chạy nền** nếu thấy phiền.
 
 ## Chạy nền
 
@@ -248,6 +291,13 @@ Tab **Thiết lập**:
   tượng khay để mở lại; chuột phải có menu *Chạy tất cả* / *Dừng tất cả* / *Thoát*.
 - **Khởi động cùng Windows** — ghi khoá `HKCU\...\Run`, không cần quyền admin. Cowork mở ở chế độ
   thu nhỏ.
+
+## Dọn lịch sử và log
+
+Tab **Thiết lập → Lịch sử & nhật ký** có hai ô: *Số ngày giữ lịch sử chạy* và *Số ngày giữ file log*
+(mặc định đều 30). Mỗi app mỗi ngày sinh một file log trong `%APPDATA%\Cowork\logs`, nên app giữ luôn
+chạy in log liên tục sẽ chiếm đĩa dần. Cowork dọn lúc mở và vào đầu mỗi ngày khi đang chạy dưới khay;
+chỉ file do Cowork tự sinh mới bị xoá, file khác chép vào thư mục đó được để nguyên.
 
 ## Xử lý sự cố
 
@@ -261,6 +311,9 @@ Tab **Thiết lập**:
 | App không tự chạy theo lịch | Kiểm tra: công tắc *Chạy theo lịch* trên thanh công cụ · *Bật lịch tự động* của app · app đang bật · ngày trong tuần có tick. Bấm **Kiểm tra lịch** để chạy ngay một vòng rà soát. |
 | "đã tự khởi động lại N lần trong 60 phút, tạm dừng giữ chạy" | App crash liên tục ngay sau khi lên — thường là lỗi cấu hình hoặc thiếu phụ thuộc. Xem tab Nhật ký / Lịch sử để biết mã thoát, sửa nguyên nhân rồi bấm **Chạy**. |
 | Bật *Giữ luôn chạy* nhưng app không lên khi mở Cowork | Keep-alive chỉ *giữ* app đã chạy. Đặt thêm lịch **Chạy một lần khi mở Cowork**. |
+| App chạy đúng nhưng lịch sử báo lỗi, khay hiện thông báo | Công cụ trả mã thoát khác 0 khi thành công (robocopy trả 1). Thêm mã đó vào *Mã thoát coi là thành công* ở tab Tổng quan. |
+| Đặt số lần thử lại nhưng app lỗi không thấy chạy lại | Kiểm tra: app không bật *Giữ luôn chạy* · lần chạy đó kết thúc lỗi hay quá giờ, chứ không phải bị bấm Dừng hay không chạy được. |
+| Bấm Dừng mà app console mất vài giây mới dừng | Cowork đang chờ app tự thoát sau Ctrl+C. Giảm *Chờ dừng lịch sự tối đa* nếu app không cần dọn dẹp. |
 | Bảng cấu hình trống, có báo lỗi đỏ | File sai cú pháp. Cowork chuyển sang chế độ sửa nguồn để bạn sửa tay. |
 | Sửa config xong app vẫn dùng giá trị cũ | App đọc config lúc khởi động. Dừng rồi chạy lại. |
 | Lỡ sửa hỏng file config | Khôi phục từ `<tên file>.cowork.bak` nằm cùng thư mục. |

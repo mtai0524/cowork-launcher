@@ -45,6 +45,10 @@ public sealed partial class AppViewModel : ObservableObject
         _keepAlive = model.KeepAlive;
         _restartDelaySeconds = model.RestartDelaySeconds;
         _maxRestartsPerHour = model.MaxRestartsPerHour;
+        _retryCount = model.RetryCount;
+        _retryDelaySeconds = model.RetryDelaySeconds;
+        _successExitCodesText = ExitCodes.Format(model.SuccessExitCodes);
+        _stopGraceSeconds = model.StopGraceSeconds;
 
         _scheduleEnabled = model.Schedule.Enabled;
         _scheduleKind = model.Schedule.Kind;
@@ -106,6 +110,10 @@ public sealed partial class AppViewModel : ObservableObject
     [ObservableProperty] private bool _keepAlive;
     [ObservableProperty] private int _restartDelaySeconds;
     [ObservableProperty] private int _maxRestartsPerHour;
+    [ObservableProperty] private int _retryCount;
+    [ObservableProperty] private int _retryDelaySeconds;
+    [ObservableProperty] private string _successExitCodesText;
+    [ObservableProperty] private int _stopGraceSeconds;
 
     partial void OnNameChanged(string value)
     {
@@ -146,9 +154,31 @@ public sealed partial class AppViewModel : ObservableObject
     partial void OnSingleInstanceChanged(bool value) => Sync(() => Model.SingleInstance = value);
     partial void OnWindowStyleChanged(AppWindowStyle value) => Sync(() => Model.WindowStyle = value);
     partial void OnTimeoutMinutesChanged(int value) => Sync(() => Model.TimeoutMinutes = Math.Max(0, value));
-    partial void OnKeepAliveChanged(bool value) => Sync(() => Model.KeepAlive = value);
+    partial void OnKeepAliveChanged(bool value)
+    {
+        Sync(() => Model.KeepAlive = value);
+        OnPropertyChanged(nameof(RetryAvailable));
+    }
+
     partial void OnRestartDelaySecondsChanged(int value) => Sync(() => Model.RestartDelaySeconds = Math.Max(0, value));
     partial void OnMaxRestartsPerHourChanged(int value) => Sync(() => Model.MaxRestartsPerHour = Math.Max(0, value));
+    partial void OnRetryCountChanged(int value) => Sync(() => Model.RetryCount = Math.Max(0, value));
+    partial void OnRetryDelaySecondsChanged(int value) => Sync(() => Model.RetryDelaySeconds = Math.Max(0, value));
+    partial void OnSuccessExitCodesTextChanged(string value)
+    {
+        var codes = ExitCodes.Parse(value);
+        Sync(() => Model.SuccessExitCodes = codes);
+
+        // Viết lại ô nhập theo dạng chuẩn ("0, 1") để người dùng thấy ngay phần gõ sai đã bị bỏ.
+        // Ô này cập nhật khi rời focus nên không giật chữ trong lúc gõ.
+        var normalized = ExitCodes.Format(codes);
+        if (normalized != value)
+            SuccessExitCodesText = normalized;
+    }
+    partial void OnStopGraceSecondsChanged(int value) => Sync(() => Model.StopGraceSeconds = Math.Max(0, value));
+
+    /// <summary>Keep-alive đã tự khởi động lại app, nên các ô thử lại chỉ mở khi keep-alive tắt.</summary>
+    public bool RetryAvailable => !KeepAlive;
 
     /// <summary>Nguồn cho ComboBox chọn kiểu cửa sổ.</summary>
     public IReadOnlyList<ChoiceViewModel<AppWindowStyle>> WindowStyleOptions { get; }
@@ -366,7 +396,16 @@ public sealed partial class AppViewModel : ObservableObject
     [ObservableProperty]
     private int _pendingRestartSeconds;
 
+    /// <summary>Lần chờ hiện tại là thử lại job lỗi (đếm theo lượt, có trần) chứ không phải keep-alive.</summary>
+    [ObservableProperty]
+    private bool _pendingIsRetry;
+
+    [ObservableProperty]
+    private int _pendingRetryLimit;
+
     partial void OnPendingRestartAttemptChanged(int value) => OnPropertyChanged(nameof(StatusText));
+
+    partial void OnPendingIsRetryChanged(bool value) => OnPropertyChanged(nameof(StatusText));
 
     public ObservableCollection<AppOutputLine> OutputLines { get; }
 
@@ -391,6 +430,8 @@ public sealed partial class AppViewModel : ObservableObject
                 AppRuntimeState.Running => Loc.T("State.Running", ProcessId),
                 AppRuntimeState.Stopping => Loc.T("State.Stopping"),
                 AppRuntimeState.Failed => Loc.T("State.Failed"),
+                AppRuntimeState.WaitingRestart when PendingIsRetry
+                    => Loc.T("State.WaitingRetry", PendingRestartSeconds, PendingRestartAttempt, PendingRetryLimit),
                 AppRuntimeState.WaitingRestart => Loc.T("State.WaitingRestart", PendingRestartSeconds, PendingRestartAttempt),
                 _ => Model.LastRunAt is { } last
                     ? Loc.T("State.LastRunAt", last.ToString("dd/MM HH:mm"))

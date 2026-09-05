@@ -340,6 +340,29 @@
                                             </StackPanel>
                                         </Grid>
 
+                                        <Grid Margin="0,12,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="16" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{loc:Tr Overview.SuccessExitCodes}"
+                                                           Style="{StaticResource LabelText}" />
+                                                <TextBox Text="{Binding SuccessExitCodesText, UpdateSourceTrigger=LostFocus}"
+                                                         FontFamily="Cascadia Mono, Consolas, monospace" />
+                                                <TextBlock Style="{StaticResource HintText}"
+                                                           Text="{loc:Tr Overview.SuccessExitCodesHint}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="{loc:Tr Overview.StopGrace}"
+                                                           Style="{StaticResource LabelText}" />
+                                                <TextBox Text="{Binding StopGraceSeconds, UpdateSourceTrigger=PropertyChanged}" />
+                                                <TextBlock Style="{StaticResource HintText}"
+                                                           Text="{loc:Tr Overview.StopGraceHint}" />
+                                            </StackPanel>
+                                        </Grid>
+
                                         <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0"
                                                 Margin="0,14,0,0" Padding="0,12,0,0">
                                             <StackPanel>
@@ -366,6 +389,34 @@
                                                                    Text="{loc:Tr Overview.RestartLimitHint}" />
                                                     </StackPanel>
                                                 </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0"
+                                                Margin="0,14,0,0" Padding="0,12,0,0"
+                                                IsEnabled="{Binding RetryAvailable}">
+                                            <StackPanel>
+                                                <TextBlock Text="{loc:Tr Overview.RetryTitle}"
+                                                           Style="{StaticResource LabelText}" />
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="16" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="{loc:Tr Overview.RetryCount}"
+                                                                   Style="{StaticResource LabelText}" />
+                                                        <TextBox Text="{Binding RetryCount, UpdateSourceTrigger=PropertyChanged}" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="{loc:Tr Overview.RetryDelay}"
+                                                                   Style="{StaticResource LabelText}" />
+                                                        <TextBox Text="{Binding RetryDelaySeconds, UpdateSourceTrigger=PropertyChanged}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                                <TextBlock Style="{StaticResource HintText}"
+                                                           Text="{loc:Tr Overview.RetryHint}" />
                                             </StackPanel>
                                         </Border>
                                     </StackPanel>
@@ -890,10 +941,27 @@
                                 <StackPanel>
                                     <TextBlock Text="{loc:Tr Settings.HistoryCard}"
                                                Style="{StaticResource HeadingText}" />
-                                    <TextBlock Text="{loc:Tr Settings.RetentionLabel}"
-                                               Style="{StaticResource LabelText}" />
-                                    <TextBox Text="{Binding HistoryRetentionDays, UpdateSourceTrigger=LostFocus}"
-                                             Width="120" HorizontalAlignment="Left" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="16" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{loc:Tr Settings.RetentionLabel}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <TextBox Text="{Binding HistoryRetentionDays, UpdateSourceTrigger=LostFocus}"
+                                                     Width="120" HorizontalAlignment="Left" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{loc:Tr Settings.LogRetentionLabel}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <TextBox Text="{Binding LogRetentionDays, UpdateSourceTrigger=LostFocus}"
+                                                     Width="120" HorizontalAlignment="Left" />
+                                            <TextBlock Style="{StaticResource HintText}"
+                                                       Text="{loc:Tr Settings.LogRetentionHint}" />
+                                        </StackPanel>
+                                    </Grid>
                                     <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                                         <Button Content="{loc:Tr Settings.OpenDataFolder}"
                                                 Command="{Binding OpenDataFolderCommand}" />

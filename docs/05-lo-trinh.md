@@ -26,6 +26,14 @@ log ra file, rồi khai file đó làm file cấu hình dạng văn bản để 
 `Process.Exited` vẫn bắt được, nhưng `Kill(entireProcessTree)` có thể thất bại do khác mức toàn vẹn
 (integrity level). Timeout với app admin không đảm bảo.
 
+### Dừng lịch sự với script `.bat`: cmd hỏi "Terminate batch job (Y/N)?"
+
+Ctrl+C tới một file `.bat` khiến `cmd.exe` dừng lại hỏi câu trên và chờ bàn phím — không ai trả lời,
+nên nó đứng đó tới hết thời gian ân hạn rồi bị kill. Chương trình thật mà script gọi vẫn nhận được
+Ctrl+C và tự dọn dẹp bình thường; chỉ cái vỏ `cmd` là chết cứng. Muốn dừng nhanh, giảm *Chờ dừng lịch
+sự tối đa* của app đó. App GUI chưa kịp lên cửa sổ và app chạy quyền admin không có console để nhận
+Ctrl+C, nên bị kill ngay.
+
 ### Sửa đồng thời không được phát hiện
 
 Nếu bạn mở một file cấu hình trong Cowork, rồi sửa file đó bằng công cụ khác, Cowork **không** biết

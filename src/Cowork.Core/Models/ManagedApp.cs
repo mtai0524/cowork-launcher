@@ -71,6 +71,26 @@ public sealed class ManagedApp
     /// </summary>
     public int MaxRestartsPerHour { get; set; } = 10;
 
+    /// <summary>
+    /// Số lần chạy lại khi một lần chạy kết thúc lỗi hoặc quá giờ. 0 = không thử lại.
+    /// Dành cho job chạy xong là thoát; app bật <see cref="KeepAlive"/> đã được khởi động lại nên bỏ qua.
+    /// </summary>
+    public int RetryCount { get; set; }
+
+    /// <summary>Chờ ngần này giây trước mỗi lần thử lại.</summary>
+    public int RetryDelaySeconds { get; set; } = 30;
+
+    /// <summary>
+    /// Các mã thoát được coi là thành công. Mặc định chỉ có 0; robocopy chẳng hạn trả 1 khi đã sao chép.
+    /// </summary>
+    public List<int> SuccessExitCodes { get; set; } = new() { ExitCodes.Default };
+
+    /// <summary>
+    /// Khi bấm Dừng: sau khi đóng cửa sổ chính hoặc gửi Ctrl+C, chờ ngần này giây cho app tự thoát
+    /// rồi mới kill.
+    /// </summary>
+    public int StopGraceSeconds { get; set; } = 5;
+
     /// <summary>Thứ tự hiển thị và thứ tự chạy khi bấm "Chạy tất cả".</summary>
     public int Order { get; set; }
 
@@ -107,6 +127,10 @@ public sealed class ManagedApp
         KeepAlive = KeepAlive,
         RestartDelaySeconds = RestartDelaySeconds,
         MaxRestartsPerHour = MaxRestartsPerHour,
+        RetryCount = RetryCount,
+        RetryDelaySeconds = RetryDelaySeconds,
+        SuccessExitCodes = new List<int>(SuccessExitCodes),
+        StopGraceSeconds = StopGraceSeconds,
         Order = Order,
         CreatedAt = CreatedAt,
         LastScheduledRunAt = LastScheduledRunAt,

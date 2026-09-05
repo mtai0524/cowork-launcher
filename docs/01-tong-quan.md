@@ -37,6 +37,9 @@ Một cửa sổ duy nhất chứa đủ ba việc:
   (`node_modules`, `bin`, file lock, manifest dự án).
 - Lịch chạy: mốc giờ cố định, chu kỳ lặp, chạy khi mở Cowork; lọc theo ngày trong tuần.
 - Giữ app luôn chạy: tự khởi động lại khi app thoát, có trần số lần mỗi giờ.
+- Thử lại job lỗi: kết thúc lỗi hay quá giờ thì chạy lại vài lần rồi mới báo; mã thoát nào là thành
+  công đặt được cho từng app.
+- Dừng lịch sự: đóng cửa sổ chính, hoặc gửi Ctrl+C cho app console, hết thời gian ân hạn mới kill.
 - Nhật ký output, lịch sử chạy, log ra file, thông báo ở khay khi app lỗi.
 - Chạy nền dưới khay hệ thống, khởi động cùng Windows.
 - Quản lý từ xa: nhiều máy nối ra một hub web, xem trạng thái và bấm Chạy / Dừng / Khởi động lại.

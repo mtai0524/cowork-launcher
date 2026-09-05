@@ -72,7 +72,8 @@ public sealed class ProcessManager : IProcessManager, IDisposable
             var startInfo = BuildStartInfo(app, exePath, workingDirectory);
 
             var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
-            var entry = new RunningApp(app.Id, app.Name, process, record, _outputBufferLines);
+            var entry = new RunningApp(app.Id, app.Name, process, record, _outputBufferLines,
+                ExitCodes.Normalize(app.SuccessExitCodes).ToHashSet());
 
             if (startInfo.RedirectStandardOutput)
             {
@@ -82,7 +83,8 @@ public sealed class ProcessManager : IProcessManager, IDisposable
 
             process.Exited += (_, _) => HandleExited(entry);
 
-            if (!process.Start())
+            // Qua ConsoleSignal để app console sau này còn nhận được Ctrl+C khi bấm Dừng.
+            if (!ConsoleSignal.StartChild(process))
                 return StartResult.Fail("Windows từ chối khởi chạy tiến trình.");
 
             if (startInfo.RedirectStandardOutput)
@@ -194,7 +196,9 @@ public sealed class ProcessManager : IProcessManager, IDisposable
 
         if (record.Outcome == RunOutcome.Running)
         {
-            record.Outcome = record.ExitCode == 0 ? RunOutcome.Succeeded : RunOutcome.Failed;
+            record.Outcome = record.ExitCode is { } code && entry.SuccessExitCodes.Contains(code)
+                ? RunOutcome.Succeeded
+                : RunOutcome.Failed;
         }
 
         _logger.Info($"'{entry.AppName}' kết thúc, mã thoát {record.ExitCode?.ToString() ?? "?"} ({record.Outcome}).");
@@ -230,8 +234,9 @@ public sealed class ProcessManager : IProcessManager, IDisposable
 
         try
         {
-            // Đóng cửa sổ chính trước; app có cơ hội lưu dữ liệu.
-            if (!entry.Process.CloseMainWindow())
+            // Dừng lịch sự theo thứ tự: đóng cửa sổ chính (app GUI), không có cửa sổ thì gửi Ctrl+C
+            // (app console). Cả hai đều không được thì kill ngay, không chờ vô ích.
+            if (!entry.Process.CloseMainWindow() && !TrySendCtrlC(entry))
                 TryKill(entry.Process);
 
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -259,6 +264,23 @@ public sealed class ProcessManager : IProcessManager, IDisposable
     {
         var tasks = _running.Keys.Select(id => StopAsync(id, cancellationToken: cancellationToken)).ToList();
         await Task.WhenAll(tasks).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Gửi Ctrl+C cho app console. Tín hiệu tới cả cây tiến trình dùng chung console (cmd → node),
+    /// nên server thật bên trong một file .bat cũng được dọn dẹp tử tế.
+    /// </summary>
+    private bool TrySendCtrlC(RunningApp entry)
+    {
+        if (ConsoleSignal.TrySendCtrlC(entry.Process.Id, out var failure))
+        {
+            _logger.Info($"Đã gửi Ctrl+C tới '{entry.AppName}' (PID {entry.Process.Id}).");
+            return true;
+        }
+
+        // App GUI chưa có cửa sổ, tiến trình chạy quyền admin… — không có console để gửi.
+        _logger.Info($"Không gửi được Ctrl+C tới '{entry.AppName}' ({failure}), chuyển sang kill.");
+        return false;
     }
 
     private void TryKill(Process process)
@@ -304,19 +326,25 @@ public sealed class ProcessManager : IProcessManager, IDisposable
         private readonly List<string> _pendingLogLines = new();
         private Timer? _timeoutTimer;
 
-        public RunningApp(Guid appId, string appName, Process process, AppRunRecord record, int capacity)
+        public RunningApp(
+            Guid appId, string appName, Process process, AppRunRecord record, int capacity,
+            IReadOnlySet<int> successExitCodes)
         {
             AppId = appId;
             AppName = appName;
             Process = process;
             Record = record;
             _capacity = capacity;
+            SuccessExitCodes = successExitCodes;
         }
 
         public Guid AppId { get; }
         public string AppName { get; }
         public Process Process { get; }
         public AppRunRecord Record { get; }
+
+        /// <summary>Chụp lại lúc khởi chạy: người dùng sửa danh sách giữa chừng thì áp dụng cho lần sau.</summary>
+        public IReadOnlySet<int> SuccessExitCodes { get; }
 
         public void Append(AppOutputLine line)
         {

@@ -46,6 +46,9 @@ public sealed class WorkspaceSettings
     /// <summary>Số ngày giữ lịch sử chạy.</summary>
     public int HistoryRetentionDays { get; set; } = 30;
 
+    /// <summary>Số ngày giữ file log của Cowork và của từng app trong thư mục logs.</summary>
+    public int LogRetentionDays { get; set; } = 30;
+
     /// <summary>Hiện thông báo ở khay hệ thống khi app chạy lỗi hoặc không giữ chạy được.</summary>
     public bool NotifyOnFailure { get; set; } = true;
 

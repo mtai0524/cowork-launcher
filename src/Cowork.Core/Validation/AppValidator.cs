@@ -49,6 +49,19 @@ public static class AppValidator
         if (app.MaxRestartsPerHour < 0)
             issues.Add(new ValidationIssue(nameof(app.MaxRestartsPerHour), Loc.T("Val.RestartLimitNegative"), true));
 
+        if (app.RetryCount < 0)
+            issues.Add(new ValidationIssue(nameof(app.RetryCount), Loc.T("Val.RetryCountNegative"), true));
+
+        if (app.RetryDelaySeconds < 0)
+            issues.Add(new ValidationIssue(nameof(app.RetryDelaySeconds), Loc.T("Val.RetryDelayNegative"), true));
+
+        if (app.StopGraceSeconds < 0)
+            issues.Add(new ValidationIssue(nameof(app.StopGraceSeconds), Loc.T("Val.StopGraceNegative"), true));
+
+        // Hai cơ chế cùng khởi chạy lại một app sẽ chồng lên nhau; keep-alive được ưu tiên.
+        if (app.RetryCount > 0 && app.KeepAlive)
+            issues.Add(new ValidationIssue(nameof(app.RetryCount), Loc.T("Val.RetryWithKeepAlive"), false));
+
         if (app.RunAsAdministrator && app.CaptureOutput)
         {
             issues.Add(new ValidationIssue(nameof(app.CaptureOutput),

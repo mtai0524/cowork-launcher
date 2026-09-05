@@ -198,4 +198,93 @@ public class ProcessManagerTests
         lock (lines)
             Assert.Contains(lines, l => l.Text.Trim().Equals(temp.Path, StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public async Task ExitCodeOnTheSuccessList_IsReportedAsSuccess()
+    {
+        using var temp = new TempDirectory();
+        using var manager = new ProcessManager(NullLogger.Instance, new CoworkPaths(temp.Path));
+
+        // robocopy trả 1 khi đã sao chép được file — với app này, 1 là thành công.
+        var app = EchoApp("x");
+        app.Arguments = "/c exit 1";
+        app.SuccessExitCodes = new List<int> { 0, 1 };
+
+        var record = await RunAndWaitAsync(manager, app);
+
+        Assert.Equal(RunOutcome.Succeeded, record.Outcome);
+        Assert.Equal(1, record.ExitCode);
+    }
+
+    [Fact]
+    public async Task ExitCodeOffTheSuccessList_IsReportedAsFailure_EvenWhenItIsZero()
+    {
+        using var temp = new TempDirectory();
+        using var manager = new ProcessManager(NullLogger.Instance, new CoworkPaths(temp.Path));
+
+        var app = EchoApp("x");
+        app.Arguments = "/c exit 0";
+        app.SuccessExitCodes = new List<int> { 1 };
+
+        var record = await RunAndWaitAsync(manager, app);
+
+        Assert.Equal(RunOutcome.Failed, record.Outcome);
+    }
+
+    private sealed class ListLogger : ICoworkLogger
+    {
+        public List<string> Lines { get; } = new();
+
+        public void Log(LogLevel level, string message, Exception? exception = null)
+        {
+            lock (Lines)
+                Lines.Add($"[{level}] {message}{(exception is null ? string.Empty : " :: " + exception.Message)}");
+        }
+
+        public override string ToString()
+        {
+            lock (Lines)
+                return string.Join(Environment.NewLine, Lines);
+        }
+    }
+
+    [Fact]
+    public async Task StopAsync_SendsCtrlC_SoAConsoleAppExitsBeforeTheKillDeadline()
+    {
+        using var temp = new TempDirectory();
+        var logger = new ListLogger();
+        using var manager = new ProcessManager(logger, new CoworkPaths(temp.Path));
+
+        var app = EchoApp("x");
+        app.Arguments = "/c ping -n 60 127.0.0.1 > nul";
+
+        var completion = new TaskCompletionSource<AppRunRecord>();
+        manager.RunCompleted += (_, record) => completion.TrySetResult(record);
+
+        Assert.True(manager.Start(app, RunTrigger.Manual).Started);
+        await Task.Delay(500); // để cmd kịp khởi chạy ping
+
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        await manager.StopAsync(app.Id, graceMs: 10_000);
+        stopwatch.Stop();
+
+        var finished = await Task.WhenAny(completion.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+        Assert.Same(completion.Task, finished);
+        var completed = await completion.Task;
+
+        // Kill() để lại mã thoát -1; nhận Ctrl+C thì cmd/ping tự thoát với mã khác, và thoát ngay
+        // chứ không đợi hết 10 giây ân hạn.
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(5),
+            $"Dừng mất {stopwatch.Elapsed}, mã thoát {completed.ExitCode}.{Environment.NewLine}{logger}");
+        Assert.NotEqual(-1, completed.ExitCode);
+        Assert.Equal(RunOutcome.Cancelled, completed.Outcome);
+    }
+
+    [Fact]
+    public void ConsoleSignal_ReportsWhyItCouldNotSend()
+    {
+        // PID 0 là System Idle Process, không có console để nối vào.
+        Assert.False(ConsoleSignal.TrySendCtrlC(0, out var failure));
+        Assert.Contains("AttachConsole", failure);
+    }
 }

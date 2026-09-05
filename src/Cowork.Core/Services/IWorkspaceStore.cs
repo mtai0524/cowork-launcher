@@ -148,6 +148,9 @@ public sealed class JsonWorkspaceStore : IWorkspaceStore
             app.Schedule.Times ??= new List<TimeSpan>();
             app.Schedule.DaysOfWeek ??= new List<DayOfWeek>();
 
+            // File cũ không có trường này, hoặc người dùng sửa tay thành mảng rỗng: quay về mặc định 0.
+            app.SuccessExitCodes = ExitCodes.Normalize(app.SuccessExitCodes);
+
             if (app.Id == Guid.Empty)
                 app.Id = Guid.NewGuid();
 

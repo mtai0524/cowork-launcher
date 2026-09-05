@@ -127,8 +127,15 @@ internal sealed class FakeProcessManager : IProcessManager
 #pragma warning restore CS0067
     public event EventHandler<AppRunRecord>? RunCompleted;
 
-    public void Complete(ManagedApp app, RunOutcome outcome)
-        => RunCompleted?.Invoke(this, new AppRunRecord { AppId = app.Id, AppName = app.Name, Outcome = outcome, ExitCode = 1 });
+    public void Complete(ManagedApp app, RunOutcome outcome, RunTrigger trigger = RunTrigger.Manual)
+        => RunCompleted?.Invoke(this, new AppRunRecord
+        {
+            AppId = app.Id,
+            AppName = app.Name,
+            Outcome = outcome,
+            ExitCode = 1,
+            Trigger = trigger,
+        });
 }
 
 internal sealed class ListAppSource : IAppSource

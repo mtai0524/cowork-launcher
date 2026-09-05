@@ -161,6 +161,13 @@ Ba quyết định đáng chú ý:
 Supervisor đọc lại app **tại thời điểm tới giờ** chứ không giữ bản chụp lúc app thoát: người dùng có
 thể vừa tắt keep-alive hoặc tắt app trong lúc đếm ngược.
 
+`RetrySupervisor` đi cùng khuôn nhưng cho job chạy xong là thoát: `RetryPolicy.Decide` nhận số lần đã
+thử trong *chuỗi* hiện tại thay vì cửa sổ một giờ, chỉ thử lại khi kết quả là `Failed` hay `TimedOut`,
+và từ chối app đang bật keep-alive để hai cơ chế không cùng khởi chạy một app. Lần chạy có nguồn khác
+`Retry` luôn mở chuỗi mới, nên bấm Chạy tay là đếm lại từ đầu. Hết lượt thì phát `RetriesExhausted`;
+`MainViewModel` chỉ thông báo ở khay tại đó, còn các lần lỗi giữa chuỗi thì im lặng — thứ mà thử lại
+sinh ra để xử lý thì không cần đánh thức ai.
+
 `MainViewModel` có thêm một lưới lọc nhỏ: sau khi khởi động lại nhanh, tiến trình *cũ* có thể báo
 "đã thoát" **sau** khi tiến trình mới đã chạy; `IsStaleExit` so PID để không hiện Idle trong khi app
 đang chạy.
@@ -315,12 +322,27 @@ giữa chừng không làm hỏng config.
 không chuyển hướng được stdout. Nên bật "chạy quyền admin" đồng nghĩa mất nhật ký output —
 `AppValidator` cảnh báo rõ điều này thay vì để người dùng tự thắc mắc sao log trống.
 
-**Dừng lịch sự trước, kill sau.** `StopAsync` gọi `CloseMainWindow()` để app có cơ hội lưu dữ liệu,
-chờ tối đa 5 giây, rồi mới `Kill(entireProcessTree: true)`. Diệt cả cây tiến trình là bắt buộc: một
-file `.bat` thường sinh tiến trình con, kill mỗi `cmd.exe` sẽ để lại tiến trình mồ côi.
+**Dừng lịch sự trước, kill sau.** `StopAsync` thử `CloseMainWindow()` để app GUI có cơ hội lưu dữ liệu;
+app console không có cửa sổ chính thì `ConsoleSignal` tạm nối Cowork vào console của nó và phát Ctrl+C —
+tín hiệu đi tới cả cây tiến trình dùng chung console, nên server thật bên trong một file `.bat` cũng
+nhận được. Sau `StopGraceSeconds` của app (mặc định 5 giây) mới `Kill(entireProcessTree: true)`. Diệt
+cả cây là bắt buộc: một file `.bat` thường sinh tiến trình con, kill mỗi `cmd.exe` sẽ để lại tiến trình
+mồ côi. Cowork cũng nhận đúng Ctrl+C mà nó vừa phát, và handler mặc định của Windows là tắt tiến trình.
+Cài handler riêng không ăn thua vì `AttachConsole`/`FreeConsole` xoá sạch danh sách handler; thứ sống
+sót là cờ "bỏ qua Ctrl+C" của tiến trình, nên `ConsoleSignal` bật cờ đó trước khi phát. Cờ này lại được
+tiến trình con kế thừa — con sinh ra lúc cờ đang bật sẽ điếc với Ctrl+C mãi — nên mọi tiến trình con
+phải khởi chạy qua `ConsoleSignal.StartChild`, nơi cờ được tắt ngay trước `Process.Start`, dưới cùng
+một khoá với việc gửi tín hiệu.
+
+**Mã thoát thành công do app quyết định.** `RunningApp` chụp `SuccessExitCodes` lúc khởi chạy; mã thoát
+nằm trong danh sách ⇒ `Succeeded`, còn lại ⇒ `Failed`. Mặc định chỉ có 0, nhưng robocopy trả 1 khi đã
+sao chép và trình cài đặt trả 3010 khi cần khởi động lại máy — coi chúng là lỗi thì lịch sử sai và khay
+báo lỗi giả, kéo theo cả thử lại vô ích.
 
 **Output có trần.** Mỗi app giữ một hàng đợi vòng (mặc định 2000 dòng) trong bộ nhớ; toàn bộ output
 vẫn được nối vào file log riêng theo ngày. Một app chạy cả ngày in log liên tục không làm phình RAM.
+Trên đĩa thì `LogPruner` xoá file cũ hơn `LogRetentionDays` lúc mở Cowork và vào đầu mỗi ngày; phần
+chọn file nhận `today` làm tham số và chỉ đụng đúng hai mẫu tên Cowork tự sinh.
 
 ## Luồng dữ liệu giữa view-model và model
 
