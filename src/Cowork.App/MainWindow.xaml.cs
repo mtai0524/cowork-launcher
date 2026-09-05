@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using Cowork.App.ViewModels;
+using Cowork.Core.Localization;
 
 namespace Cowork.App;
 
@@ -74,8 +75,8 @@ public partial class MainWindow : Window
             return true;
 
         var answer = MessageBox.Show(
-            "Đang có app chạy dưới quyền Cowork. Thoát bây giờ sẽ dừng chúng.\n\nVẫn thoát?",
-            "Cowork", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            Loc.T("Msg.ExitWhileRunning"),
+            Loc.T("Common.AppName"), MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
         return answer == MessageBoxResult.Yes;
     }

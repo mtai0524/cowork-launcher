@@ -1,3 +1,4 @@
+using Cowork.Core.Localization;
 namespace Cowork.Core.Configuration;
 
 /// <summary>Loại chương trình tìm được — quyết định cách Cowork dựng lệnh chạy.</summary>
@@ -221,7 +222,7 @@ public sealed class ProgramScanner : IProgramScanner
 
         // Trình cài đặt/gỡ cài đặt chạy được nhưng không phải việc hằng ngày.
         if (InstallerPrefixes.Any(p => stem.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
-            return (ScanConfidence.Low, "Có vẻ là trình cài đặt/gỡ cài đặt");
+            return (ScanConfidence.Low, Loc.T("Reason.Installer"));
 
         var directory = Path.GetDirectoryName(fullPath) ?? string.Empty;
         var isAtRoot = string.Equals(directory, root, StringComparison.OrdinalIgnoreCase);
@@ -229,28 +230,28 @@ public sealed class ProgramScanner : IProgramScanner
 
         // Tên file trùng tên thư mục gốc: gcm\gcm.exe, MyTool\MyTool.exe.
         if (string.Equals(stem, rootName, StringComparison.OrdinalIgnoreCase))
-            return (ScanConfidence.High, $"Trùng tên thư mục \"{rootName}\"");
+            return (ScanConfidence.High, Loc.T("Reason.MatchesFolderName", rootName));
 
         if (LauncherNames.Contains(stem))
-            return (ScanConfidence.High, $"Tên gợi ý điểm khởi chạy (\"{stem}\")");
+            return (ScanConfidence.High, Loc.T("Reason.LauncherName", stem));
 
         // Tên chứa "run"/"start"/"chay" kèm hậu tố, ví dụ run-backup.bat.
         if (LauncherNames.Any(n => stem.StartsWith(n + "-", StringComparison.OrdinalIgnoreCase)
                                    || stem.StartsWith(n + "_", StringComparison.OrdinalIgnoreCase)))
         {
-            return (ScanConfidence.High, "Tên bắt đầu bằng từ khoá khởi chạy");
+            return (ScanConfidence.High, Loc.T("Reason.LauncherPrefix"));
         }
 
         if (isAtRoot)
-            return (ScanConfidence.Medium, "Nằm ngay thư mục gốc");
+            return (ScanConfidence.Medium, Loc.T("Reason.AtRoot"));
 
         // Phải xét cả cây tổ tiên chứ không chỉ thư mục cha: đường dẫn build của .NET là
         // bin\Debug\net8.0-windows\app.exe — cha trực tiếp là tên framework, "bin" nằm
         // cao hơn hai cấp.
         if (FindOutputAncestor(root, directory) is { } outputName)
-            return (ScanConfidence.Medium, $"Nằm trong thư mục kết quả build \"{outputName}\"");
+            return (ScanConfidence.Medium, Loc.T("Reason.BuildOutput", outputName));
 
-        return (ScanConfidence.Low, "Nằm sâu trong cây thư mục");
+        return (ScanConfidence.Low, Loc.T("Reason.DeepInTree"));
     }
 
     /// <summary>

@@ -1,13 +1,70 @@
-﻿<Window x:Class="Cowork.App.MainWindow"
+<Window x:Class="Cowork.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:tb="http://www.hardcodet.net/taskbar"
-        Title="Cowork — Quản lý app chạy hằng ngày"
+        xmlns:loc="clr-namespace:Cowork.App.Localization"
+        Title="{loc:Tr Main.Title}"
         Height="820" Width="1320" MinHeight="620" MinWidth="1060"
         Icon="Assets/cowork.ico"
-        Background="{StaticResource BackgroundBrush}"
+        Background="{DynamicResource WindowBackgroundBrush}"
         FontFamily="Segoe UI" FontSize="13"
         Closing="OnWindowClosing" StateChanged="OnWindowStateChanged">
+
+    <Window.Resources>
+        <!-- Màu trạng thái đi qua DataTrigger + DynamicResource chứ không qua converter:
+             converter trả về một brush cố định, đổi chủ đề sẽ không cập nhật lại. -->
+        <Style x:Key="StatusDot" TargetType="Ellipse">
+            <Setter Property="Fill" Value="{DynamicResource StateIdleBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding RuntimeState}" Value="Running">
+                    <Setter Property="Fill" Value="{DynamicResource StateRunningBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RuntimeState}" Value="Starting">
+                    <Setter Property="Fill" Value="{DynamicResource StateStartingBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RuntimeState}" Value="Stopping">
+                    <Setter Property="Fill" Value="{DynamicResource StateStartingBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding RuntimeState}" Value="Failed">
+                    <Setter Property="Fill" Value="{DynamicResource StateFailedBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="OutputLineText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource OutputTextBrush}" />
+            <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, monospace" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsError}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource OutputErrorBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="OutcomeText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource StateIdleBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Outcome}" Value="Succeeded">
+                    <Setter Property="Foreground" Value="{DynamicResource StateRunningBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Outcome}" Value="Running">
+                    <Setter Property="Foreground" Value="{DynamicResource StateStartingBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Outcome}" Value="Failed">
+                    <Setter Property="Foreground" Value="{DynamicResource StateFailedBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Outcome}" Value="NotStarted">
+                    <Setter Property="Foreground" Value="{DynamicResource StateFailedBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Outcome}" Value="TimedOut">
+                    <Setter Property="Foreground" Value="{DynamicResource StateFailedBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -17,32 +74,32 @@
         </Grid.RowDefinitions>
 
         <!-- === Thanh công cụ === -->
-        <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
+        <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,0,0,1" Padding="16,10">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Left" Text="Cowork" FontSize="17" FontWeight="Bold"
-                           Foreground="{StaticResource AccentBrush}" Margin="0,0,20,0" />
+                <TextBlock DockPanel.Dock="Left" Text="{loc:Tr Main.Brand}" FontSize="17" FontWeight="Bold"
+                           Foreground="{DynamicResource AccentBrush}" Margin="0,0,20,0" />
 
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <CheckBox Content="Chạy theo lịch" IsChecked="{Binding SchedulerEnabled}"
-                              Margin="0,0,14,0"
-                              ToolTip="Bật/tắt bộ đếm nền tự động chạy app theo lịch đã đặt" />
-                    <Button Content="Lưu" Style="{StaticResource PrimaryButton}"
+                    <CheckBox Content="{loc:Tr Main.SchedulerToggle}" IsChecked="{Binding SchedulerEnabled}"
+                              Margin="0,0,14,0" ToolTip="{loc:Tr Main.SchedulerToggleTip}" />
+                    <Button Content="{loc:Tr Main.Save}" Style="{StaticResource PrimaryButton}"
                             Command="{Binding SaveWorkspaceCommand}" Margin="0" MinWidth="72"
-                            ToolTip="Lưu danh sách app và thiết lập (Ctrl+S)" />
+                            ToolTip="{loc:Tr Main.SaveTip}" />
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal">
-                    <Button Content="▶  Chạy" Style="{StaticResource PrimaryButton}"
-                            Command="{Binding RunSelectedCommand}" ToolTip="Chạy app đang chọn (F5)" />
-                    <Button Content="■  Dừng" Command="{Binding StopSelectedCommand}"
-                            ToolTip="Dừng app đang chọn" />
-                    <Border Width="1" Margin="6,4" Background="{StaticResource BorderBrush}" />
-                    <Button Content="Chạy tất cả" Command="{Binding RunAllCommand}"
-                            ToolTip="Chạy lần lượt mọi app đang bật" />
-                    <Button Content="Dừng tất cả" Command="{Binding StopAllCommand}" />
-                    <Button Content="Kiểm tra lịch" Command="{Binding CheckScheduleNowCommand}"
-                            ToolTip="Chạy ngay một vòng kiểm tra lịch thay vì chờ tới tick sau" />
+                    <Button Content="{loc:Tr Main.Run}" Style="{StaticResource PrimaryButton}"
+                            Command="{Binding RunSelectedCommand}" ToolTip="{loc:Tr Main.RunTip}" />
+                    <Button Content="{loc:Tr Main.Stop}" Command="{Binding StopSelectedCommand}"
+                            ToolTip="{loc:Tr Main.StopTip}" />
+                    <Border Width="1" Margin="6,4" Background="{DynamicResource BorderBrush}" />
+                    <Button Content="{loc:Tr Main.RunAll}" Command="{Binding RunAllCommand}"
+                            ToolTip="{loc:Tr Main.RunAllTip}" />
+                    <Button Content="{loc:Tr Main.StopAll}" Command="{Binding StopAllCommand}" />
+                    <Button Content="{loc:Tr Main.CheckSchedule}" Command="{Binding CheckScheduleNowCommand}"
+                            ToolTip="{loc:Tr Main.CheckScheduleTip}" />
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -58,20 +115,22 @@
             <!-- Cột trái: danh sách app -->
             <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0" Padding="12">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="Danh sách app" Style="{StaticResource HeadingText}" />
+                    <TextBlock DockPanel.Dock="Top" Text="{loc:Tr AppList.Title}"
+                               Style="{StaticResource HeadingText}" />
 
                     <TextBox DockPanel.Dock="Top" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                             Margin="0,0,0,8" ToolTip="Lọc theo tên, nhóm hoặc đường dẫn" />
+                             Margin="0,0,0,8" ToolTip="{loc:Tr AppList.SearchTip}" />
 
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
-                        <Button Content="+ Thêm" Command="{Binding AddAppCommand}" Padding="10,5" />
-                        <Button Content="Nhân bản" Command="{Binding DuplicateAppCommand}" Padding="10,5" />
-                        <Button Content="Xoá" Command="{Binding DeleteAppCommand}"
+                        <Button Content="{loc:Tr AppList.Add}" Command="{Binding AddAppCommand}" Padding="10,5" />
+                        <Button Content="{loc:Tr AppList.Duplicate}" Command="{Binding DuplicateAppCommand}"
+                                Padding="10,5" />
+                        <Button Content="{loc:Tr AppList.Delete}" Command="{Binding DeleteAppCommand}"
                                 Style="{StaticResource DangerButton}" Padding="10,5" />
                         <Button Content="↑" Command="{Binding MoveUpCommand}" Padding="8,5" MinWidth="30"
-                                ToolTip="Đưa lên trên (ảnh hưởng thứ tự Chạy tất cả)" />
+                                ToolTip="{loc:Tr AppList.MoveUpTip}" />
                         <Button Content="↓" Command="{Binding MoveDownCommand}" Padding="8,5" MinWidth="30"
-                                Margin="0" ToolTip="Đưa xuống dưới" />
+                                Margin="0" ToolTip="{loc:Tr AppList.MoveDownTip}" />
                     </StackPanel>
 
                     <ListBox ItemsSource="{Binding AppsView}" SelectedItem="{Binding SelectedApp}"
@@ -90,25 +149,25 @@
 
                                     <Ellipse Grid.Column="0" Width="9" Height="9" Margin="0,0,10,0"
                                              VerticalAlignment="Top"
-                                             Fill="{Binding RuntimeState, Converter={StaticResource StateToBrush}}"
+                                             Style="{StaticResource StatusDot}"
                                              ToolTip="{Binding StatusText}" />
 
                                     <StackPanel Grid.Column="1">
                                         <TextBlock Text="{Binding DisplayTitle}" FontWeight="SemiBold"
                                                    TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding StatusText}" FontSize="11"
-                                                   Foreground="{StaticResource MutedBrush}"
+                                                   Foreground="{DynamicResource MutedBrush}"
                                                    TextTrimming="CharacterEllipsis" />
-                                        <TextBlock FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource MutedBrush}"
                                                    TextTrimming="CharacterEllipsis">
-                                            <Run Text="Kế tiếp:" />
+                                            <Run Text="{loc:Tr AppList.NextRunPrefix}" />
                                             <Run Text="{Binding NextRunText, Mode=OneWay}" />
                                         </TextBlock>
                                     </StackPanel>
 
                                     <TextBlock Grid.Column="2" Text="⏸" FontSize="12" VerticalAlignment="Top"
-                                               Foreground="{StaticResource MutedBrush}"
-                                               ToolTip="App đang tắt, sẽ không chạy"
+                                               Foreground="{DynamicResource MutedBrush}"
+                                               ToolTip="{loc:Tr AppList.DisabledTip}"
                                                Visibility="{Binding IsEnabled,
                                                    Converter={StaticResource BoolToVisibility},
                                                    ConverterParameter=invert}" />
@@ -126,11 +185,10 @@
             <TabControl Grid.Column="2">
 
                 <!-- === Tổng quan === -->
-                <TabItem Header="Tổng quan">
+                <TabItem Header="{loc:Tr Tab.Overview}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="4,0,12,0">
-                            <TextBlock Text="Chưa chọn app nào. Bấm '+ Thêm' để tạo app đầu tiên."
-                                       HorizontalAlignment="Center">
+                            <TextBlock Text="{loc:Tr Overview.Empty}" HorizontalAlignment="Center">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource HintText}">
                                         <Setter Property="FontSize" Value="13" />
@@ -159,7 +217,8 @@
 
                                 <Border Style="{StaticResource Card}">
                                     <StackPanel>
-                                        <TextBlock Text="Thông tin app" Style="{StaticResource HeadingText}" />
+                                        <TextBlock Text="{loc:Tr Overview.InfoCard}"
+                                                   Style="{StaticResource HeadingText}" />
 
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -168,31 +227,35 @@
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
                                             <StackPanel Grid.Column="0">
-                                                <TextBlock Text="Tên app" Style="{StaticResource LabelText}" />
+                                                <TextBlock Text="{loc:Tr Overview.Name}"
+                                                           Style="{StaticResource LabelText}" />
                                                 <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
-                                                <TextBlock Text="Nhóm" Style="{StaticResource LabelText}" />
+                                                <TextBlock Text="{loc:Tr Overview.Group}"
+                                                           Style="{StaticResource LabelText}" />
                                                 <TextBox Text="{Binding Group, UpdateSourceTrigger=PropertyChanged}"
-                                                         ToolTip="Ví dụ: Backup, Báo cáo sáng, Dịch vụ nền" />
+                                                         ToolTip="{loc:Tr Overview.GroupTip}" />
                                             </StackPanel>
                                         </Grid>
 
-                                        <TextBlock Text="Mô tả" Style="{StaticResource LabelText}" Margin="0,12,0,4" />
+                                        <TextBlock Text="{loc:Tr Overview.Description}"
+                                                   Style="{StaticResource LabelText}" Margin="0,12,0,4" />
                                         <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
                                                  AcceptsReturn="True" MinHeight="52" TextWrapping="Wrap"
                                                  VerticalContentAlignment="Top" />
 
-                                        <CheckBox Content="Bật app này (bỏ chọn thì không chạy tay lẫn theo lịch)"
+                                        <CheckBox Content="{loc:Tr Overview.EnabledCheck}"
                                                   IsChecked="{Binding IsEnabled}" Margin="0,12,0,0" />
                                     </StackPanel>
                                 </Border>
 
                                 <Border Style="{StaticResource Card}">
                                     <StackPanel>
-                                        <TextBlock Text="Lệnh chạy" Style="{StaticResource HeadingText}" />
+                                        <TextBlock Text="{loc:Tr Overview.CommandCard}"
+                                                   Style="{StaticResource HeadingText}" />
 
-                                        <TextBlock Text="Chương trình (.exe / .bat / .cmd / .ps1)"
+                                        <TextBlock Text="{loc:Tr Overview.Executable}"
                                                    Style="{StaticResource LabelText}" />
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -202,26 +265,26 @@
                                             <TextBox Grid.Column="0"
                                                      Text="{Binding ExecutablePath, UpdateSourceTrigger=PropertyChanged}" />
                                             <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,0,0">
-                                                <Button Content="Chọn…"
+                                                <Button Content="{loc:Tr Common.Browse}"
                                                         Command="{Binding DataContext.BrowseExecutableCommand,
                                                             RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        ToolTip="Chỉ đích danh một file" />
-                                                <Button Content="Quét thư mục…" Margin="0"
+                                                        ToolTip="{loc:Tr Overview.PickFileTip}" />
+                                                <Button Content="{loc:Tr Overview.ScanFolder}" Margin="0"
                                                         Command="{Binding DataContext.ScanProgramFolderCommand,
                                                             RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        ToolTip="Dò tìm .exe/.bat/.cmd/.ps1 trong một thư mục" />
+                                                        ToolTip="{loc:Tr Overview.ScanProgramTip}" />
                                             </StackPanel>
                                         </Grid>
 
-                                        <TextBlock Text="Tham số dòng lệnh" Style="{StaticResource LabelText}"
-                                                   Margin="0,12,0,4" />
+                                        <TextBlock Text="{loc:Tr Overview.Arguments}"
+                                                   Style="{StaticResource LabelText}" Margin="0,12,0,4" />
                                         <TextBox Text="{Binding Arguments, UpdateSourceTrigger=PropertyChanged}"
                                                  FontFamily="Cascadia Mono, Consolas, monospace" />
                                         <TextBlock Style="{StaticResource HintText}"
-                                                   Text="Hỗ trợ biến môi trường dạng %USERPROFILE%. Đường dẫn có dấu cách nhớ bọc trong nháy kép." />
+                                                   Text="{loc:Tr Overview.ArgumentsHint}" />
 
-                                        <TextBlock Text="Thư mục làm việc" Style="{StaticResource LabelText}"
-                                                   Margin="0,12,0,4" />
+                                        <TextBlock Text="{loc:Tr Overview.WorkingDir}"
+                                                   Style="{StaticResource LabelText}" Margin="0,12,0,4" />
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
@@ -229,18 +292,19 @@
                                             </Grid.ColumnDefinitions>
                                             <TextBox Grid.Column="0"
                                                      Text="{Binding WorkingDirectory, UpdateSourceTrigger=PropertyChanged}" />
-                                            <Button Grid.Column="1" Content="Chọn…" Margin="6,0,0,0"
+                                            <Button Grid.Column="1" Content="{loc:Tr Common.Browse}" Margin="6,0,0,0"
                                                     Command="{Binding DataContext.BrowseWorkingDirectoryCommand,
                                                         RelativeSource={RelativeSource AncestorType=Window}}" />
                                         </Grid>
                                         <TextBlock Style="{StaticResource HintText}"
-                                                   Text="Để trống thì Cowork dùng thư mục chứa file chương trình." />
+                                                   Text="{loc:Tr Overview.WorkingDirHint}" />
                                     </StackPanel>
                                 </Border>
 
                                 <Border Style="{StaticResource Card}">
                                     <StackPanel>
-                                        <TextBlock Text="Tuỳ chọn khi chạy" Style="{StaticResource HeadingText}" />
+                                        <TextBlock Text="{loc:Tr Overview.RunOptionsCard}"
+                                                   Style="{StaticResource HeadingText}" />
 
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -250,26 +314,22 @@
                                             </Grid.ColumnDefinitions>
 
                                             <StackPanel Grid.Column="0">
-                                                <CheckBox Content="Không chạy chồng (chặn nếu instance cũ còn sống)"
+                                                <CheckBox Content="{loc:Tr Overview.SingleInstance}"
                                                           IsChecked="{Binding SingleInstance}" />
-                                                <CheckBox Content="Thu nhật ký output vào Cowork"
+                                                <CheckBox Content="{loc:Tr Overview.CaptureOutput}"
                                                           IsChecked="{Binding CaptureOutput}" />
-                                                <CheckBox Content="Chạy với quyền quản trị (UAC)"
+                                                <CheckBox Content="{loc:Tr Overview.RunAsAdmin}"
                                                           IsChecked="{Binding RunAsAdministrator}"
-                                                          ToolTip="Bật cái này thì không thu được output" />
+                                                          ToolTip="{loc:Tr Overview.RunAsAdminTip}" />
                                             </StackPanel>
 
                                             <StackPanel Grid.Column="2">
-                                                <TextBlock Text="Kiểu cửa sổ" Style="{StaticResource LabelText}" />
+                                                <TextBlock Text="{loc:Tr Overview.WindowStyle}"
+                                                           Style="{StaticResource LabelText}" />
                                                 <ComboBox ItemsSource="{Binding WindowStyleOptions}"
-                                                          SelectedItem="{Binding WindowStyle}">
-                                                    <ComboBox.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <TextBlock Text="{Binding Converter={StaticResource EnumLabel}}" />
-                                                        </DataTemplate>
-                                                    </ComboBox.ItemTemplate>
-                                                </ComboBox>
-                                                <TextBlock Text="Tự dừng sau (phút, 0 = không giới hạn)"
+                                                          SelectedItem="{Binding SelectedWindowStyle}"
+                                                          DisplayMemberPath="Label" />
+                                                <TextBlock Text="{loc:Tr Overview.Timeout}"
                                                            Style="{StaticResource LabelText}" Margin="0,12,0,4" />
                                                 <TextBox Text="{Binding TimeoutMinutes, UpdateSourceTrigger=PropertyChanged}" />
                                             </StackPanel>
@@ -279,7 +339,8 @@
 
                                 <Border Style="{StaticResource Card}">
                                     <StackPanel>
-                                        <TextBlock Text="Tình trạng" Style="{StaticResource HeadingText}" />
+                                        <TextBlock Text="{loc:Tr Overview.StatusCard}"
+                                                   Style="{StaticResource HeadingText}" />
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
@@ -291,27 +352,27 @@
                                                 <RowDefinition Height="Auto" />
                                             </Grid.RowDefinitions>
 
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Trạng thái:"
-                                                       Foreground="{StaticResource MutedBrush}" Margin="0,0,10,4" />
-                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding StatusText}" Margin="0,0,0,4" />
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Tr Overview.StatusLabel}"
+                                                       Foreground="{DynamicResource MutedBrush}" Margin="0,0,10,4" />
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding StatusText}"
+                                                       Margin="0,0,0,4" />
 
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Chạy lần cuối:"
-                                                       Foreground="{StaticResource MutedBrush}" Margin="0,0,10,4" />
-                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LastRunText}" Margin="0,0,0,4" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Tr Overview.LastRunLabel}"
+                                                       Foreground="{DynamicResource MutedBrush}" Margin="0,0,10,4" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LastRunText}"
+                                                       Margin="0,0,0,4" />
 
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Lịch:"
-                                                       Foreground="{StaticResource MutedBrush}" Margin="0,0,10,0" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Tr Overview.ScheduleLabel}"
+                                                       Foreground="{DynamicResource MutedBrush}" Margin="0,0,10,0" />
                                             <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ScheduleSummary}" />
                                         </Grid>
 
-                                        <Border Background="#3A1D22" BorderBrush="{StaticResource DangerBrush}"
-                                                BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,12,0,0"
+                                        <Border Style="{StaticResource ErrorCard}" Margin="0,12,0,0"
                                                 Visibility="{Binding LastError, Converter={StaticResource StringToVisibility}}">
-                                            <TextBlock Text="{Binding LastError}" TextWrapping="Wrap"
-                                                       Foreground="#FFB4B7" />
+                                            <TextBlock Text="{Binding LastError}" Style="{StaticResource ErrorText}" />
                                         </Border>
 
-                                        <Button Content="Mở thư mục chứa app" Margin="0,12,0,0"
+                                        <Button Content="{loc:Tr Overview.OpenAppFolder}" Margin="0,12,0,0"
                                                 HorizontalAlignment="Left"
                                                 Command="{Binding DataContext.OpenAppFolderCommand,
                                                     RelativeSource={RelativeSource AncestorType=Window}}" />
@@ -323,28 +384,28 @@
                 </TabItem>
 
                 <!-- === Biến môi trường === -->
-                <TabItem Header="Biến môi trường">
+                <TabItem Header="{loc:Tr Tab.Environment}">
                     <Border Style="{StaticResource Card}" DataContext="{Binding SelectedApp}" Margin="4,0,12,0">
                         <DockPanel>
-                            <TextBlock DockPanel.Dock="Top" Text="Biến môi trường riêng của app"
+                            <TextBlock DockPanel.Dock="Top" Text="{loc:Tr Env.Title}"
                                        Style="{StaticResource HeadingText}" />
                             <TextBlock DockPanel.Dock="Top" Style="{StaticResource HintText}" Margin="0,0,0,10"
-                                       Text="Các biến này chỉ áp dụng cho tiến trình con do Cowork khởi chạy, không ảnh hưởng hệ thống. Giá trị hỗ trợ %BIEN_KHAC%." />
+                                       Text="{loc:Tr Env.Hint}" />
 
                             <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
-                                <Button Content="+ Thêm biến" Command="{Binding AddEnvironmentVariableCommand}" />
+                                <Button Content="{loc:Tr Env.Add}" Command="{Binding AddEnvironmentVariableCommand}" />
                             </StackPanel>
 
                             <DataGrid ItemsSource="{Binding EnvironmentVariables}">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Tên biến" Width="240"
+                                    <DataGridTextColumn Header="{loc:Tr Env.ColName}" Width="240"
                                                         Binding="{Binding Name, UpdateSourceTrigger=LostFocus}" />
-                                    <DataGridTextColumn Header="Giá trị" Width="*"
+                                    <DataGridTextColumn Header="{loc:Tr Env.ColValue}" Width="*"
                                                         Binding="{Binding Value, UpdateSourceTrigger=LostFocus}" />
                                     <DataGridTemplateColumn Header="" Width="60">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <Button Content="Xoá" Padding="8,2" Margin="0" FontSize="11"
+                                                <Button Content="{loc:Tr Env.Remove}" Padding="8,2" Margin="0" FontSize="11"
                                                         Style="{StaticResource DangerButton}"
                                                         Command="{Binding DataContext.SelectedApp.RemoveEnvironmentVariableCommand,
                                                             RelativeSource={RelativeSource AncestorType=Window}}"
@@ -359,7 +420,7 @@
                 </TabItem>
 
                 <!-- === File cấu hình === -->
-                <TabItem Header="File cấu hình">
+                <TabItem Header="{loc:Tr Tab.ConfigFiles}">
                     <Grid DataContext="{Binding SelectedApp}" Margin="4,0,12,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="250" />
@@ -370,17 +431,17 @@
                         <!-- Danh sách file cấu hình -->
                         <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0" Padding="12">
                             <DockPanel>
-                                <TextBlock DockPanel.Dock="Top" Text="File cấu hình"
+                                <TextBlock DockPanel.Dock="Top" Text="{loc:Tr Config.ListTitle}"
                                            Style="{StaticResource HeadingText}" />
                                 <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-                                    <Button Content="Quét thư mục…" HorizontalAlignment="Stretch"
+                                    <Button Content="{loc:Tr Overview.ScanFolder}" HorizontalAlignment="Stretch"
                                             Margin="0,0,0,4"
                                             Command="{Binding DataContext.ScanConfigFolderCommand,
                                                 RelativeSource={RelativeSource AncestorType=Window}}"
-                                            ToolTip="Tự dò tìm file cấu hình trong thư mục làm việc của app" />
-                                    <Button Content="+ Thêm file thủ công" Command="{Binding AddConfigFileCommand}"
+                                            ToolTip="{loc:Tr Config.ScanTip}" />
+                                    <Button Content="{loc:Tr Config.AddManual}" Command="{Binding AddConfigFileCommand}"
                                             HorizontalAlignment="Stretch" Margin="0,0,0,4" />
-                                    <Button Content="Bỏ file khỏi danh sách" Style="{StaticResource DangerButton}"
+                                    <Button Content="{loc:Tr Config.Remove}" Style="{StaticResource DangerButton}"
                                             Command="{Binding RemoveConfigFileCommand}"
                                             CommandParameter="{Binding SelectedConfigFile}"
                                             HorizontalAlignment="Stretch" Margin="0" />
@@ -397,7 +458,7 @@
                                                 <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Text="{Binding FormatLabel}" FontSize="11"
-                                                           Foreground="{StaticResource MutedBrush}" />
+                                                           Foreground="{DynamicResource MutedBrush}" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
@@ -410,19 +471,19 @@
                                 DataContext="{Binding SelectedConfigFile}">
                             <DockPanel>
                                 <StackPanel DockPanel.Dock="Top">
-                                    <TextBlock Text="Đường dẫn file" Style="{StaticResource LabelText}" />
+                                    <TextBlock Text="{loc:Tr Config.PathLabel}" Style="{StaticResource LabelText}" />
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <TextBox Grid.Column="0" Text="{Binding FullPath, Mode=OneWay}"
-                                                 IsReadOnly="True" Foreground="{StaticResource MutedBrush}" />
+                                                 IsReadOnly="True" Foreground="{DynamicResource MutedBrush}" />
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,0,0">
-                                            <Button Content="Chọn file…"
+                                            <Button Content="{loc:Tr Config.PickFile}"
                                                     Command="{Binding DataContext.BrowseConfigFileCommand,
                                                         RelativeSource={RelativeSource AncestorType=Window}}" />
-                                            <Button Content="Mở thư mục" Margin="0"
+                                            <Button Content="{loc:Tr Config.OpenFolder}" Margin="0"
                                                     Command="{Binding DataContext.OpenConfigFolderCommand,
                                                         RelativeSource={RelativeSource AncestorType=Window}}" />
                                         </StackPanel>
@@ -430,30 +491,31 @@
 
                                     <DockPanel Margin="0,12,0,8">
                                         <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                                            <Button Content="Tải lại" Command="{Binding ReloadCommand}" />
-                                            <Button Content="Lưu file" Style="{StaticResource PrimaryButton}"
+                                            <Button Content="{loc:Tr Config.Reload}" Command="{Binding ReloadCommand}" />
+                                            <Button Content="{loc:Tr Config.SaveFile}"
+                                                    Style="{StaticResource PrimaryButton}"
                                                     Command="{Binding SaveFileCommand}" Margin="0" />
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal">
-                                            <RadioButton Content="Dạng bảng" GroupName="EditMode" Margin="0,0,14,0"
+                                            <RadioButton Content="{loc:Tr Config.TableMode}" GroupName="EditMode"
+                                                         Margin="0,0,14,0"
                                                          IsEnabled="{Binding SupportsTable}"
                                                          IsChecked="{Binding IsRawMode, Converter={StaticResource EnumEquals},
                                                              ConverterParameter=False, Mode=OneWay}"
                                                          Checked="OnTableModeChecked" />
-                                            <RadioButton Content="Sửa nguồn" GroupName="EditMode"
+                                            <RadioButton Content="{loc:Tr Config.RawMode}" GroupName="EditMode"
                                                          IsChecked="{Binding IsRawMode, Mode=OneWay}"
                                                          Checked="OnRawModeChecked" />
                                         </StackPanel>
                                     </DockPanel>
 
-                                    <Border Background="#3A1D22" BorderBrush="{StaticResource DangerBrush}"
-                                            BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
+                                    <Border Style="{StaticResource ErrorCard}" Margin="0,0,0,8"
                                             Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
-                                        <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap"
-                                                   Foreground="#FFB4B7" />
+                                        <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource ErrorText}" />
                                     </Border>
 
-                                    <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource SuccessBrush}"
+                                    <TextBlock Text="{Binding StatusMessage}"
+                                               Foreground="{DynamicResource SuccessBrush}"
                                                Margin="0,0,0,8"
                                                Visibility="{Binding StatusMessage, Converter={StaticResource StringToVisibility}}" />
                                 </StackPanel>
@@ -462,59 +524,59 @@
                                      DockPanel chỉ cho phần tử cuối chiếm hết chỗ trống,
                                      nên chúng phải được gói chung vào một Grid. -->
                                 <Grid>
-                                <Grid Visibility="{Binding IsRawMode, Converter={StaticResource BoolToVisibility},
-                                                           ConverterParameter=invert}">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="*" />
-                                    </Grid.RowDefinitions>
+                                    <Grid Visibility="{Binding IsRawMode, Converter={StaticResource BoolToVisibility},
+                                                               ConverterParameter=invert}">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
 
-                                    <TextBox Grid.Row="0" Margin="0,0,0,8"
-                                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                             ToolTip="Lọc theo tên khoá hoặc giá trị" />
+                                        <TextBox Grid.Row="0" Margin="0,0,0,8"
+                                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="{loc:Tr Config.SearchTip}" />
 
-                                    <DataGrid Grid.Row="1" ItemsSource="{Binding EntriesView}">
-                                        <DataGrid.GroupStyle>
-                                            <GroupStyle>
-                                                <GroupStyle.HeaderTemplate>
-                                                    <DataTemplate>
-                                                        <TextBlock Text="{Binding Name}" FontWeight="Bold"
-                                                                   Foreground="{StaticResource AccentBrush}"
-                                                                   Margin="4,10,0,4" />
-                                                    </DataTemplate>
-                                                </GroupStyle.HeaderTemplate>
-                                            </GroupStyle>
-                                        </DataGrid.GroupStyle>
-                                        <DataGrid.Columns>
-                                            <DataGridTextColumn Header="Khoá" Width="2*" IsReadOnly="True"
-                                                                Binding="{Binding Path}" />
-                                            <DataGridTextColumn Header="Giá trị" Width="3*"
-                                                                Binding="{Binding Value, UpdateSourceTrigger=LostFocus}" />
-                                            <DataGridTextColumn Header="Kiểu" Width="70" IsReadOnly="True"
-                                                                Binding="{Binding KindLabel}" />
-                                            <DataGridTextColumn Header="Ghi chú" Width="*" IsReadOnly="True"
-                                                                Binding="{Binding Comment}" />
-                                        </DataGrid.Columns>
-                                        <DataGrid.RowStyle>
-                                            <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsDirty}" Value="True">
-                                                        <Setter Property="Background" Value="#243C2E" />
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding HasTypeWarning}" Value="True">
-                                                        <Setter Property="Background" Value="#3A2A1D" />
-                                                        <Setter Property="ToolTip" Value="{Binding TypeWarning}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </DataGrid.RowStyle>
-                                    </DataGrid>
-                                </Grid>
+                                        <DataGrid Grid.Row="1" ItemsSource="{Binding EntriesView}">
+                                            <DataGrid.GroupStyle>
+                                                <GroupStyle>
+                                                    <GroupStyle.HeaderTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="{Binding Name}" FontWeight="Bold"
+                                                                       Foreground="{DynamicResource AccentBrush}"
+                                                                       Margin="4,10,0,4" />
+                                                        </DataTemplate>
+                                                    </GroupStyle.HeaderTemplate>
+                                                </GroupStyle>
+                                            </DataGrid.GroupStyle>
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="{loc:Tr Config.ColKey}" Width="2*"
+                                                                    IsReadOnly="True" Binding="{Binding Path}" />
+                                                <DataGridTextColumn Header="{loc:Tr Config.ColValue}" Width="3*"
+                                                                    Binding="{Binding Value, UpdateSourceTrigger=LostFocus}" />
+                                                <DataGridTextColumn Header="{loc:Tr Config.ColKind}" Width="70"
+                                                                    IsReadOnly="True" Binding="{Binding KindLabel}" />
+                                                <DataGridTextColumn Header="{loc:Tr Config.ColComment}" Width="*"
+                                                                    IsReadOnly="True" Binding="{Binding Comment}" />
+                                            </DataGrid.Columns>
+                                            <DataGrid.RowStyle>
+                                                <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsDirty}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource RowDirtyBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding HasTypeWarning}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource RowWarningBrush}" />
+                                                            <Setter Property="ToolTip" Value="{Binding TypeWarning}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </DataGrid.RowStyle>
+                                        </DataGrid>
+                                    </Grid>
 
-                                <!-- Chế độ sửa nguồn (đặt sau để đè lên khi bật) -->
-                                <TextBox Style="{StaticResource CodeTextBox}"
-                                         Text="{Binding RawText, UpdateSourceTrigger=PropertyChanged}"
-                                         Visibility="{Binding IsRawMode, Converter={StaticResource BoolToVisibility}}" />
+                                    <!-- Chế độ sửa nguồn (đặt sau để đè lên khi bật) -->
+                                    <TextBox Style="{StaticResource CodeTextBox}"
+                                             Text="{Binding RawText, UpdateSourceTrigger=PropertyChanged}"
+                                             Visibility="{Binding IsRawMode, Converter={StaticResource BoolToVisibility}}" />
                                 </Grid>
                             </DockPanel>
                         </Border>
@@ -522,28 +584,29 @@
                 </TabItem>
 
                 <!-- === Lịch chạy === -->
-                <TabItem Header="Lịch chạy">
+                <TabItem Header="{loc:Tr Tab.Schedule}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel DataContext="{Binding SelectedApp}" Margin="4,0,12,0">
                             <Border Style="{StaticResource Card}">
                                 <StackPanel>
-                                    <TextBlock Text="Lịch chạy hằng ngày" Style="{StaticResource HeadingText}" />
+                                    <TextBlock Text="{loc:Tr Schedule.Card}" Style="{StaticResource HeadingText}" />
 
-                                    <CheckBox Content="Bật lịch tự động cho app này"
+                                    <CheckBox Content="{loc:Tr Schedule.EnableCheck}"
                                               IsChecked="{Binding ScheduleEnabled}" />
 
-                                    <TextBlock Text="Kiểu lịch" Style="{StaticResource LabelText}" Margin="0,12,0,4" />
+                                    <TextBlock Text="{loc:Tr Schedule.KindLabel}" Style="{StaticResource LabelText}"
+                                               Margin="0,12,0,4" />
                                     <StackPanel IsEnabled="{Binding ScheduleEnabled}">
-                                        <RadioButton GroupName="Kind" Content="Chạy vào các mốc giờ cố định"
+                                        <RadioButton GroupName="Kind" Content="{loc:Tr Schedule.KindDaily}"
                                                      IsChecked="{Binding ScheduleKind, Converter={StaticResource EnumEquals},
                                                          ConverterParameter=DailyAtTimes}" />
-                                        <RadioButton GroupName="Kind" Content="Chạy lặp lại theo chu kỳ"
+                                        <RadioButton GroupName="Kind" Content="{loc:Tr Schedule.KindInterval}"
                                                      IsChecked="{Binding ScheduleKind, Converter={StaticResource EnumEquals},
                                                          ConverterParameter=Interval}" />
-                                        <RadioButton GroupName="Kind" Content="Chạy một lần khi mở Cowork"
+                                        <RadioButton GroupName="Kind" Content="{loc:Tr Schedule.KindStartup}"
                                                      IsChecked="{Binding ScheduleKind, Converter={StaticResource EnumEquals},
                                                          ConverterParameter=OnCoworkStartup}" />
-                                        <RadioButton GroupName="Kind" Content="Chỉ chạy thủ công"
+                                        <RadioButton GroupName="Kind" Content="{loc:Tr Schedule.KindManual}"
                                                      IsChecked="{Binding ScheduleKind, Converter={StaticResource EnumEquals},
                                                          ConverterParameter=Manual}" />
                                     </StackPanel>
@@ -553,18 +616,17 @@
                             <Border Style="{StaticResource Card}"
                                     Visibility="{Binding IsDailyKind, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel>
-                                    <TextBlock Text="Mốc giờ trong ngày" Style="{StaticResource HeadingText}" />
+                                    <TextBlock Text="{loc:Tr Schedule.TimesCard}" Style="{StaticResource HeadingText}" />
                                     <TextBox Text="{Binding TimesText, UpdateSourceTrigger=LostFocus}"
                                              FontFamily="Cascadia Mono, Consolas, monospace" />
-                                    <TextBlock Style="{StaticResource HintText}"
-                                               Text="Nhập nhiều mốc, cách nhau bằng dấu phẩy. Ví dụ: 07:30, 12:00, 18:15" />
+                                    <TextBlock Style="{StaticResource HintText}" Text="{loc:Tr Schedule.TimesHint}" />
                                 </StackPanel>
                             </Border>
 
                             <Border Style="{StaticResource Card}"
                                     Visibility="{Binding IsIntervalKind, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel>
-                                    <TextBlock Text="Chu kỳ lặp" Style="{StaticResource HeadingText}" />
+                                    <TextBlock Text="{loc:Tr Schedule.IntervalCard}" Style="{StaticResource HeadingText}" />
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
@@ -574,18 +636,21 @@
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0">
-                                            <TextBlock Text="Mỗi (phút)" Style="{StaticResource LabelText}" />
+                                            <TextBlock Text="{loc:Tr Schedule.EveryMinutes}"
+                                                       Style="{StaticResource LabelText}" />
                                             <TextBox Text="{Binding IntervalMinutes, UpdateSourceTrigger=LostFocus}" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
-                                            <TextBlock Text="Chỉ chạy từ" Style="{StaticResource LabelText}" />
+                                            <TextBlock Text="{loc:Tr Schedule.WindowFrom}"
+                                                       Style="{StaticResource LabelText}" />
                                             <TextBox Text="{Binding WindowStart, UpdateSourceTrigger=LostFocus}"
-                                                     ToolTip="Bỏ trống nếu không giới hạn. Ví dụ 08:00" />
+                                                     ToolTip="{loc:Tr Schedule.WindowFromTip}" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="4">
-                                            <TextBlock Text="Đến" Style="{StaticResource LabelText}" />
+                                            <TextBlock Text="{loc:Tr Schedule.WindowTo}"
+                                                       Style="{StaticResource LabelText}" />
                                             <TextBox Text="{Binding WindowEnd, UpdateSourceTrigger=LostFocus}"
-                                                     ToolTip="Bỏ trống nếu không giới hạn. Ví dụ 18:00" />
+                                                     ToolTip="{loc:Tr Schedule.WindowToTip}" />
                                         </StackPanel>
                                     </Grid>
                                 </StackPanel>
@@ -593,7 +658,7 @@
 
                             <Border Style="{StaticResource Card}">
                                 <StackPanel IsEnabled="{Binding ScheduleEnabled}">
-                                    <TextBlock Text="Ngày trong tuần" Style="{StaticResource HeadingText}" />
+                                    <TextBlock Text="{loc:Tr Schedule.DaysCard}" Style="{StaticResource HeadingText}" />
                                     <ItemsControl ItemsSource="{Binding Days}">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
@@ -607,24 +672,24 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <TextBlock Style="{StaticResource HintText}"
-                                               Text="Không chọn ngày nào = chạy mọi ngày trong tuần." />
+                                    <TextBlock Style="{StaticResource HintText}" Text="{loc:Tr Schedule.DaysHint}" />
 
-                                    <CheckBox Content="Chạy bù nếu lúc tới hạn máy đang tắt hoặc Cowork chưa mở"
+                                    <CheckBox Content="{loc:Tr Schedule.CatchUp}"
                                               IsChecked="{Binding CatchUpMissedRun}" Margin="0,12,0,0" />
 
-                                    <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="6"
+                                    <Border Background="{DynamicResource SurfaceAltBrush}" CornerRadius="6"
                                             Padding="12" Margin="0,12,0,0">
                                         <StackPanel>
-                                            <TextBlock Foreground="{StaticResource MutedBrush}" FontSize="12">
-                                                <Run Text="Tóm tắt:" />
+                                            <TextBlock Foreground="{DynamicResource MutedBrush}" FontSize="12">
+                                                <Run Text="{loc:Tr Schedule.SummaryLabel}" />
                                                 <Run Text="{Binding ScheduleSummary, Mode=OneWay}"
-                                                     Foreground="{StaticResource TextBrush}" FontWeight="SemiBold" />
+                                                     Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" />
                                             </TextBlock>
-                                            <TextBlock Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,4,0,0">
-                                                <Run Text="Lần chạy kế tiếp:" />
+                                            <TextBlock Foreground="{DynamicResource MutedBrush}" FontSize="12"
+                                                       Margin="0,4,0,0">
+                                                <Run Text="{loc:Tr Schedule.NextRunLabel}" />
                                                 <Run Text="{Binding NextRunText, Mode=OneWay}"
-                                                     Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" />
+                                                     Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
                                             </TextBlock>
                                         </StackPanel>
                                     </Border>
@@ -635,23 +700,24 @@
                 </TabItem>
 
                 <!-- === Nhật ký === -->
-                <TabItem Header="Nhật ký">
+                <TabItem Header="{loc:Tr Tab.Output}">
                     <Border Style="{StaticResource Card}" Margin="4,0,12,0" DataContext="{Binding SelectedApp}">
                         <DockPanel>
                             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-                                <TextBlock Text="Output của lần chạy hiện tại" Style="{StaticResource HeadingText}"
+                                <TextBlock Text="{loc:Tr Output.Title}" Style="{StaticResource HeadingText}"
                                            Margin="0" />
-                                <TextBlock HorizontalAlignment="Right" Foreground="{StaticResource MutedBrush}"
+                                <TextBlock HorizontalAlignment="Right" Foreground="{DynamicResource MutedBrush}"
                                            FontSize="12">
                                     <Run Text="{Binding OutputLines.Count, Mode=OneWay}" />
-                                    <Run Text="dòng" />
+                                    <Run Text="{loc:Tr Output.LinesSuffix}" />
                                 </TextBlock>
                             </DockPanel>
 
                             <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource HintText}"
-                                       Text="Output chỉ được thu khi bật 'Thu nhật ký output' và không chạy quyền admin. Log đầy đủ nằm trong thư mục logs." />
+                                       Text="{loc:Tr Output.Hint}" />
 
-                            <Border Background="#0D1117" BorderBrush="{StaticResource BorderBrush}"
+                            <Border Background="{DynamicResource CodeBackgroundBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}"
                                     BorderThickness="1" CornerRadius="6">
                                 <ListBox x:Name="OutputList" ItemsSource="{Binding OutputLines}"
                                          Background="Transparent" BorderThickness="0"
@@ -674,13 +740,11 @@
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="{Binding Timestamp, StringFormat=HH:mm:ss}"
-                                                           Foreground="{StaticResource MutedBrush}"
+                                                           Foreground="{DynamicResource SubtleBrush}"
                                                            FontFamily="Cascadia Mono, Consolas, monospace"
                                                            FontSize="11" Margin="0,0,10,0" />
                                                 <TextBlock Text="{Binding Text}"
-                                                           Foreground="{Binding IsError, Converter={StaticResource OutputBrush}}"
-                                                           FontFamily="Cascadia Mono, Consolas, monospace"
-                                                           FontSize="12" TextWrapping="Wrap" />
+                                                           Style="{StaticResource OutputLineText}" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
@@ -691,38 +755,42 @@
                 </TabItem>
 
                 <!-- === Lịch sử === -->
-                <TabItem Header="Lịch sử chạy">
+                <TabItem Header="{loc:Tr Tab.History}">
                     <Border Style="{StaticResource Card}" Margin="4,0,12,0">
                         <DockPanel>
                             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-                                <TextBlock Text="Lịch sử các lần chạy" Style="{StaticResource HeadingText}" Margin="0" />
+                                <TextBlock Text="{loc:Tr History.Title}" Style="{StaticResource HeadingText}"
+                                           Margin="0" />
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                    <Button Content="Mở thư mục log" Command="{Binding OpenLogFolderCommand}" />
-                                    <Button Content="Xoá lịch sử" Style="{StaticResource DangerButton}"
+                                    <Button Content="{loc:Tr History.OpenLogFolder}"
+                                            Command="{Binding OpenLogFolderCommand}" />
+                                    <Button Content="{loc:Tr History.Clear}" Style="{StaticResource DangerButton}"
                                             Command="{Binding ClearHistoryCommand}" Margin="0" />
                                 </StackPanel>
                             </DockPanel>
 
                             <DataGrid ItemsSource="{Binding History}" IsReadOnly="True">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Bắt đầu" Width="150"
+                                    <DataGridTextColumn Header="{loc:Tr History.ColStarted}" Width="150"
                                                         Binding="{Binding StartedAt, StringFormat='dd/MM/yyyy HH:mm:ss'}" />
-                                    <DataGridTextColumn Header="App" Width="*" Binding="{Binding AppName}" />
-                                    <DataGridTextColumn Header="Nguồn" Width="110"
+                                    <DataGridTextColumn Header="{loc:Tr History.ColApp}" Width="*"
+                                                        Binding="{Binding AppName}" />
+                                    <DataGridTextColumn Header="{loc:Tr History.ColTrigger}" Width="110"
                                                         Binding="{Binding Trigger, Converter={StaticResource EnumLabel}}" />
-                                    <DataGridTemplateColumn Header="Kết quả" Width="130">
+                                    <DataGridTemplateColumn Header="{loc:Tr History.ColOutcome}" Width="130">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding Outcome, Converter={StaticResource EnumLabel}}"
-                                                           Foreground="{Binding Outcome, Converter={StaticResource OutcomeBrush}}"
-                                                           FontWeight="SemiBold" />
+                                                           Style="{StaticResource OutcomeText}" />
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="Mã thoát" Width="80" Binding="{Binding ExitCode}" />
-                                    <DataGridTextColumn Header="Thời lượng" Width="90"
+                                    <DataGridTextColumn Header="{loc:Tr History.ColExitCode}" Width="80"
+                                                        Binding="{Binding ExitCode}" />
+                                    <DataGridTextColumn Header="{loc:Tr History.ColDuration}" Width="90"
                                                         Binding="{Binding Duration, Converter={StaticResource Duration}}" />
-                                    <DataGridTextColumn Header="Ghi chú" Width="2*" Binding="{Binding Error}" />
+                                    <DataGridTextColumn Header="{loc:Tr History.ColNote}" Width="2*"
+                                                        Binding="{Binding Error}" />
                                 </DataGrid.Columns>
                             </DataGrid>
                         </DockPanel>
@@ -730,35 +798,74 @@
                 </TabItem>
 
                 <!-- === Thiết lập === -->
-                <TabItem Header="Thiết lập">
+                <TabItem Header="{loc:Tr Tab.Settings}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="4,0,12,0">
                             <Border Style="{StaticResource Card}">
                                 <StackPanel>
-                                    <TextBlock Text="Chạy nền" Style="{StaticResource HeadingText}" />
-                                    <CheckBox Content="Bật bộ lập lịch (tự chạy app theo giờ đã đặt)"
-                                              IsChecked="{Binding SchedulerEnabled}" />
-                                    <CheckBox Content="Bấm X thì thu nhỏ xuống khay hệ thống thay vì thoát"
-                                              IsChecked="{Binding MinimizeToTray}" />
-                                    <CheckBox Content="Khởi động cùng Windows (mở ở chế độ thu nhỏ)"
-                                              IsChecked="{Binding StartWithWindows}" />
-                                    <TextBlock Style="{StaticResource HintText}"
-                                               Text="Bộ lập lịch chỉ hoạt động khi Cowork còn đang chạy — kể cả khi đã thu nhỏ xuống khay." />
+                                    <TextBlock Text="{loc:Tr Settings.AppearanceCard}"
+                                               Style="{StaticResource HeadingText}" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="16" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{loc:Tr Settings.ThemeLabel}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <ComboBox ItemsSource="{Binding ThemeOptions}"
+                                                      SelectedItem="{Binding SelectedTheme}"
+                                                      DisplayMemberPath="Label" />
+                                            <TextBlock Style="{StaticResource HintText}"
+                                                       Text="{loc:Tr Settings.ThemeHint}" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{loc:Tr Settings.LanguageLabel}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <ComboBox ItemsSource="{Binding LanguageOptions}"
+                                                      SelectedItem="{Binding SelectedLanguage}"
+                                                      DisplayMemberPath="Label" />
+                                            <TextBlock Style="{StaticResource HintText}"
+                                                       Text="{loc:Tr Settings.LanguageHint}" />
+                                        </StackPanel>
+                                    </Grid>
                                 </StackPanel>
                             </Border>
 
                             <Border Style="{StaticResource Card}">
                                 <StackPanel>
-                                    <TextBlock Text="Lịch sử &amp; nhật ký" Style="{StaticResource HeadingText}" />
-                                    <TextBlock Text="Số ngày giữ lịch sử chạy" Style="{StaticResource LabelText}" />
+                                    <TextBlock Text="{loc:Tr Settings.BackgroundCard}"
+                                               Style="{StaticResource HeadingText}" />
+                                    <CheckBox Content="{loc:Tr Settings.SchedulerCheck}"
+                                              IsChecked="{Binding SchedulerEnabled}" />
+                                    <CheckBox Content="{loc:Tr Settings.MinimizeCheck}"
+                                              IsChecked="{Binding MinimizeToTray}" />
+                                    <CheckBox Content="{loc:Tr Settings.StartupCheck}"
+                                              IsChecked="{Binding StartWithWindows}" />
+                                    <TextBlock Style="{StaticResource HintText}"
+                                               Text="{loc:Tr Settings.BackgroundHint}" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="{loc:Tr Settings.HistoryCard}"
+                                               Style="{StaticResource HeadingText}" />
+                                    <TextBlock Text="{loc:Tr Settings.RetentionLabel}"
+                                               Style="{StaticResource LabelText}" />
                                     <TextBox Text="{Binding HistoryRetentionDays, UpdateSourceTrigger=LostFocus}"
                                              Width="120" HorizontalAlignment="Left" />
                                     <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                        <Button Content="Mở thư mục dữ liệu" Command="{Binding OpenDataFolderCommand}" />
-                                        <Button Content="Mở thư mục log" Command="{Binding OpenLogFolderCommand}" />
+                                        <Button Content="{loc:Tr Settings.OpenDataFolder}"
+                                                Command="{Binding OpenDataFolderCommand}" />
+                                        <Button Content="{loc:Tr Settings.OpenLogFolder}"
+                                                Command="{Binding OpenLogFolderCommand}" />
                                     </StackPanel>
                                     <TextBlock Style="{StaticResource HintText}"
-                                               Text="Dữ liệu Cowork nằm trong %APPDATA%\Cowork — sao lưu workspace.json là sao lưu được toàn bộ cấu hình app." />
+                                               Text="{loc:Tr Settings.DataHint}" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -768,13 +875,14 @@
         </Grid>
 
         <!-- === Thanh trạng thái === -->
-        <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
+        <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,1,0,0" Padding="16,8">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Foreground="{StaticResource WarningBrush}" FontSize="12"
-                           Text="● Có thay đổi chưa lưu"
+                <TextBlock DockPanel.Dock="Right" Foreground="{DynamicResource WarningBrush}" FontSize="12"
+                           Text="{loc:Tr Status.Unsaved}"
                            Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BoolToVisibility}}" />
-                <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource MutedBrush}" FontSize="12"
+                <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource MutedBrush}" FontSize="12"
                            TextTrimming="CharacterEllipsis" />
             </DockPanel>
         </Border>
@@ -782,16 +890,16 @@
         <!-- === Khay hệ thống === -->
         <tb:TaskbarIcon x:Name="TrayIcon"
                         IconSource="Assets/cowork.ico"
-                        ToolTipText="Cowork — quản lý app chạy hằng ngày"
+                        ToolTipText="{loc:Tr Tray.Tooltip}"
                         TrayMouseDoubleClick="OnTrayDoubleClick">
             <tb:TaskbarIcon.ContextMenu>
                 <ContextMenu>
-                    <MenuItem Header="Mở Cowork" Click="OnTrayOpenClick" />
+                    <MenuItem Header="{loc:Tr Tray.Open}" Click="OnTrayOpenClick" />
                     <Separator />
-                    <MenuItem Header="Chạy tất cả" Command="{Binding RunAllCommand}" />
-                    <MenuItem Header="Dừng tất cả" Command="{Binding StopAllCommand}" />
+                    <MenuItem Header="{loc:Tr Main.RunAll}" Command="{Binding RunAllCommand}" />
+                    <MenuItem Header="{loc:Tr Main.StopAll}" Command="{Binding StopAllCommand}" />
                     <Separator />
-                    <MenuItem Header="Thoát Cowork" Click="OnTrayExitClick" />
+                    <MenuItem Header="{loc:Tr Tray.Exit}" Click="OnTrayExitClick" />
                 </ContextMenu>
             </tb:TaskbarIcon.ContextMenu>
         </tb:TaskbarIcon>

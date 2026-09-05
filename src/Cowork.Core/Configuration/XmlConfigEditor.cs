@@ -1,5 +1,6 @@
 using System.Xml;
 using System.Xml.Linq;
+using Cowork.Core.Localization;
 
 namespace Cowork.Core.Configuration;
 
@@ -26,7 +27,7 @@ public sealed class XmlConfigEditor : IConfigEditor
                 FilePath = filePath,
                 Format = ConfigFormat.Xml,
                 RawText = text,
-                ParseError = $"XML không hợp lệ (dòng {ex.LineNumber}): {ex.Message}",
+                ParseError = Loc.T("Cfg.InvalidXml", ex.LineNumber, ex.Message),
             };
         }
 
@@ -37,7 +38,7 @@ public sealed class XmlConfigEditor : IConfigEditor
                 FilePath = filePath,
                 Format = ConfigFormat.Xml,
                 RawText = text,
-                ParseError = "File XML không có phần tử gốc.",
+                ParseError = Loc.T("Cfg.NoRootElement"),
             };
         }
 
@@ -132,7 +133,7 @@ public sealed class XmlConfigEditor : IConfigEditor
     {
         var xml = XDocument.Parse(document.RawText, LoadOptions.PreserveWhitespace);
         if (xml.Root is null)
-            throw new InvalidOperationException("File XML không có phần tử gốc.");
+            throw new InvalidOperationException(Loc.T("Cfg.NoRootElement"));
 
         foreach (var entry in document.Entries)
         {

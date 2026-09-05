@@ -3,6 +3,8 @@ using System.Windows.Threading;
 using Cowork.App.ViewModels;
 using Cowork.Core.Configuration;
 using Cowork.Core.Services;
+using Cowork.Core.Localization;
+using Cowork.App.Themes;
 
 namespace Cowork.App;
 
@@ -37,6 +39,11 @@ public partial class App : Application
         var workspaceStore = new JsonWorkspaceStore(paths, _logger);
         var settings = workspaceStore.Load().Settings;
 
+        // Ngôn ngữ và chủ đề phải được đặt trước khi dựng cửa sổ đầu tiên, nếu không
+        // người dùng sẽ thấy giao diện nháy một nhịp từ mặc định sang thiết lập của họ.
+        Loc.Current = settings.Language;
+        ThemeManager.Apply(settings.Theme);
+
         _processManager = new ProcessManager(_logger, paths, settings.OutputBufferLines);
         var history = new JsonRunHistoryStore(paths, _logger);
         var configService = new ConfigFileService();
@@ -69,9 +76,8 @@ public partial class App : Application
         _logger?.Error("Lỗi không bắt được ở tầng giao diện.", e.Exception);
 
         MessageBox.Show(
-            "Cowork gặp lỗi ngoài dự kiến:\n\n" + e.Exception.Message
-            + "\n\nChi tiết đã được ghi vào log. Ứng dụng vẫn tiếp tục chạy.",
-            "Cowork", MessageBoxButton.OK, MessageBoxImage.Error);
+            Loc.T("Msg.UnhandledError", e.Exception.Message),
+            Loc.T("Common.AppName"), MessageBoxButton.OK, MessageBoxImage.Error);
 
         // Đánh dấu đã xử lý để một lỗi trên UI không làm sập cả app đang quản lý tiến trình.
         e.Handled = true;

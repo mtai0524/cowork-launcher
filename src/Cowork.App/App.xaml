@@ -5,14 +5,14 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- Ô số 0 là bảng màu: ThemeManager tráo đúng phần tử này khi đổi chủ đề,
+                     nên nó phải luôn đứng đầu và Theme.xaml phải đứng sau. -->
+                <ResourceDictionary Source="Themes/Palettes/Dark.xaml" />
                 <ResourceDictionary Source="Themes/Theme.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
             <conv:StringToVisibilityConverter x:Key="StringToVisibility" />
-            <conv:RuntimeStateToBrushConverter x:Key="StateToBrush" />
-            <conv:OutputErrorToBrushConverter x:Key="OutputBrush" />
-            <conv:RunOutcomeToBrushConverter x:Key="OutcomeBrush" />
             <conv:EnumLabelConverter x:Key="EnumLabel" />
             <conv:EnumEqualsConverter x:Key="EnumEquals" />
             <conv:DurationConverter x:Key="Duration" />

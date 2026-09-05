@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Cowork.Core.Configuration;
+using Cowork.Core.Localization;
 
 namespace Cowork.App.ViewModels;
 
@@ -27,23 +28,18 @@ public sealed class ProgramCandidateViewModel
         get
         {
             var folder = Path.GetDirectoryName(RelativePath);
-            return string.IsNullOrEmpty(folder) ? "(thư mục gốc)" : folder;
+            return string.IsNullOrEmpty(folder) ? Loc.T("Scan.RootFolder") : folder;
         }
     }
 
     public string KindLabel => Candidate.Kind switch
     {
-        ProgramKind.BatchScript => "Batch",
-        ProgramKind.PowerShellScript => "PowerShell",
-        _ => "Chương trình",
+        ProgramKind.BatchScript => Loc.T("ProgramKind.Batch"),
+        ProgramKind.PowerShellScript => Loc.T("ProgramKind.PowerShell"),
+        _ => Loc.T("ProgramKind.Executable"),
     };
 
-    public string ConfidenceLabel => Candidate.Confidence switch
-    {
-        ScanConfidence.High => "Cao",
-        ScanConfidence.Medium => "Vừa",
-        _ => "Thấp",
-    };
+    public string ConfidenceLabel => Loc.T("Confidence." + Candidate.Confidence);
 
     public string SizeLabel => Candidate.SizeBytes < 1024
         ? $"{Candidate.SizeBytes} B"
@@ -73,7 +69,7 @@ public sealed partial class ScanProgramViewModel : ObservableObject
     [ObservableProperty] private bool _includeLowConfidence;
     [ObservableProperty] private int _maxDepth = 4;
     [ObservableProperty] private bool _isScanning;
-    [ObservableProperty] private string _statusMessage = "Đang quét…";
+    [ObservableProperty] private string _statusMessage = Loc.T("Scan.Scanning");
     [ObservableProperty] private string? _errorMessage;
 
     [ObservableProperty]
@@ -118,7 +114,7 @@ public sealed partial class ScanProgramViewModel : ObservableObject
 
         IsScanning = true;
         ErrorMessage = null;
-        StatusMessage = "Đang quét…";
+        StatusMessage = Loc.T("Scan.Scanning");
 
         var root = RootDirectory;
         var options = new ProgramScanOptions
@@ -143,7 +139,7 @@ public sealed partial class ScanProgramViewModel : ObservableObject
                                        or UnauthorizedAccessException or IOException)
         {
             ErrorMessage = ex.Message;
-            StatusMessage = "Quét thất bại.";
+            StatusMessage = Loc.T("Scan.Failed");
         }
         finally
         {
@@ -154,17 +150,11 @@ public sealed partial class ScanProgramViewModel : ObservableObject
     private static string BuildSummary(ProgramScanResult result)
     {
         if (result.Candidates.Count == 0)
-        {
-            return $"Đã xem {result.FilesInspected} file, không thấy chương trình nào chạy được "
-                   + "(.exe / .bat / .cmd / .ps1).";
-        }
+            return Loc.T("Scan.ProgramNone", result.FilesInspected);
 
         var high = result.Candidates.Count(c => c.Confidence == ScanConfidence.High);
-        var summary = $"Tìm thấy {result.Candidates.Count} chương trình "
-                      + $"({high} ở mức tin cậy Cao) trong {result.FilesInspected} file đã xem.";
+        var summary = Loc.T("Scan.ProgramFound", result.Candidates.Count, high, result.FilesInspected);
 
-        return result.Truncated
-            ? summary + " Đã đạt trần kết quả — thu hẹp thư mục để quét kỹ hơn."
-            : summary;
+        return result.Truncated ? summary + Loc.T("Scan.Truncated") : summary;
     }
 }

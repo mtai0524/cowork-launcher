@@ -6,4 +6,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Bảng chuỗi để internal cho gọn API công khai, nhưng phải kiểm được
+         hai ngôn ngữ có khớp khoá nhau không. -->
+    <InternalsVisibleTo Include="Cowork.Tests" />
+  </ItemGroup>
+
 </Project>

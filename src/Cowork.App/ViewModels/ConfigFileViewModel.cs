@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Cowork.Core.Configuration;
 using Cowork.Core.Models;
+using Cowork.Core.Localization;
 
 namespace Cowork.App.ViewModels;
 
@@ -103,7 +104,7 @@ public sealed partial class ConfigFileViewModel : ObservableObject
         var path = FullPath;
         if (string.IsNullOrWhiteSpace(path))
         {
-            ErrorMessage = "Chưa nhập đường dẫn file.";
+            ErrorMessage = Loc.T("Config.NoPath");
             SupportsTable = false;
             return;
         }
@@ -114,7 +115,7 @@ public sealed partial class ConfigFileViewModel : ObservableObject
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            ErrorMessage = "Không đọc được file: " + ex.Message;
+            ErrorMessage = Loc.T("Config.ReadFailed", ex.Message);
             SupportsTable = false;
             return;
         }
@@ -165,7 +166,7 @@ public sealed partial class ConfigFileViewModel : ObservableObject
             {
                 if (_document is null)
                 {
-                    ErrorMessage = "Chưa nạp được file, hãy bấm Tải lại.";
+                    ErrorMessage = Loc.T("Config.NotLoaded");
                     return false;
                 }
 
@@ -175,7 +176,7 @@ public sealed partial class ConfigFileViewModel : ObservableObject
 
                 if (changed.Count == 0)
                 {
-                    StatusMessage = "Không có thay đổi nào để lưu.";
+                    StatusMessage = Loc.T("Config.NoChanges");
                     return true;
                 }
 
@@ -184,14 +185,23 @@ public sealed partial class ConfigFileViewModel : ObservableObject
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
-            ErrorMessage = "Không ghi được file: " + ex.Message;
+            ErrorMessage = Loc.T("Config.WriteFailed", ex.Message);
             return false;
         }
 
         Reload();
-        StatusMessage = $"Đã lưu lúc {DateTime.Now:HH:mm:ss}"
-                        + (Model.BackupOnSave ? " (đã tạo bản sao .cowork.bak)" : string.Empty);
+        StatusMessage = Loc.T("Config.SavedAt", DateTime.Now.ToString("HH:mm:ss"))
+                        + (Model.BackupOnSave ? Loc.T("Config.BackupSuffix") : string.Empty);
         return true;
+    }
+
+    /// <summary>Nạp lại nhãn định dạng và nhãn kiểu của từng dòng sau khi đổi ngôn ngữ.</summary>
+    public void RefreshLocalizedText()
+    {
+        foreach (var entry in Entries)
+            entry.RefreshLocalizedText();
+
+        OnPropertyChanged(nameof(FormatLabel));
     }
 
     [RelayCommand]

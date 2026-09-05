@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Cowork.Core.Localization;
 
 namespace Cowork.Core.Models;
 
@@ -184,41 +185,31 @@ public sealed class ScheduleRule
     public string Describe()
     {
         if (!Enabled)
-            return "Tắt lịch";
+            return Loc.T("Sched.Off");
 
         var days = DaysOfWeek.Count == 0
-            ? "mỗi ngày"
-            : string.Join(", ", DaysOfWeek.OrderBy(d => (int)d).Select(VietnameseDay));
+            ? Loc.T("Sched.EveryDay")
+            : string.Join(", ", DaysOfWeek.OrderBy(d => (int)d).Select(Loc.DayName));
 
         return Kind switch
         {
-            ScheduleKind.Manual => "Thủ công",
-            ScheduleKind.DailyAtTimes when Times.Count > 0 =>
-                $"{string.Join(", ", Times.OrderBy(t => t).Select(t => t.ToString(@"hh\:mm")))} · {days}",
-            ScheduleKind.DailyAtTimes => "Chưa đặt mốc giờ",
-            ScheduleKind.Interval => $"Mỗi {FormatInterval(Interval)} · {days}",
-            ScheduleKind.OnCoworkStartup => "Khi mở Cowork",
-            _ => "Không xác định",
+            ScheduleKind.Manual => Loc.T("Sched.Manual"),
+            ScheduleKind.DailyAtTimes when Times.Count > 0 => Loc.T("Sched.Daily",
+                string.Join(", ", Times.OrderBy(t => t).Select(t => t.ToString(@"hh\:mm"))), days),
+            ScheduleKind.DailyAtTimes => Loc.T("Sched.NoTimes"),
+            ScheduleKind.Interval => Loc.T("Sched.Interval", FormatInterval(Interval), days),
+            ScheduleKind.OnCoworkStartup => Loc.T("Sched.OnStartup"),
+            _ => Loc.T("Sched.Unknown"),
         };
     }
 
     private static string FormatInterval(TimeSpan value)
     {
         if (value.TotalMinutes < 60)
-            return $"{(int)value.TotalMinutes} phút";
-        return value.Minutes == 0
-            ? $"{(int)value.TotalHours} giờ"
-            : $"{(int)value.TotalHours}g{value.Minutes:00}";
-    }
+            return Loc.T("Sched.IntervalMinutes", (int)value.TotalMinutes);
 
-    private static string VietnameseDay(DayOfWeek day) => day switch
-    {
-        DayOfWeek.Monday => "T2",
-        DayOfWeek.Tuesday => "T3",
-        DayOfWeek.Wednesday => "T4",
-        DayOfWeek.Thursday => "T5",
-        DayOfWeek.Friday => "T6",
-        DayOfWeek.Saturday => "T7",
-        _ => "CN",
-    };
+        return value.Minutes == 0
+            ? Loc.T("Sched.IntervalHours", (int)value.TotalHours)
+            : Loc.T("Sched.IntervalHoursMinutes", (int)value.TotalHours, value.Minutes.ToString("00"));
+    }
 }

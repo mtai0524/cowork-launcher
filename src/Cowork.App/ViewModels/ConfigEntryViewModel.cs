@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Cowork.Core.Configuration;
+using Cowork.Core.Localization;
 
 namespace Cowork.App.ViewModels;
 
@@ -25,10 +26,10 @@ public sealed partial class ConfigEntryViewModel : ObservableObject
 
     public string KindLabel => Entry.Kind switch
     {
-        ConfigValueKind.Number => "số",
-        ConfigValueKind.Boolean => "bool",
-        ConfigValueKind.Null => "null",
-        _ => "chuỗi",
+        ConfigValueKind.Number => Loc.T("Kind.Number"),
+        ConfigValueKind.Boolean => Loc.T("Kind.Boolean"),
+        ConfigValueKind.Null => Loc.T("Kind.Null"),
+        _ => Loc.T("Kind.String"),
     };
 
     [ObservableProperty]
@@ -40,12 +41,14 @@ public sealed partial class ConfigEntryViewModel : ObservableObject
     public string? TypeWarning => Entry.Kind switch
     {
         ConfigValueKind.Number when !decimal.TryParse(Value, System.Globalization.NumberStyles.Any,
-            System.Globalization.CultureInfo.InvariantCulture, out _) => "Giá trị phải là số.",
-        ConfigValueKind.Boolean when !bool.TryParse(Value, out _) => "Giá trị phải là true hoặc false.",
+            System.Globalization.CultureInfo.InvariantCulture, out _) => Loc.T("Kind.WarnNumber"),
+        ConfigValueKind.Boolean when !bool.TryParse(Value, out _) => Loc.T("Kind.WarnBoolean"),
         _ => null,
     };
 
     public bool HasTypeWarning => TypeWarning is not null;
+
+    public void RefreshLocalizedText() => OnPropertyChanged(string.Empty);
 
     partial void OnValueChanged(string value)
     {

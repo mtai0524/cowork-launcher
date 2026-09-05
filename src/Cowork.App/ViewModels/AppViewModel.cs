@@ -8,6 +8,7 @@ using Cowork.Core.Configuration;
 using Cowork.Core.Models;
 using Cowork.Core.Services;
 using Cowork.Core.Validation;
+using Cowork.Core.Localization;
 
 namespace Cowork.App.ViewModels;
 
@@ -69,6 +70,12 @@ public sealed partial class AppViewModel : ObservableObject
         SelectedConfigFile = ConfigFiles.FirstOrDefault();
 
         OutputLines = new ObservableCollection<AppOutputLine>();
+
+        WindowStyleOptions = new[]
+        {
+            AppWindowStyle.Normal, AppWindowStyle.Minimized, AppWindowStyle.Hidden,
+        }.Select(style => new ChoiceViewModel<AppWindowStyle>(style, s => Loc.T("WindowStyle." + s))).ToList();
+        _selectedWindowStyle = WindowStyleOptions.First(o => o.Value == model.WindowStyle);
 
         _suspendSync = false;
     }
@@ -133,14 +140,22 @@ public sealed partial class AppViewModel : ObservableObject
     partial void OnTimeoutMinutesChanged(int value) => Sync(() => Model.TimeoutMinutes = Math.Max(0, value));
 
     /// <summary>Nguồn cho ComboBox chọn kiểu cửa sổ.</summary>
-    public static IReadOnlyList<AppWindowStyle> WindowStyleOptions { get; } = new[]
+    public IReadOnlyList<ChoiceViewModel<AppWindowStyle>> WindowStyleOptions { get; }
+
+    [ObservableProperty]
+    private ChoiceViewModel<AppWindowStyle>? _selectedWindowStyle;
+
+    partial void OnSelectedWindowStyleChanged(ChoiceViewModel<AppWindowStyle>? value)
     {
-        AppWindowStyle.Normal, AppWindowStyle.Minimized, AppWindowStyle.Hidden,
-    };
+        // ComboBox có lúc đẩy null trong quá trình dựng lại danh sách; bỏ qua để
+        // không ghi đè lựa chọn đang có bằng giá trị mặc định.
+        if (value is not null)
+            WindowStyle = value.Value;
+    }
 
-    public string DisplayTitle => string.IsNullOrWhiteSpace(Name) ? "(chưa đặt tên)" : Name;
+    public string DisplayTitle => string.IsNullOrWhiteSpace(Name) ? Loc.T("App.Untitled") : Name;
 
-    public string GroupLabel => string.IsNullOrWhiteSpace(Group) ? "Chưa phân nhóm" : Group;
+    public string GroupLabel => string.IsNullOrWhiteSpace(Group) ? Loc.T("App.Ungrouped") : Group;
 
     // ---------- Lịch chạy ----------
 
@@ -242,7 +257,7 @@ public sealed partial class AppViewModel : ObservableObject
 
     [RelayCommand]
     private void AddEnvironmentVariable()
-        => EnvironmentVariables.Add(new EnvironmentVariableViewModel("TEN_BIEN", string.Empty));
+        => EnvironmentVariables.Add(new EnvironmentVariableViewModel(Loc.T("Env.DefaultName"), string.Empty));
 
     [RelayCommand]
     private void RemoveEnvironmentVariable(EnvironmentVariableViewModel? item)
@@ -348,17 +363,17 @@ public sealed partial class AppViewModel : ObservableObject
         get
         {
             if (!IsEnabled)
-                return "Đã tắt";
+                return Loc.T("State.Disabled");
 
             return RuntimeState switch
             {
-                AppRuntimeState.Starting => "Đang khởi động…",
-                AppRuntimeState.Running => $"Đang chạy (PID {ProcessId})",
-                AppRuntimeState.Stopping => "Đang dừng…",
-                AppRuntimeState.Failed => "Lỗi",
+                AppRuntimeState.Starting => Loc.T("State.Starting"),
+                AppRuntimeState.Running => Loc.T("State.Running", ProcessId),
+                AppRuntimeState.Stopping => Loc.T("State.Stopping"),
+                AppRuntimeState.Failed => Loc.T("State.Failed"),
                 _ => Model.LastRunAt is { } last
-                    ? $"Chạy lần cuối {last:dd/MM HH:mm}"
-                    : "Chưa chạy lần nào",
+                    ? Loc.T("State.LastRunAt", last.ToString("dd/MM HH:mm"))
+                    : Loc.T("State.NeverRun"),
             };
         }
     }
@@ -371,16 +386,21 @@ public sealed partial class AppViewModel : ObservableObject
         {
             var next = ScheduleEvaluator.NextRun(Model, DateTimeOffset.Now);
             if (next is null)
-                return Model.Schedule.Kind == ScheduleKind.OnCoworkStartup ? "Khi mở Cowork" : "—";
+            {
+                return Model.Schedule.Kind == ScheduleKind.OnCoworkStartup
+                    ? Loc.T("Sched.OnStartup")
+                    : Loc.T("Common.Dash");
+            }
 
-            var today = next.Value.Date == DateTime.Today ? "hôm nay" : next.Value.ToString("dd/MM");
-            return $"{today} {next.Value:HH:mm}";
+            var day = next.Value.Date == DateTime.Today ? Loc.T("State.Today") : next.Value.ToString("dd/MM");
+            return $"{day} {next.Value:HH:mm}";
         }
     }
 
     public string LastRunText => Model.LastRunAt is { } last
-        ? $"{last:dd/MM/yyyy HH:mm:ss}" + (Model.LastExitCode is { } code ? $" · mã {code}" : string.Empty)
-        : "Chưa chạy";
+        ? $"{last:dd/MM/yyyy HH:mm:ss}"
+          + (Model.LastExitCode is { } code ? Loc.T("State.ExitCodeSuffix", code) : string.Empty)
+        : Loc.T("State.NeverRunShort");
 
     /// <summary>Cập nhật các ô phụ thuộc lịch sau khi người dùng đổi cấu hình.</summary>
     public void RefreshSchedule()
@@ -397,6 +417,24 @@ public sealed partial class AppViewModel : ObservableObject
     }
 
     public IReadOnlyList<ValidationIssue> Validate() => AppValidator.Validate(Model);
+
+    /// <summary>
+    /// Nạp lại mọi nhãn sau khi đổi ngôn ngữ. Bắn PropertyChanged với tên rỗng là
+    /// cách WPF hiểu "mọi thuộc tính đã đổi", rẻ hơn liệt kê tay và không sót chỗ nào.
+    /// </summary>
+    public void RefreshLocalizedText()
+    {
+        foreach (var day in Days)
+            day.RefreshLabel();
+
+        foreach (var option in WindowStyleOptions)
+            option.RefreshLabel();
+
+        foreach (var config in ConfigFiles)
+            config.RefreshLocalizedText();
+
+        OnPropertyChanged(string.Empty);
+    }
 
     /// <summary>Chặn ghi ngược vào model trong lúc khởi tạo view-model.</summary>
     private void Sync(Action action)

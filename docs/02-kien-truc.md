@@ -22,6 +22,7 @@
 │  Configuration/     JsonConfigEditor  IniConfigEditor    │
 │                     XmlConfigEditor   ConfigFileService  │
 │                     ConfigFileScanner ProgramScanner     │
+│  Localization/      Loc  StringsVi  StringsEn            │
 │  Models/            ManagedApp  ScheduleRule  …          │
 │  Validation/        AppValidator                         │
 └───────────────────────────┬──────────────────────────────┘
@@ -32,8 +33,8 @@
 ```
 
 `Cowork.Core` **không tham chiếu WPF**. Đó là ràng buộc cố ý: nếu sau này muốn làm bản CLI hoặc
-Windows Service, toàn bộ logic dùng lại được nguyên vẹn. Cũng nhờ vậy mà 118 test chạy trong 1 giây
-mà không cần dựng cửa sổ nào.
+Windows Service, toàn bộ logic dùng lại được nguyên vẹn. Cũng nhờ vậy mà toàn bộ test chạy trong
+vài giây mà không cần dựng cửa sổ nào.
 
 ## Composition root
 
@@ -258,6 +259,64 @@ Mọi sự kiện từ tầng dưới đều đi qua `Dispatcher` trước khi c
 
 `DailyScheduler.Tick` có cờ `_ticking`: một tick chạy lâu (do đang khởi chạy app) sẽ không bị tick
 sau chồng lên.
+
+## Đa ngôn ngữ
+
+Bảng chuỗi nằm ở `Cowork.Core/Localization` dưới dạng dictionary trong mã nguồn, không dùng `.resx`.
+Hai lý do: tầng Core không được kéo theo hạ tầng WPF, và tra cứu ngay lúc gọi cho phép đổi ngôn ngữ
+**không cần khởi động lại**.
+
+```
+Loc.Current = AppLanguage.English
+      │
+      ├─ Loc.LanguageChanged ──> MainViewModel.RefreshLocalizedText()
+      │                             ├─ LocalizedStrings.Instance.Refresh()   ← nhãn tĩnh trên XAML
+      │                             ├─ AppViewModel.RefreshLocalizedText()   ← nhãn do VM sinh ra
+      │                             └─ nạp lại History                       ← nhãn do converter sinh ra
+      └─ workspace.Settings.Language
+```
+
+Có ba nhóm chuỗi, mỗi nhóm cập nhật theo một đường khác nhau:
+
+| Nhóm | Ví dụ | Cách cập nhật |
+|---|---|---|
+| Nhãn tĩnh trên XAML | `{loc:Tr AppList.Title}` | binding tới `LocalizedStrings`, tự làm tươi |
+| Chuỗi view-model tính sẵn | `StatusText`, `ScheduleSummary` | view-model bắn `PropertyChanged` |
+| Nhãn do converter sinh | cột Kết quả trong bảng lịch sử | phải nạp lại `ItemsSource` |
+
+Ràng buộc khi thêm chuỗi mới:
+
+1. **Thêm khoá vào cả hai bảng.** `LocalizationTests` chặn lệch khoá, chuỗi rỗng, và lệch số chỗ
+   chèn `{0}` giữa hai ngôn ngữ (lệch chỗ chèn là `FormatException` lúc chạy).
+2. **Không so sánh chuỗi đã dịch** để quyết định logic. Chip mức tin cậy so theo enum
+   `ScanConfidence`, không so theo nhãn `"Cao"` — nếu không, đổi sang tiếng Anh là mất màu.
+3. **Danh sách trong ComboBox bọc qua `ChoiceViewModel<T>`.** Enum trần không có `PropertyChanged`
+   nên nhãn không vẽ lại được; mà thay cả `ItemsSource` để ép vẽ lại thì ComboBox xoá mất lựa chọn.
+
+## Đa chủ đề màu
+
+`Themes/Palettes/*.xaml` chỉ chứa màu; `Themes/Theme.xaml` chỉ chứa kiểu dáng điều khiển.
+`ThemeManager.Apply` tráo đúng phần tử **số 0** trong `MergedDictionaries` của `App`.
+
+```
+App.Resources.MergedDictionaries
+  [0] Palettes/<Theme>.xaml   ← ThemeManager tráo ô này
+  [1] Theme.xaml              ← tra màu bằng DynamicResource
+```
+
+Ràng buộc:
+
+1. **Mọi tham chiếu màu phải là `DynamicResource`.** `StaticResource` nạp một lần lúc dựng cây giao
+   diện, nên đổi chủ đề sẽ chỉ ăn một nửa. `ThemeContrastTests` đối chiếu mọi khoá `DynamicResource`
+   trong markup với các bảng màu — WPF nuốt im lặng khoá gõ sai, không có lỗi nào báo trước.
+2. **Không đặt mã màu thẳng trong XAML hay C#.** Màu theo trạng thái đi qua `DataTrigger` +
+   `DynamicResource` (xem `StatusDot`, `OutcomeText` trong `MainWindow.xaml`), không qua converter
+   trả về `Brush` — converter trả về một brush cố định, đổi chủ đề không cập nhật lại được.
+3. **Mọi bảng màu phải khai đủ bộ khoá.** Bảng mới thêm vào `AppTheme` phải có file cùng tên trong
+   `Themes/Palettes`, cùng danh sách khoá, và một `SolidColorBrush` cho mỗi `Color`.
+4. **Chữ phải đọc được trên nền.** `ThemeContrastTests` tính tỉ lệ tương phản WCAG 2.1 cho từng cặp
+   chữ/nền của cả bốn bảng màu. Chữ chính trên nền chính đặt ngưỡng 7:1, phần còn lại 4.5:1 — cao
+   hơn mức tối thiểu của chuẩn, vì đây là phần mềm nhìn cả ngày.
 
 ## Chống mất dữ liệu
 

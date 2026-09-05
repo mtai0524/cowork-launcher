@@ -1,4 +1,5 @@
 using System.Text;
+using Cowork.Core.Localization;
 
 namespace Cowork.Core.Configuration;
 
@@ -47,7 +48,7 @@ public sealed class ConfigFileService : IConfigFileService
                 FilePath = fullPath,
                 Format = format.Resolve(fullPath),
                 RawText = string.Empty,
-                ParseError = "Không tìm thấy file: " + fullPath,
+                ParseError = Loc.T("Cfg.FileNotFound", fullPath),
             };
         }
 

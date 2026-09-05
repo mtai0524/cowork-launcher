@@ -1,4 +1,22 @@
+using Cowork.Core.Localization;
+
 namespace Cowork.Core.Models;
+
+/// <summary>Bộ chủ đề màu có sẵn của Cowork.</summary>
+public enum AppTheme
+{
+    /// <summary>Nền xám xanh đậm — mặc định.</summary>
+    Dark = 0,
+
+    /// <summary>Nền sáng cho phòng nhiều ánh sáng.</summary>
+    Light = 1,
+
+    /// <summary>Nền gần như đen, hợp màn OLED và làm việc buổi tối.</summary>
+    Midnight = 2,
+
+    /// <summary>Đen tuyền, chữ trắng, viền rõ — dành cho mắt kém hoặc màn chói.</summary>
+    HighContrast = 3,
+}
 
 /// <summary>Toàn bộ dữ liệu người dùng của Cowork, tuần tự hoá thành workspace.json.</summary>
 public sealed class CoworkWorkspace
@@ -27,4 +45,10 @@ public sealed class WorkspaceSettings
 
     /// <summary>Số ngày giữ lịch sử chạy.</summary>
     public int HistoryRetentionDays { get; set; } = 30;
+
+    /// <summary>Chủ đề màu đang dùng.</summary>
+    public AppTheme Theme { get; set; } = AppTheme.Dark;
+
+    /// <summary>Ngôn ngữ giao diện đang dùng.</summary>
+    public AppLanguage Language { get; set; } = AppLanguage.Vietnamese;
 }

@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Cowork.Core.Localization;
 
 namespace Cowork.App.ViewModels;
 
@@ -31,16 +32,9 @@ public sealed partial class DayToggleViewModel : ObservableObject
 
     public DayOfWeek Day { get; }
 
-    public string Label => Day switch
-    {
-        DayOfWeek.Monday => "T2",
-        DayOfWeek.Tuesday => "T3",
-        DayOfWeek.Wednesday => "T4",
-        DayOfWeek.Thursday => "T5",
-        DayOfWeek.Friday => "T6",
-        DayOfWeek.Saturday => "T7",
-        _ => "CN",
-    };
+    public string Label => Loc.DayName(Day);
+
+    public void RefreshLabel() => OnPropertyChanged(nameof(Label));
 
     [ObservableProperty]
     private bool _isSelected;

@@ -1,4 +1,5 @@
 using Cowork.Core.Models;
+using Cowork.Core.Localization;
 
 namespace Cowork.Core.Validation;
 
@@ -16,11 +17,11 @@ public static class AppValidator
         var issues = new List<ValidationIssue>();
 
         if (string.IsNullOrWhiteSpace(app.Name))
-            issues.Add(new ValidationIssue(nameof(app.Name), "Tên app không được để trống.", true));
+            issues.Add(new ValidationIssue(nameof(app.Name), Loc.T("Val.NameRequired"), true));
 
         if (string.IsNullOrWhiteSpace(app.ExecutablePath))
         {
-            issues.Add(new ValidationIssue(nameof(app.ExecutablePath), "Chưa chọn chương trình để chạy.", true));
+            issues.Add(new ValidationIssue(nameof(app.ExecutablePath), Loc.T("Val.ExecutableRequired"), true));
         }
         else
         {
@@ -28,7 +29,7 @@ public static class AppValidator
             if (Path.IsPathRooted(exe) && !File.Exists(exe))
             {
                 issues.Add(new ValidationIssue(nameof(app.ExecutablePath),
-                    "Không tìm thấy file tại đường dẫn này.", false));
+                    Loc.T("Val.ExecutableNotFound"), false));
             }
         }
 
@@ -36,16 +37,16 @@ public static class AppValidator
         {
             var dir = Environment.ExpandEnvironmentVariables(app.WorkingDirectory);
             if (!Directory.Exists(dir))
-                issues.Add(new ValidationIssue(nameof(app.WorkingDirectory), "Thư mục làm việc không tồn tại.", false));
+                issues.Add(new ValidationIssue(nameof(app.WorkingDirectory), Loc.T("Val.WorkingDirMissing"), false));
         }
 
         if (app.TimeoutMinutes < 0)
-            issues.Add(new ValidationIssue(nameof(app.TimeoutMinutes), "Thời gian tối đa không được âm.", true));
+            issues.Add(new ValidationIssue(nameof(app.TimeoutMinutes), Loc.T("Val.TimeoutNegative"), true));
 
         if (app.RunAsAdministrator && app.CaptureOutput)
         {
             issues.Add(new ValidationIssue(nameof(app.CaptureOutput),
-                "Chạy quyền admin thì không thu được output; mục Nhật ký sẽ trống.", false));
+                Loc.T("Val.AdminNoOutput"), false));
         }
 
         ValidateSchedule(app.Schedule, issues);
@@ -63,18 +64,18 @@ public static class AppValidator
         {
             case ScheduleKind.DailyAtTimes when schedule.Times.Count == 0:
                 issues.Add(new ValidationIssue(nameof(schedule.Times),
-                    "Lịch theo giờ cần ít nhất một mốc giờ.", true));
+                    Loc.T("Val.TimesRequired"), true));
                 break;
 
             case ScheduleKind.Interval when schedule.Interval < TimeSpan.FromMinutes(1):
                 issues.Add(new ValidationIssue(nameof(schedule.Interval),
-                    "Chu kỳ lặp tối thiểu là 1 phút.", true));
+                    Loc.T("Val.IntervalTooShort"), true));
                 break;
 
             case ScheduleKind.Interval
                 when schedule.WindowStart is { } start && schedule.WindowEnd is { } end && start >= end:
                 issues.Add(new ValidationIssue(nameof(schedule.WindowStart),
-                    "Giờ bắt đầu phải sớm hơn giờ kết thúc.", true));
+                    Loc.T("Val.WindowOrder"), true));
                 break;
         }
     }
@@ -87,7 +88,7 @@ public static class AppValidator
         {
             if (string.IsNullOrWhiteSpace(config.Path))
             {
-                issues.Add(new ValidationIssue(nameof(config.Path), "Có file cấu hình chưa nhập đường dẫn.", true));
+                issues.Add(new ValidationIssue(nameof(config.Path), Loc.T("Val.ConfigPathMissing"), true));
                 continue;
             }
 
@@ -95,7 +96,7 @@ public static class AppValidator
             if (!File.Exists(full))
             {
                 issues.Add(new ValidationIssue(nameof(config.Path),
-                    $"Không tìm thấy file cấu hình: {config.ResolveDisplayName()}", false));
+                    Loc.T("Val.ConfigFileNotFound", config.ResolveDisplayName()), false));
             }
         }
     }

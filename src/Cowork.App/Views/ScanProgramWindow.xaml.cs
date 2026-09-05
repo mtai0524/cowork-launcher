@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using Cowork.App.ViewModels;
+using Cowork.Core.Localization;
 
 namespace Cowork.App.Views;
 
@@ -21,7 +22,7 @@ public partial class ScanProgramWindow : Window
     {
         var dialog = new Microsoft.Win32.OpenFolderDialog
         {
-            Title = "Chọn thư mục cần quét",
+            Title = Loc.T("Dialog.PickScanFolder"),
             InitialDirectory = Directory.Exists(ViewModel.RootDirectory) ? ViewModel.RootDirectory : null,
         };
 

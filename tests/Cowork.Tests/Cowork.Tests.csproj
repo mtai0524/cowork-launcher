@@ -24,4 +24,17 @@
     <ProjectReference Include="..\..\src\Cowork.Core\Cowork.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Bảng màu nằm ở dự án WPF, nhưng kiểm tra tương phản chỉ cần đọc XML thuần.
+         Nhúng thẳng file vào assembly test để khỏi phải mò đường dẫn tương đối lúc chạy. -->
+    <EmbeddedResource Include="..\..\src\Cowork.App\Themes\Palettes\*.xaml"
+                      LogicalName="Cowork.Tests.Palettes.%(Filename).xaml" />
+
+    <!-- Cả phần đánh dấu nữa, để dò ra khoá DynamicResource gõ sai: WPF nuốt im
+         lặng khoá không tồn tại, hậu quả là một mảng giao diện mất màu. -->
+    <EmbeddedResource Include="..\..\src\Cowork.App\**\*.xaml"
+                      Exclude="..\..\src\Cowork.App\bin\**;..\..\src\Cowork.App\obj\**;..\..\src\Cowork.App\Themes\Palettes\*.xaml"
+                      LogicalName="Cowork.Tests.Markup.%(Filename).xaml" />
+  </ItemGroup>
+
 </Project>

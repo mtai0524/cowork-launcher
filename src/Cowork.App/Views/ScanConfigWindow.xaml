@@ -1,11 +1,31 @@
 <Window x:Class="Cowork.App.Views.ScanConfigWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Quét thư mục tìm file cấu hình"
+        xmlns:loc="clr-namespace:Cowork.App.Localization"
+        Title="{loc:Tr Scan.ConfigTitle}"
         Height="640" Width="960" MinHeight="480" MinWidth="720"
         WindowStartupLocation="CenterOwner"
-        Background="{StaticResource BackgroundBrush}"
+        Background="{DynamicResource WindowBackgroundBrush}"
         FontFamily="Segoe UI" FontSize="13">
+
+    <Window.Resources>
+        <!-- Chip mức tin cậy: so theo enum chứ không theo nhãn đã dịch,
+             nếu không thì đổi ngôn ngữ là mất màu. -->
+        <Style x:Key="ConfidenceChip" TargetType="Border">
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="7,2" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Background" Value="{DynamicResource ChipLowBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Confidence}" Value="High">
+                    <Setter Property="Background" Value="{DynamicResource ChipHighBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Confidence}" Value="Medium">
+                    <Setter Property="Background" Value="{DynamicResource ChipMediumBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
 
     <Grid Margin="16">
         <Grid.RowDefinitions>
@@ -18,7 +38,7 @@
         <!-- === Thư mục và tuỳ chọn quét === -->
         <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,12">
             <StackPanel>
-                <TextBlock Text="Thư mục cần quét" Style="{StaticResource LabelText}" />
+                <TextBlock Text="{loc:Tr Scan.FolderLabel}" Style="{StaticResource LabelText}" />
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -26,17 +46,17 @@
                     </Grid.ColumnDefinitions>
                     <TextBox Grid.Column="0" Text="{Binding RootDirectory, UpdateSourceTrigger=PropertyChanged}" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,0,0">
-                        <Button Content="Đổi thư mục…" Click="OnBrowseClick" />
-                        <Button Content="Quét" Style="{StaticResource PrimaryButton}" Margin="0"
+                        <Button Content="{loc:Tr Common.BrowseFolder}" Click="OnBrowseClick" />
+                        <Button Content="{loc:Tr Common.Scan}" Style="{StaticResource PrimaryButton}" Margin="0"
                                 Command="{Binding ScanCommand}" MinWidth="80" />
                     </StackPanel>
                 </Grid>
 
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                    <CheckBox Content="Hiện cả kết quả tin cậy Thấp"
+                    <CheckBox Content="{loc:Tr Scan.IncludeLow}"
                               IsChecked="{Binding IncludeLowConfidence}" Margin="0,0,20,0"
-                              ToolTip="Các file chỉ khớp phần mở rộng, nằm sâu trong cây thư mục" />
-                    <TextBlock Text="Độ sâu tối đa:" Foreground="{StaticResource MutedBrush}"
+                              ToolTip="{loc:Tr Scan.IncludeLowConfigTip}" />
+                    <TextBlock Text="{loc:Tr Scan.MaxDepth}" Foreground="{DynamicResource MutedBrush}"
                                Margin="0,0,8,0" />
                     <TextBox Text="{Binding MaxDepth, UpdateSourceTrigger=LostFocus}" Width="56" />
                 </StackPanel>
@@ -45,11 +65,10 @@
 
         <!-- === Thông báo === -->
         <StackPanel Grid.Row="1" Margin="0,0,0,10">
-            <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource MutedBrush}" />
-            <Border Background="#3A1D22" BorderBrush="{StaticResource DangerBrush}" BorderThickness="1"
-                    CornerRadius="6" Padding="10" Margin="0,8,0,0"
+            <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource MutedBrush}" />
+            <Border Style="{StaticResource ErrorCard}" Margin="0,8,0,0"
                     Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
-                <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="#FFB4B7" />
+                <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource ErrorText}" />
             </Border>
         </StackPanel>
 
@@ -67,49 +86,36 @@
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
-                    <DataGridTemplateColumn Header="Đường dẫn" Width="3*" SortMemberPath="RelativePath">
+                    <DataGridTemplateColumn Header="{loc:Tr Scan.ColPath}" Width="3*" SortMemberPath="RelativePath">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Margin="0,3">
                                     <TextBlock Text="{Binding FileName}" FontWeight="SemiBold"
                                                TextTrimming="CharacterEllipsis" />
                                     <TextBlock Text="{Binding FolderLabel}" FontSize="11"
-                                               Foreground="{StaticResource MutedBrush}"
+                                               Foreground="{DynamicResource MutedBrush}"
                                                TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
-                    <DataGridTemplateColumn Header="Tin cậy" Width="80"
+                    <DataGridTemplateColumn Header="{loc:Tr Scan.ColConfidence}" Width="90"
                                             SortMemberPath="Confidence">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Border CornerRadius="4" Padding="7,2" HorizontalAlignment="Left">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="Background" Value="#2B3542" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding ConfidenceLabel}" Value="Cao">
-                                                    <Setter Property="Background" Value="#1E3A2C" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding ConfidenceLabel}" Value="Vừa">
-                                                    <Setter Property="Background" Value="#3A3320" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
+                                <Border Style="{StaticResource ConfidenceChip}">
                                     <TextBlock Text="{Binding ConfidenceLabel}" FontSize="11" FontWeight="SemiBold" />
                                 </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
-                    <DataGridTextColumn Header="Định dạng" Width="90" IsReadOnly="True"
+                    <DataGridTextColumn Header="{loc:Tr Scan.ColFormat}" Width="100" IsReadOnly="True"
                                         Binding="{Binding FormatLabel}" />
-                    <DataGridTextColumn Header="Cỡ" Width="70" IsReadOnly="True"
+                    <DataGridTextColumn Header="{loc:Tr Scan.ColSize}" Width="70" IsReadOnly="True"
                                         Binding="{Binding SizeLabel}" />
-                    <DataGridTextColumn Header="Vì sao" Width="2*" IsReadOnly="True"
+                    <DataGridTextColumn Header="{loc:Tr Scan.ColReason}" Width="2*" IsReadOnly="True"
                                         Binding="{Binding Reason}" />
                 </DataGrid.Columns>
 
@@ -118,7 +124,7 @@
                         <Setter Property="ToolTip" Value="{Binding FullPath}" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding HasSyntaxProblem}" Value="True">
-                                <Setter Property="Background" Value="#3A2A1D" />
+                                <Setter Property="Background" Value="{DynamicResource RowWarningBrush}" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -129,21 +135,21 @@
         <!-- === Nút hành động === -->
         <DockPanel Grid.Row="3" Margin="0,12,0,0">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                <Button Content="Huỷ" Click="OnCancelClick" MinWidth="90" />
-                <Button Style="{StaticResource PrimaryButton}" Click="OnAddClick" Margin="0" MinWidth="150"
+                <Button Content="{loc:Tr Common.Cancel}" Click="OnCancelClick" MinWidth="90" />
+                <Button Style="{StaticResource PrimaryButton}" Click="OnAddClick" Margin="0" MinWidth="170"
                         IsEnabled="{Binding HasResults}">
                     <TextBlock>
-                        <Run Text="Thêm" />
+                        <Run Text="{loc:Tr Scan.AddPrefix}" />
                         <Run Text="{Binding SelectedCount, Mode=OneWay}" />
-                        <Run Text="file đã chọn" />
+                        <Run Text="{loc:Tr Scan.AddSuffix}" />
                     </TextBlock>
                 </Button>
             </StackPanel>
 
             <StackPanel Orientation="Horizontal">
-                <Button Content="Chọn mức Cao" Command="{Binding SelectHighConfidenceCommand}" />
-                <Button Content="Chọn tất cả" Command="{Binding SelectAllCommand}" />
-                <Button Content="Bỏ chọn hết" Command="{Binding ClearSelectionCommand}" />
+                <Button Content="{loc:Tr Scan.SelectHigh}" Command="{Binding SelectHighConfidenceCommand}" />
+                <Button Content="{loc:Tr Scan.SelectAll}" Command="{Binding SelectAllCommand}" />
+                <Button Content="{loc:Tr Scan.ClearSelection}" Command="{Binding ClearSelectionCommand}" />
             </StackPanel>
         </DockPanel>
     </Grid>

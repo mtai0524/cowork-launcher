@@ -1,3 +1,4 @@
+using Cowork.Core.Localization;
 namespace Cowork.Core.Configuration;
 
 /// <summary>
@@ -415,7 +416,7 @@ public sealed class ConfigFileScanner : IConfigFileScanner
         var stem = Path.GetFileNameWithoutExtension(fileName);
 
         if (ProjectManifestNames.Contains(fileName))
-            return (ScanConfidence.Low, "Manifest dự án, thường không phải cấu hình lúc chạy");
+            return (ScanConfidence.Low, Loc.T("Reason.ProjectManifest"));
 
         // File mẫu (.env.example) chỉ để tham khảo — không nên tick sẵn cho người dùng.
         var isTemplate = TemplateMarkers.Any(marker =>
@@ -425,38 +426,38 @@ public sealed class ConfigFileScanner : IConfigFileScanner
         if (isDotEnv)
         {
             return isTemplate
-                ? (ScanConfidence.Medium, "File .env mẫu, không phải cấu hình đang dùng")
-                : (ScanConfidence.High, "File biến môi trường .env");
+                ? (ScanConfidence.Medium, Loc.T("Reason.DotEnvTemplate"))
+                : (ScanConfidence.High, Loc.T("Reason.DotEnv"));
         }
 
         if (isTemplate)
-            return (ScanConfidence.Medium, "File mẫu, không phải cấu hình đang dùng");
+            return (ScanConfidence.Medium, Loc.T("Reason.Template"));
 
         // File không đuôi tên "config"/"settings" — tên đã là bằng chứng đủ mạnh.
         if (isNamedConfig)
         {
             return ExtensionlessConfigNames.Contains(fileName)
-                ? (ScanConfidence.High, $"File cấu hình không đuôi, tên \"{fileName}\"")
-                : (ScanConfidence.High, "Tên file không đuôi chứa \"config\"/\"setting\"");
+                ? (ScanConfidence.High, Loc.T("Reason.ExtensionlessNamed", fileName))
+                : (ScanConfidence.High, Loc.T("Reason.ExtensionlessContains"));
         }
 
         if (isRcFile)
-            return (ScanConfidence.High, $"File cấu hình kiểu rc ({fileName})");
+            return (ScanConfidence.High, Loc.T("Reason.RcFile", fileName));
 
         if (fileName.Equals("web.config", StringComparison.OrdinalIgnoreCase)
             || fileName.Equals("app.config", StringComparison.OrdinalIgnoreCase)
             || fileName.EndsWith(".exe.config", StringComparison.OrdinalIgnoreCase))
         {
-            return (ScanConfidence.High, "Cấu hình chuẩn của ứng dụng .NET");
+            return (ScanConfidence.High, Loc.T("Reason.DotNetConfig"));
         }
 
         if (stem.StartsWith("appsettings", StringComparison.OrdinalIgnoreCase))
-            return (ScanConfidence.High, "Cấu hình chuẩn của ASP.NET Core");
+            return (ScanConfidence.High, Loc.T("Reason.AspNetCoreConfig"));
 
         if (stem.StartsWith("application", StringComparison.OrdinalIgnoreCase)
             && extension is ".properties" or ".yml" or ".yaml")
         {
-            return (ScanConfidence.High, "Cấu hình chuẩn của Spring");
+            return (ScanConfidence.High, Loc.T("Reason.SpringConfig"));
         }
 
         // Tên file tự nói lên nó là cấu hình.
@@ -464,25 +465,25 @@ public sealed class ConfigFileScanner : IConfigFileScanner
             || stem.Contains("setting", StringComparison.OrdinalIgnoreCase)
             || stem.Contains("cauhinh", StringComparison.OrdinalIgnoreCase))
         {
-            return (ScanConfidence.High, "Tên file chứa \"config\"/\"setting\"");
+            return (ScanConfidence.High, Loc.T("Reason.NameContainsConfig"));
         }
 
         if (extension.Equals(".config", StringComparison.OrdinalIgnoreCase))
-            return (ScanConfidence.High, "Phần mở rộng .config");
+            return (ScanConfidence.High, Loc.T("Reason.ConfigExtension"));
 
         if (StrongExtensions.Contains(extension))
-            return (ScanConfidence.Medium, $"Phần mở rộng {extension} hầu như luôn là cấu hình");
+            return (ScanConfidence.Medium, Loc.T("Reason.StrongExtension", extension));
 
         // Nằm trong thư mục tên "config", "settings"…
         var parent = Path.GetFileName(Path.GetDirectoryName(fullPath) ?? string.Empty);
         if (ConfigDirectoryNames.Contains(parent))
-            return (ScanConfidence.Medium, $"Nằm trong thư mục \"{parent}\"");
+            return (ScanConfidence.Medium, Loc.T("Reason.InConfigDirectory", parent));
 
         // Nằm ngay thư mục gốc của app thì khả năng cao hơn nằm sâu bên trong.
         var isAtRoot = string.Equals(Path.GetDirectoryName(fullPath), root, StringComparison.OrdinalIgnoreCase);
         return isAtRoot
-            ? (ScanConfidence.Medium, "Nằm ngay thư mục gốc của app")
-            : (ScanConfidence.Low, $"Chỉ khớp phần mở rộng {extension}");
+            ? (ScanConfidence.Medium, Loc.T("Reason.AtAppRoot"))
+            : (ScanConfidence.Low, Loc.T("Reason.ExtensionOnly", extension));
     }
 
     private bool TryParse(string fullPath, ConfigFormat format, out string? note)
@@ -499,12 +500,12 @@ public sealed class ConfigFileScanner : IConfigFileScanner
             if (document.ParseError is null)
                 return true;
 
-            note = "Sai cú pháp, cần kiểm tra lại";
+            note = Loc.T("Reason.SyntaxProblem");
             return false;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            note = "Không đọc được file";
+            note = Loc.T("Reason.Unreadable");
             return false;
         }
     }

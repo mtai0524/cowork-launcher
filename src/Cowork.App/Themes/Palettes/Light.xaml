@@ -1,0 +1,98 @@
+<!--
+    Chủ đề Sáng — nền trắng, hợp phòng nhiều ánh sáng.
+
+    Mọi bảng màu phải khai báo đủ bộ khoá này: Theme.xaml tra cứu bằng DynamicResource
+    nên thiếu một khoá là mất màu ở đúng chỗ đó, không có lỗi build nào báo trước.
+    Tương phản chữ/nền được kiểm bằng ThemeContrastTests.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ===== Nền và bề mặt ===== -->
+    <Color x:Key="WindowBackgroundColor">#F1F4F9</Color>
+    <Color x:Key="SurfaceColor">#FFFFFF</Color>
+    <Color x:Key="SurfaceAltColor">#E9EEF6</Color>
+    <Color x:Key="SurfaceHoverColor">#DDE5F0</Color>
+    <Color x:Key="SurfacePressedColor">#C9D5E6</Color>
+    <Color x:Key="SelectionColor">#D3E3FB</Color>
+    <Color x:Key="AlternatingRowColor">#F4F7FB</Color>
+    <Color x:Key="CodeBackgroundColor">#F7F9FC</Color>
+
+    <!-- ===== Đường kẻ ===== -->
+    <Color x:Key="BorderColor">#B9C5D6</Color>
+    <Color x:Key="DividerColor">#DFE6EF</Color>
+
+    <!-- ===== Chữ ===== -->
+    <Color x:Key="TextColor">#12181F</Color>
+    <Color x:Key="MutedColor">#4C5A70</Color>
+    <Color x:Key="SubtleColor">#5B6A80</Color>
+
+    <!-- ===== Nhấn ===== -->
+    <Color x:Key="AccentColor">#1256C4</Color>
+    <Color x:Key="AccentFillColor">#1256C4</Color>
+    <Color x:Key="AccentFillHoverColor">#1A65DC</Color>
+    <Color x:Key="AccentFillPressedColor">#0E48A5</Color>
+    <Color x:Key="OnAccentColor">#FFFFFF</Color>
+
+    <!-- ===== Ngữ nghĩa ===== -->
+    <Color x:Key="SuccessColor">#0C7A4D</Color>
+    <Color x:Key="WarningColor">#8A5A00</Color>
+    <Color x:Key="DangerColor">#C0272D</Color>
+    <Color x:Key="SuccessSurfaceColor">#E4F5EC</Color>
+    <Color x:Key="WarningSurfaceColor">#FCF3DD</Color>
+    <Color x:Key="DangerSurfaceColor">#FDECEC</Color>
+    <Color x:Key="StateIdleColor">#5B6A80</Color>
+
+    <!-- ===== Thanh cuộn ===== -->
+    <Color x:Key="ScrollBarTrackColor">#EDF1F7</Color>
+    <Color x:Key="ScrollBarThumbColor">#B9C5D6</Color>
+    <Color x:Key="ScrollBarThumbHoverColor">#98A7BC</Color>
+
+    <!-- ===== Chổi màu ===== -->
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="{StaticResource WindowBackgroundColor}" />
+    <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
+    <SolidColorBrush x:Key="SurfaceAltBrush" Color="{StaticResource SurfaceAltColor}" />
+    <SolidColorBrush x:Key="SurfaceHoverBrush" Color="{StaticResource SurfaceHoverColor}" />
+    <SolidColorBrush x:Key="SurfacePressedBrush" Color="{StaticResource SurfacePressedColor}" />
+    <SolidColorBrush x:Key="SelectionBrush" Color="{StaticResource SelectionColor}" />
+    <SolidColorBrush x:Key="AlternatingRowBrush" Color="{StaticResource AlternatingRowColor}" />
+    <SolidColorBrush x:Key="CodeBackgroundBrush" Color="{StaticResource CodeBackgroundColor}" />
+
+    <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" />
+    <SolidColorBrush x:Key="DividerBrush" Color="{StaticResource DividerColor}" />
+
+    <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}" />
+    <SolidColorBrush x:Key="MutedBrush" Color="{StaticResource MutedColor}" />
+    <SolidColorBrush x:Key="SubtleBrush" Color="{StaticResource SubtleColor}" />
+
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
+    <SolidColorBrush x:Key="AccentFillBrush" Color="{StaticResource AccentFillColor}" />
+    <SolidColorBrush x:Key="AccentFillHoverBrush" Color="{StaticResource AccentFillHoverColor}" />
+    <SolidColorBrush x:Key="AccentFillPressedBrush" Color="{StaticResource AccentFillPressedColor}" />
+    <SolidColorBrush x:Key="OnAccentBrush" Color="{StaticResource OnAccentColor}" />
+
+    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />
+    <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}" />
+    <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
+    <SolidColorBrush x:Key="SuccessSurfaceBrush" Color="{StaticResource SuccessSurfaceColor}" />
+    <SolidColorBrush x:Key="WarningSurfaceBrush" Color="{StaticResource WarningSurfaceColor}" />
+    <SolidColorBrush x:Key="DangerSurfaceBrush" Color="{StaticResource DangerSurfaceColor}" />
+
+    <!-- Bí danh ngữ nghĩa: view chỉ nói "đang chạy", không nói "màu xanh lá". -->
+    <SolidColorBrush x:Key="StateIdleBrush" Color="{StaticResource StateIdleColor}" />
+    <SolidColorBrush x:Key="StateRunningBrush" Color="{StaticResource SuccessColor}" />
+    <SolidColorBrush x:Key="StateStartingBrush" Color="{StaticResource WarningColor}" />
+    <SolidColorBrush x:Key="StateFailedBrush" Color="{StaticResource DangerColor}" />
+    <SolidColorBrush x:Key="OutputTextBrush" Color="{StaticResource TextColor}" />
+    <SolidColorBrush x:Key="OutputErrorBrush" Color="{StaticResource DangerColor}" />
+    <SolidColorBrush x:Key="RowDirtyBrush" Color="{StaticResource SuccessSurfaceColor}" />
+    <SolidColorBrush x:Key="RowWarningBrush" Color="{StaticResource WarningSurfaceColor}" />
+    <SolidColorBrush x:Key="ChipHighBrush" Color="{StaticResource SuccessSurfaceColor}" />
+    <SolidColorBrush x:Key="ChipMediumBrush" Color="{StaticResource WarningSurfaceColor}" />
+    <SolidColorBrush x:Key="ChipLowBrush" Color="{StaticResource SurfaceHoverColor}" />
+
+    <SolidColorBrush x:Key="ScrollBarTrackBrush" Color="{StaticResource ScrollBarTrackColor}" />
+    <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="{StaticResource ScrollBarThumbColor}" />
+    <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="{StaticResource ScrollBarThumbHoverColor}" />
+
+</ResourceDictionary>

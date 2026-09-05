@@ -1,3 +1,5 @@
+using Cowork.Core.Localization;
+
 namespace Cowork.Core.Configuration;
 
 public enum ConfigFormat
@@ -30,10 +32,10 @@ public static class ConfigFormatExtensions
 
     public static string ToLabel(this ConfigFormat format) => format switch
     {
-        ConfigFormat.Auto => "Tự nhận",
-        ConfigFormat.Json => "JSON",
-        ConfigFormat.Ini => "INI / .env",
-        ConfigFormat.Xml => "XML",
-        _ => "Văn bản",
+        ConfigFormat.Json => Loc.T("Format.Json"),
+        ConfigFormat.Ini => Loc.T("Format.Ini"),
+        ConfigFormat.Xml => Loc.T("Format.Xml"),
+        ConfigFormat.PlainText => Loc.T("Format.PlainText"),
+        _ => Loc.T("Format.Auto"),
     };
 }

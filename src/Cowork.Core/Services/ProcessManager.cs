@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
 using Cowork.Core.Models;
+using Cowork.Core.Localization;
 
 namespace Cowork.Core.Services;
 
@@ -43,13 +44,13 @@ public sealed class ProcessManager : IProcessManager, IDisposable
         ArgumentNullException.ThrowIfNull(app);
 
         if (!app.Enabled)
-            return StartResult.Fail("App đang bị tắt.");
+            return StartResult.Fail(Loc.T("Proc.Disabled"));
 
         if (string.IsNullOrWhiteSpace(app.ExecutablePath))
-            return StartResult.Fail("Chưa khai báo đường dẫn chương trình.");
+            return StartResult.Fail(Loc.T("Proc.NoExecutable"));
 
         if (app.SingleInstance && IsRunning(app.Id))
-            return StartResult.Fail("App đang chạy, bỏ qua lần khởi chạy này.");
+            return StartResult.Fail(Loc.T("Proc.AlreadyRunning"));
 
         // Instance cũ đã thoát nhưng chưa được dọn — dọn trước khi chạy mới.
         if (_running.TryGetValue(app.Id, out var stale) && stale.Process.HasExited)
@@ -157,10 +158,10 @@ public sealed class ProcessManager : IProcessManager, IDisposable
 
     private static string DescribeStartFailure(Exception ex, string exePath) => ex switch
     {
-        Win32Exception { NativeErrorCode: 2 } => $"Không tìm thấy file: {exePath}",
-        Win32Exception { NativeErrorCode: 5 } => "Bị từ chối quyền truy cập. Thử bật 'Chạy quyền admin'.",
-        Win32Exception { NativeErrorCode: 1223 } => "Người dùng đã huỷ hộp thoại nâng quyền (UAC).",
-        Win32Exception w32 => $"Lỗi Windows {w32.NativeErrorCode}: {w32.Message}",
+        Win32Exception { NativeErrorCode: 2 } => Loc.T("Proc.FileNotFound", exePath),
+        Win32Exception { NativeErrorCode: 5 } => Loc.T("Proc.AccessDenied"),
+        Win32Exception { NativeErrorCode: 1223 } => Loc.T("Proc.UacCancelled"),
+        Win32Exception w32 => Loc.T("Proc.WindowsError", w32.NativeErrorCode, w32.Message),
         _ => ex.Message,
     };
 

@@ -4,6 +4,7 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Cowork.Core.Configuration;
+using Cowork.Core.Localization;
 
 namespace Cowork.App.ViewModels;
 
@@ -36,16 +37,11 @@ public sealed partial class ScanCandidateViewModel : ObservableObject
         get
         {
             var folder = Path.GetDirectoryName(RelativePath);
-            return string.IsNullOrEmpty(folder) ? "(thư mục gốc)" : folder;
+            return string.IsNullOrEmpty(folder) ? Loc.T("Scan.RootFolder") : folder;
         }
     }
 
-    public string ConfidenceLabel => Candidate.Confidence switch
-    {
-        ScanConfidence.High => "Cao",
-        ScanConfidence.Medium => "Vừa",
-        _ => "Thấp",
-    };
+    public string ConfidenceLabel => Loc.T("Confidence." + Candidate.Confidence);
 
     public string SizeLabel => Candidate.SizeBytes < 1024
         ? $"{Candidate.SizeBytes} B"
@@ -94,7 +90,7 @@ public sealed partial class ScanConfigViewModel : ObservableObject
     private bool _isScanning;
 
     [ObservableProperty]
-    private string _statusMessage = "Bấm “Quét” để bắt đầu.";
+    private string _statusMessage = Loc.T("Scan.PressToStart");
 
     [ObservableProperty]
     private string? _errorMessage;
@@ -117,7 +113,7 @@ public sealed partial class ScanConfigViewModel : ObservableObject
 
         IsScanning = true;
         ErrorMessage = null;
-        StatusMessage = "Đang quét…";
+        StatusMessage = Loc.T("Scan.Scanning");
 
         var root = RootDirectory;
         var options = new ConfigScanOptions
@@ -153,7 +149,7 @@ public sealed partial class ScanConfigViewModel : ObservableObject
                                        or UnauthorizedAccessException or IOException)
         {
             ErrorMessage = ex.Message;
-            StatusMessage = "Quét thất bại.";
+            StatusMessage = Loc.T("Scan.Failed");
         }
         finally
         {
@@ -166,15 +162,12 @@ public sealed partial class ScanConfigViewModel : ObservableObject
     private string BuildSummary(ConfigScanResult result)
     {
         if (result.Candidates.Count == 0)
-            return $"Đã xem {result.FilesInspected} file, không thấy file cấu hình nào.";
+            return Loc.T("Scan.ConfigNone", result.FilesInspected);
 
         var high = result.Candidates.Count(c => c.Confidence == ScanConfidence.High);
-        var summary = $"Tìm thấy {result.Candidates.Count} file "
-                      + $"({high} ở mức tin cậy Cao) trong {result.FilesInspected} file đã xem.";
+        var summary = Loc.T("Scan.ConfigFound", result.Candidates.Count, high, result.FilesInspected);
 
-        return result.Truncated
-            ? summary + " Đã đạt trần kết quả — thu hẹp thư mục để quét kỹ hơn."
-            : summary;
+        return result.Truncated ? summary + Loc.T("Scan.Truncated") : summary;
     }
 
     private void OnCandidateChanged(object? sender, PropertyChangedEventArgs e)

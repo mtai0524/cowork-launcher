@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Cowork.Core.Localization;
 
 namespace Cowork.Core.Configuration;
 
@@ -39,7 +40,7 @@ public sealed class JsonConfigEditor : IConfigEditor
                 FilePath = filePath,
                 Format = ConfigFormat.Json,
                 RawText = text,
-                ParseError = $"JSON không hợp lệ (dòng {ex.LineNumber + 1}): {ex.Message}",
+                ParseError = Loc.T("Cfg.InvalidJson", ex.LineNumber + 1, ex.Message),
             };
         }
 
@@ -50,7 +51,7 @@ public sealed class JsonConfigEditor : IConfigEditor
                 FilePath = filePath,
                 Format = ConfigFormat.Json,
                 RawText = text,
-                ParseError = "File JSON rỗng.",
+                ParseError = Loc.T("Cfg.EmptyJson"),
             };
         }
 

@@ -11,6 +11,9 @@ using Cowork.Core.Configuration;
 using Cowork.Core.Models;
 using Cowork.Core.Services;
 using Cowork.Core.Validation;
+using Cowork.Core.Localization;
+using Cowork.App.Localization;
+using Cowork.App.Themes;
 
 namespace Cowork.App.ViewModels;
 
@@ -73,6 +76,18 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         _startWithWindows = _workspace.Settings.StartWithWindows;
         _historyRetentionDays = _workspace.Settings.HistoryRetentionDays;
 
+        ThemeOptions = ThemeManager.Available
+            .Select(t => new ChoiceViewModel<AppTheme>(t, x => Loc.T(ThemeManager.LabelKey(x))))
+            .ToList();
+        LanguageOptions = Loc.Available
+            .Select(l => new ChoiceViewModel<AppLanguage>(l, Loc.NativeName))
+            .ToList();
+
+        _selectedTheme = ThemeOptions.First(o => o.Value == _workspace.Settings.Theme);
+        _selectedLanguage = LanguageOptions.First(o => o.Value == _workspace.Settings.Language);
+
+        Loc.LanguageChanged += OnLanguageChanged;
+
         _processManager.StatusChanged += OnProcessStatusChanged;
         _processManager.OutputReceived += OnOutputReceived;
         _processManager.RunCompleted += OnRunCompleted;
@@ -104,12 +119,72 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
     private string _searchText = string.Empty;
 
     [ObservableProperty]
-    private string _statusMessage = "Sẵn sàng.";
+    private string _statusMessage = Loc.T("Status.Ready");
 
     [ObservableProperty]
     private bool _hasUnsavedChanges;
 
     // ---------- Thiết lập ----------
+
+    public IReadOnlyList<ChoiceViewModel<AppTheme>> ThemeOptions { get; }
+
+    public IReadOnlyList<ChoiceViewModel<AppLanguage>> LanguageOptions { get; }
+
+    [ObservableProperty] private ChoiceViewModel<AppTheme>? _selectedTheme;
+    [ObservableProperty] private ChoiceViewModel<AppLanguage>? _selectedLanguage;
+
+    partial void OnSelectedThemeChanged(ChoiceViewModel<AppTheme>? value)
+    {
+        if (value is null || value.Value == _workspace.Settings.Theme)
+            return;
+
+        _workspace.Settings.Theme = value.Value;
+        ThemeManager.Apply(value.Value);
+        MarkDirty();
+    }
+
+    partial void OnSelectedLanguageChanged(ChoiceViewModel<AppLanguage>? value)
+    {
+        if (value is null || value.Value == _workspace.Settings.Language)
+            return;
+
+        _workspace.Settings.Language = value.Value;
+
+        // Gán vào Loc kích hoạt LanguageChanged, tới lượt nó gọi RefreshLocalizedText.
+        Loc.Current = value.Value;
+        MarkDirty();
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e) => RefreshLocalizedText();
+
+    /// <summary>
+    /// Vẽ lại toàn bộ nhãn sau khi đổi ngôn ngữ, không cần mở lại cửa sổ.
+    /// Nhãn tĩnh trên XAML đi qua LocalizedStrings; nhãn do view-model sinh ra
+    /// phải tự bắn PropertyChanged vì chúng đã được tính sẵn thành chuỗi.
+    /// </summary>
+    private void RefreshLocalizedText()
+    {
+        LocalizedStrings.Instance.Refresh();
+
+        foreach (var option in ThemeOptions)
+            option.RefreshLabel();
+
+        foreach (var app in Apps)
+            app.RefreshLocalizedText();
+
+        // Bảng lịch sử vẽ trực tiếp từ model thuần, không có PropertyChanged để bám;
+        // nạp lại danh sách là cách rẻ nhất buộc DataGrid dựng lại các nhãn đã dịch.
+        var records = History.ToList();
+        History.Clear();
+        foreach (var record in records)
+            History.Add(record);
+
+        // Câu trạng thái cũ đã bị "đóng băng" bằng ngôn ngữ trước đó — để nguyên
+        // thì thanh trạng thái lẫn hai thứ tiếng.
+        StatusMessage = Loc.T("Status.Ready");
+
+        OnPropertyChanged(string.Empty);
+    }
 
     [ObservableProperty] private bool _schedulerEnabled;
     [ObservableProperty] private bool _minimizeToTray;
@@ -125,7 +200,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
             _scheduler.Stop();
 
         MarkDirty();
-        StatusMessage = value ? "Đã bật chạy theo lịch." : "Đã tắt chạy theo lịch.";
+        StatusMessage = Loc.T(value ? "Msg.SchedulerOn" : "Msg.SchedulerOff");
     }
 
     partial void OnMinimizeToTrayChanged(bool value)
@@ -180,6 +255,11 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
 
     private void OnAppPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Tên rỗng nghĩa là "mọi thuộc tính đổi" — chỉ xảy ra khi làm tươi nhãn
+        // sau lúc đổi ngôn ngữ, không phải người dùng sửa gì.
+        if (string.IsNullOrEmpty(e.PropertyName))
+            return;
+
         // Các thuộc tính chỉ phục vụ hiển thị không làm workspace bẩn.
         if (e.PropertyName is nameof(AppViewModel.RuntimeState)
             or nameof(AppViewModel.ProcessId)
@@ -188,6 +268,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
             or nameof(AppViewModel.LastRunText)
             or nameof(AppViewModel.LastError)
             or nameof(AppViewModel.SelectedConfigFile)
+            or nameof(AppViewModel.SelectedWindowStyle)
             or nameof(AppViewModel.IsRunning))
         {
             return;
@@ -209,7 +290,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
     {
         var model = new ManagedApp
         {
-            Name = "App mới " + (Apps.Count + 1),
+            Name = Loc.T("App.NewNameFormat", Apps.Count + 1),
             Order = Apps.Count,
         };
 
@@ -220,7 +301,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         SelectedApp = viewModel;
 
         MarkDirty();
-        StatusMessage = "Đã thêm app mới. Hãy chọn file chương trình cần chạy.";
+        StatusMessage = Loc.T("Msg.AppAdded");
     }
 
     [RelayCommand(CanExecute = nameof(HasSelectedApp))]
@@ -231,7 +312,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
 
         var copy = SelectedApp.Model.Clone();
         copy.Id = Guid.NewGuid();
-        copy.Name = SelectedApp.Name + " (bản sao)";
+        copy.Name = SelectedApp.Name + Loc.T("App.CopySuffix");
         copy.LastRunAt = null;
         copy.LastScheduledRunAt = null;
         copy.LastExitCode = null;
@@ -246,7 +327,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         SelectedApp = viewModel;
 
         MarkDirty();
-        StatusMessage = $"Đã nhân bản '{SelectedApp.Name}'.";
+        StatusMessage = Loc.T("Msg.Duplicated", SelectedApp.Name);
     }
 
     [RelayCommand(CanExecute = nameof(HasSelectedApp))]
@@ -256,8 +337,8 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
             return;
 
         var confirm = MessageBox.Show(
-            $"Xoá app '{app.DisplayTitle}' khỏi Cowork?\n\nFile cấu hình và chương trình trên đĩa KHÔNG bị xoá.",
-            "Xác nhận xoá", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            Loc.T("Msg.DeleteConfirm", app.DisplayTitle),
+            Loc.T("Msg.DeleteConfirmTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
         if (confirm != MessageBoxResult.Yes)
             return;
@@ -272,7 +353,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
 
         Reorder();
         MarkDirty();
-        StatusMessage = $"Đã xoá '{app.DisplayTitle}'.";
+        StatusMessage = Loc.T("Msg.Deleted", app.DisplayTitle);
     }
 
     [RelayCommand(CanExecute = nameof(CanMoveUp))]
@@ -331,7 +412,9 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
 
         app.RuntimeState = AppRuntimeState.Stopping;
         var stopped = await _processManager.StopAsync(app.Id).ConfigureAwait(true);
-        StatusMessage = stopped ? $"Đã yêu cầu dừng '{app.DisplayTitle}'." : "App không chạy.";
+        StatusMessage = stopped
+            ? Loc.T("Msg.StopRequested", app.DisplayTitle)
+            : Loc.T("Msg.NotRunning");
     }
 
     [RelayCommand]
@@ -344,14 +427,14 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
                 started++;
         }
 
-        StatusMessage = $"Đã khởi chạy {started} app.";
+        StatusMessage = Loc.T("Msg.StartedCount", started);
     }
 
     [RelayCommand]
     private async Task StopAllAsync()
     {
         await _processManager.StopAllAsync().ConfigureAwait(true);
-        StatusMessage = "Đã yêu cầu dừng tất cả app đang chạy.";
+        StatusMessage = Loc.T("Msg.StopAllRequested");
     }
 
     private bool RunApp(AppViewModel app, RunTrigger trigger)
@@ -364,7 +447,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
 
             app.LastError = message;
             app.RuntimeState = AppRuntimeState.Failed;
-            StatusMessage = $"'{app.DisplayTitle}' chưa chạy được: cấu hình còn thiếu.";
+            StatusMessage = Loc.T("Msg.CannotRun", app.DisplayTitle);
             _logger.Warning($"Bỏ qua '{app.Name}' vì cấu hình lỗi: {message}");
             return false;
         }
@@ -377,7 +460,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         {
             app.LastError = result.Error;
             app.RuntimeState = AppRuntimeState.Failed;
-            StatusMessage = $"'{app.DisplayTitle}': {result.Error}";
+            StatusMessage = Loc.T("Msg.RunFailed", app.DisplayTitle, result.Error);
             return false;
         }
 
@@ -437,8 +520,8 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
 
             if (record.Outcome is RunOutcome.Failed or RunOutcome.NotStarted or RunOutcome.TimedOut)
             {
-                app.LastError = record.Error ?? $"Kết thúc với mã thoát {record.ExitCode}.";
-                StatusMessage = $"'{app.DisplayTitle}' kết thúc lỗi (mã {record.ExitCode}).";
+                app.LastError = record.Error ?? Loc.T("Msg.ExitedWithCode", record.ExitCode);
+                StatusMessage = Loc.T("Msg.ExitedWithError", app.DisplayTitle, record.ExitCode);
             }
 
             MarkDirty();
@@ -483,13 +566,13 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
             Reorder();
             _store.Save(_workspace);
             HasUnsavedChanges = false;
-            StatusMessage = $"Đã lưu lúc {DateTime.Now:HH:mm:ss}.";
+            StatusMessage = Loc.T("Msg.Saved", DateTime.Now.ToString("HH:mm:ss"));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _logger.Error("Không lưu được workspace.", ex);
-            StatusMessage = "Không lưu được: " + ex.Message;
-            MessageBox.Show("Không lưu được cấu hình:\n" + ex.Message, "Cowork",
+            StatusMessage = Loc.T("Msg.SaveFailed", ex.Message);
+            MessageBox.Show(Loc.T("Msg.SaveFailedDialog", ex.Message), Loc.T("Common.AppName"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -522,15 +605,15 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
 
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "Chọn chương trình cần chạy",
-            Filter = "Chương trình (*.exe;*.bat;*.cmd;*.ps1)|*.exe;*.bat;*.cmd;*.ps1|Tất cả (*.*)|*.*",
+            Title = Loc.T("Dialog.PickProgram"),
+            Filter = Loc.T("Dialog.ProgramFilter"),
             CheckFileExists = true,
         };
 
         if (dialog.ShowDialog() == true)
         {
             app.ExecutablePath = dialog.FileName;
-            if (string.IsNullOrWhiteSpace(app.Name) || app.Name.StartsWith("App mới", StringComparison.Ordinal))
+            if (HasPlaceholderName(app.Name))
                 app.Name = Path.GetFileNameWithoutExtension(dialog.FileName);
         }
     }
@@ -541,7 +624,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         if (SelectedApp is not { } app)
             return;
 
-        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Chọn thư mục làm việc" };
+        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = Loc.T("Dialog.PickWorkingDir") };
         if (dialog.ShowDialog() == true)
             app.WorkingDirectory = dialog.FolderName;
     }
@@ -582,11 +665,11 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
                 app.WorkingDirectory = scriptDirectory;
         }
 
-        if (string.IsNullOrWhiteSpace(app.Name) || app.Name.StartsWith("App mới", StringComparison.Ordinal))
+        if (HasPlaceholderName(app.Name))
             app.Name = Path.GetFileNameWithoutExtension(chosen.Candidate.FullPath);
 
         MarkDirty();
-        StatusMessage = $"Đã chọn '{Path.GetFileName(chosen.Candidate.FullPath)}' làm lệnh chạy.";
+        StatusMessage = Loc.T("Msg.ProgramChosen", Path.GetFileName(chosen.Candidate.FullPath));
     }
 
     /// <summary>
@@ -613,9 +696,18 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
                 return expanded;
         }
 
-        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Chọn thư mục cần quét" };
+        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = Loc.T("Dialog.PickScanFolder") };
         return dialog.ShowDialog() == true ? dialog.FolderName : null;
     }
+
+    /// <summary>
+    /// Tên app còn là tên Cowork tự đặt hay chưa. Phải nhận cả tên đặt từ ngôn ngữ khác:
+    /// người dùng có thể tạo app lúc đang dùng tiếng Việt rồi đổi sang tiếng Anh.
+    /// </summary>
+    private static bool HasPlaceholderName(string name)
+        => string.IsNullOrWhiteSpace(name)
+           || Loc.AllVariants("App.NewNamePrefix")
+                 .Any(prefix => name.StartsWith(prefix, StringComparison.Ordinal));
 
     /// <summary>
     /// Quét một thư mục để tìm file cấu hình rồi cho người dùng tick chọn.
@@ -630,7 +722,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         var startDirectory = app.Model.ResolveWorkingDirectory();
         if (!Directory.Exists(startDirectory))
         {
-            var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Chọn thư mục cần quét" };
+            var dialog = new Microsoft.Win32.OpenFolderDialog { Title = Loc.T("Dialog.PickScanFolder") };
             if (dialog.ShowDialog() != true)
                 return;
             startDirectory = dialog.FolderName;
@@ -648,8 +740,8 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
 
         var added = AddScannedFiles(app, scanViewModel.SelectedCandidates);
         StatusMessage = added > 0
-            ? $"Đã thêm {added} file cấu hình vào '{app.DisplayTitle}'."
-            : "Các file đã chọn đều có sẵn trong danh sách.";
+            ? Loc.T("Msg.ConfigAdded", added, app.DisplayTitle)
+            : Loc.T("Msg.ConfigAllExisting");
     }
 
     /// <summary>
@@ -714,9 +806,8 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
 
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "Chọn file cấu hình",
-            Filter = "Cấu hình (*.json;*.ini;*.xml;*.config;*.env;*.conf)|*.json;*.ini;*.xml;*.config;*.env;*.conf"
-                     + "|Tất cả (*.*)|*.*",
+            Title = Loc.T("Dialog.PickConfigFile"),
+            Filter = Loc.T("Dialog.ConfigFilter"),
             CheckFileExists = true,
         };
 
@@ -756,7 +847,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
     {
         if (!Directory.Exists(path))
         {
-            StatusMessage = "Thư mục không tồn tại: " + path;
+            StatusMessage = Loc.T("Msg.FolderMissing", path);
             return;
         }
 
@@ -767,7 +858,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
     {
         if (!File.Exists(filePath))
         {
-            StatusMessage = "File không tồn tại: " + filePath;
+            StatusMessage = Loc.T("Msg.FileMissing", filePath);
             return;
         }
 
@@ -779,7 +870,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
     {
         _scheduler.Tick();
         RefreshAllRunInfo();
-        StatusMessage = "Đã kiểm tra lịch một lượt.";
+        StatusMessage = Loc.T("Msg.ScheduleChecked");
     }
 
     [RelayCommand]
@@ -787,7 +878,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
     {
         _history.Clear();
         History.Clear();
-        StatusMessage = "Đã xoá lịch sử chạy.";
+        StatusMessage = Loc.T("Msg.HistoryCleared");
     }
 
     private void RefreshAllRunInfo()
@@ -816,6 +907,8 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         if (_disposed)
             return;
         _disposed = true;
+
+        Loc.LanguageChanged -= OnLanguageChanged;
 
         _uiRefreshTimer.Stop();
         _scheduler.AppDue -= OnAppDue;
