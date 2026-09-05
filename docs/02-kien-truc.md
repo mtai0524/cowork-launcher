@@ -136,13 +136,32 @@ Nếu ghi lại từ bảng, mọi comment và định dạng sẽ bay sạch.
 
 | Editor | Cách làm phẳng | Cách ghi lại | Giữ được gì |
 |---|---|---|---|
-| `JsonConfigEditor` | `logging.level`, `servers[0].host` | Parse lại thành `JsonNode`, gán node lá, serialize | Kiểu dữ liệu (số vẫn là số, bool vẫn là bool) |
+| `JsonConfigEditor` | `logging.level`, `servers[0].host` | Dò khoảng byte của từng giá trị bằng `Utf8JsonReader`, thay đúng khoảng đó | Comment JSONC, thụt lề, dòng trắng, escape sẵn có, kiểu dữ liệu |
 | `IniConfigEditor` | `[section]:key` | Thay đúng đoạn ký tự của giá trị **trên đúng dòng đó** | Comment, dòng trắng, khoảng trắng quanh `=`, kiểu nháy, CRLF/LF |
 | `XmlConfigEditor` | `configuration/appSettings/add[2]/@value` | Nạp `XDocument` với `PreserveWhitespace`, gán rồi xuất | Comment, thụt lề, khai báo XML |
 | `PlainTextConfigEditor` | — | Ghi thẳng text | Tất cả (không phân tích) |
 
 `IniConfigEditor` sửa các dòng theo **thứ tự từ dưới lên** để chỉ số cột của những dòng phía trên
-không bị lệch sau mỗi lần thay.
+không bị lệch sau mỗi lần thay. `JsonConfigEditor` cũng vá từ cuối file ngược lên, vì lý do y hệt.
+
+#### Hai kiểu chú thích trong JSON
+
+JSON chuẩn không có cú pháp comment, nên file cấu hình ngoài đời né bằng hai cách, Cowork đọc được cả hai:
+
+```jsonc
+{
+  // comment JSONC — giữ nguyên khi lưu, vì ApplyChanges vá trên text gốc
+  "//api_key": "Groq API key ...",   // khoá giả: gộp vào cột Ghi chú của "api_key"
+  "api_key": "gsk_..."
+}
+```
+
+Khoá `"//ten"` chỉ được gộp vào ghi chú khi `"ten"` **có thật và là giá trị đơn**. Hai trường hợp
+còn lại giữ nguyên thành dòng riêng, cố ý:
+
+- `"//lang"` mà file không có `"lang"` — đó là mô tả một mặc định chưa bật; giấu đi là người dùng
+  mất luôn nội dung đang nằm trong file.
+- `"//server"` mà `"server"` là một nhánh con — chú thích không biết bám vào dòng nào.
 
 ### Dò tìm file cấu hình
 
