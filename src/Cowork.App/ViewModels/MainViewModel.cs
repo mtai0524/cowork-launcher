@@ -32,6 +32,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
     private readonly ICoworkLogger _logger;
     private readonly CoworkPaths _paths;
     private readonly DailyScheduler _scheduler;
+    private readonly KeepAliveSupervisor _keepAlive;
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _uiRefreshTimer;
 
@@ -75,6 +76,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         _minimizeToTray = _workspace.Settings.MinimizeToTray;
         _startWithWindows = _workspace.Settings.StartWithWindows;
         _historyRetentionDays = _workspace.Settings.HistoryRetentionDays;
+        _notifyOnFailure = _workspace.Settings.NotifyOnFailure;
 
         ThemeOptions = ThemeManager.Available
             .Select(t => new ChoiceViewModel<AppTheme>(t, x => Loc.T(ThemeManager.LabelKey(x))))
@@ -94,6 +96,11 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
 
         _scheduler = new DailyScheduler(this, SystemClock.Instance, _logger);
         _scheduler.AppDue += OnAppDue;
+
+        _keepAlive = new KeepAliveSupervisor(_processManager, this, SystemClock.Instance, _logger);
+        _keepAlive.RestartScheduled += OnRestartScheduled;
+        _keepAlive.RestartDue += OnRestartDue;
+        _keepAlive.GaveUp += OnKeepAliveGaveUp;
 
         // Làm tươi cột "chạy kế tiếp" mỗi 30 giây để đồng hồ trên dashboard không đứng yên.
         _uiRefreshTimer = new DispatcherTimer(TimeSpan.FromSeconds(30), DispatcherPriority.Background,
@@ -190,6 +197,16 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
     [ObservableProperty] private bool _minimizeToTray;
     [ObservableProperty] private bool _startWithWindows;
     [ObservableProperty] private int _historyRetentionDays;
+    [ObservableProperty] private bool _notifyOnFailure;
+
+    /// <summary>Thông báo cần đưa ra ngoài cửa sổ (khay hệ thống). Cửa sổ chính lắng nghe.</summary>
+    public event EventHandler<UserNotification>? NotificationRaised;
+
+    private void Notify(string title, string message, NotificationSeverity severity)
+    {
+        if (NotifyOnFailure)
+            NotificationRaised?.Invoke(this, new UserNotification(title, message, severity));
+    }
 
     partial void OnSchedulerEnabledChanged(bool value)
     {
@@ -219,6 +236,12 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
     partial void OnHistoryRetentionDaysChanged(int value)
     {
         _workspace.Settings.HistoryRetentionDays = Math.Max(1, value);
+        MarkDirty();
+    }
+
+    partial void OnNotifyOnFailureChanged(bool value)
+    {
+        _workspace.Settings.NotifyOnFailure = value;
         MarkDirty();
     }
 
@@ -269,6 +292,8 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
             or nameof(AppViewModel.LastError)
             or nameof(AppViewModel.SelectedConfigFile)
             or nameof(AppViewModel.SelectedWindowStyle)
+            or nameof(AppViewModel.PendingRestartAttempt)
+            or nameof(AppViewModel.PendingRestartSeconds)
             or nameof(AppViewModel.IsRunning))
         {
             return;
@@ -410,6 +435,12 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         if (SelectedApp is not { } app)
             return;
 
+        if (CancelPendingRestart(app))
+        {
+            StatusMessage = Loc.T("Msg.RestartCancelled", app.DisplayTitle);
+            return;
+        }
+
         app.RuntimeState = AppRuntimeState.Stopping;
         var stopped = await _processManager.StopAsync(app.Id).ConfigureAwait(true);
         StatusMessage = stopped
@@ -430,15 +461,39 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         StatusMessage = Loc.T("Msg.StartedCount", started);
     }
 
+    /// <summary>Dừng rồi chạy lại — một cú bấm thay cho Dừng, chờ, rồi Chạy.</summary>
+    [RelayCommand(CanExecute = nameof(HasSelectedApp))]
+    private async Task RestartSelectedAsync()
+    {
+        if (SelectedApp is not { } app)
+            return;
+
+        CancelPendingRestart(app);
+
+        if (_processManager.IsRunning(app.Id))
+        {
+            app.RuntimeState = AppRuntimeState.Stopping;
+            await _processManager.StopAsync(app.Id).ConfigureAwait(true);
+        }
+
+        StatusMessage = Loc.T("Msg.RestartRequested", app.DisplayTitle);
+        RunApp(app, RunTrigger.Manual);
+    }
+
     [RelayCommand]
     private async Task StopAllAsync()
     {
+        foreach (var app in Apps)
+            CancelPendingRestart(app);
+
         await _processManager.StopAllAsync().ConfigureAwait(true);
         StatusMessage = Loc.T("Msg.StopAllRequested");
     }
 
     private bool RunApp(AppViewModel app, RunTrigger trigger)
     {
+        CancelPendingRestart(app);
+
         var issues = app.Validate();
         if (AppValidator.HasErrors(issues))
         {
@@ -481,6 +536,11 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
             if (app is null)
                 return;
 
+            // Khởi động lại nhanh: tiến trình cũ có thể báo "đã thoát" sau khi tiến trình mới
+            // đã chạy. Nghe theo nó là bảng trạng thái hiện Idle trong khi app đang chạy.
+            if (IsStaleExit(app, e.State, e.ProcessId))
+                return;
+
             app.RuntimeState = e.State;
             app.ProcessId = e.ProcessId;
 
@@ -515,13 +575,19 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
                 return;
 
             app.Model.LastExitCode = record.ExitCode;
-            app.Model.LastRunAt = record.StartedAt;
+            if (app.Model.LastRunAt is null || record.StartedAt >= app.Model.LastRunAt)
+                app.Model.LastRunAt = record.StartedAt;
             app.RefreshRunInfo();
 
             if (record.Outcome is RunOutcome.Failed or RunOutcome.NotStarted or RunOutcome.TimedOut)
             {
                 app.LastError = record.Error ?? Loc.T("Msg.ExitedWithCode", record.ExitCode);
                 StatusMessage = Loc.T("Msg.ExitedWithError", app.DisplayTitle, record.ExitCode);
+
+                // Chạy tay thì người dùng đang nhìn; còn lại (lịch, khởi động, giữ chạy)
+                // thường xảy ra lúc Cowork đang nằm dưới khay.
+                if (record.Trigger != RunTrigger.Manual || app.Model.KeepAlive)
+                    Notify(Loc.T("Notify.FailedTitle"), DescribeFailure(app, record), NotificationSeverity.Error);
             }
 
             MarkDirty();
@@ -538,6 +604,73 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         });
 
     private AppViewModel? FindApp(Guid id) => Apps.FirstOrDefault(a => a.Id == id);
+
+    private static bool IsStaleExit(AppViewModel app, AppRuntimeState incoming, int processId)
+        => incoming is AppRuntimeState.Idle or AppRuntimeState.Failed
+           && processId != 0
+           && app.ProcessId != 0
+           && processId != app.ProcessId
+           && app.IsRunning;
+
+    private static string DescribeFailure(AppViewModel app, AppRunRecord record) => record.Outcome switch
+    {
+        RunOutcome.NotStarted => Loc.T("Notify.NotStartedBody", app.DisplayTitle, record.Error),
+        RunOutcome.TimedOut => Loc.T("Notify.TimedOutBody", app.DisplayTitle),
+        _ => Loc.T("Notify.FailedBody", app.DisplayTitle, record.ExitCode),
+    };
+
+    // ---------- Giữ app luôn chạy ----------
+
+    /// <summary>Huỷ lần khởi động lại đang chờ của app, trả về true nếu có cái để huỷ.</summary>
+    private bool CancelPendingRestart(AppViewModel app)
+    {
+        var cancelled = _keepAlive.Cancel(app.Id);
+        if (app.RuntimeState == AppRuntimeState.WaitingRestart)
+        {
+            app.PendingRestartAttempt = 0;
+            app.RuntimeState = AppRuntimeState.Idle;
+        }
+
+        return cancelled;
+    }
+
+    private void OnRestartScheduled(object? sender, RestartScheduledEventArgs e)
+        => _dispatcher.Invoke(() =>
+        {
+            var app = FindApp(e.App.Id);
+            if (app is null)
+                return;
+
+            app.PendingRestartSeconds = Math.Max(0, app.Model.RestartDelaySeconds);
+            app.PendingRestartAttempt = e.Attempt;
+            app.RuntimeState = AppRuntimeState.WaitingRestart;
+        });
+
+    private void OnRestartDue(object? sender, RestartDueEventArgs e)
+        => _dispatcher.Invoke(() =>
+        {
+            var app = FindApp(e.App.Id);
+            if (app is null)
+                return;
+
+            app.PendingRestartAttempt = 0;
+            StatusMessage = Loc.T("Msg.KeepAliveRestarting", app.DisplayTitle, e.Attempt);
+            RunApp(app, RunTrigger.KeepAlive);
+        });
+
+    private void OnKeepAliveGaveUp(object? sender, KeepAliveGaveUpEventArgs e)
+        => _dispatcher.Invoke(() =>
+        {
+            var app = FindApp(e.App.Id);
+            if (app is null)
+                return;
+
+            var message = Loc.T("Msg.KeepAliveGaveUp", app.DisplayTitle, e.Attempts, (int)e.Window.TotalMinutes);
+            app.LastError = message;
+            app.RuntimeState = AppRuntimeState.Failed;
+            StatusMessage = message;
+            Notify(Loc.T("Notify.GaveUpTitle"), message, NotificationSeverity.Error);
+        });
 
     // ---------- IAppSource ----------
 
@@ -895,6 +1028,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         MoveDownCommand.NotifyCanExecuteChanged();
         RunSelectedCommand.NotifyCanExecuteChanged();
         StopSelectedCommand.NotifyCanExecuteChanged();
+        RestartSelectedCommand.NotifyCanExecuteChanged();
         OpenAppFolderCommand.NotifyCanExecuteChanged();
         ScanConfigFolderCommand.NotifyCanExecuteChanged();
         ScanProgramFolderCommand.NotifyCanExecuteChanged();
@@ -913,6 +1047,11 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IDispo
         _uiRefreshTimer.Stop();
         _scheduler.AppDue -= OnAppDue;
         _scheduler.Dispose();
+
+        _keepAlive.RestartScheduled -= OnRestartScheduled;
+        _keepAlive.RestartDue -= OnRestartDue;
+        _keepAlive.GaveUp -= OnKeepAliveGaveUp;
+        _keepAlive.Dispose();
 
         _processManager.StatusChanged -= OnProcessStatusChanged;
         _processManager.OutputReceived -= OnOutputReceived;

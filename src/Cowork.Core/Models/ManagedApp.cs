@@ -56,6 +56,21 @@ public sealed class ManagedApp
     /// <summary>Tự kết thúc tiến trình nếu vượt quá số phút này. 0 = không giới hạn.</summary>
     public int TimeoutMinutes { get; set; }
 
+    /// <summary>
+    /// Giữ app luôn chạy: khi tiến trình tự thoát (kể cả thoát êm hay bị timeout), Cowork
+    /// khởi động lại nó. Bấm Dừng thì không — dừng tay là ý người dùng.
+    /// </summary>
+    public bool KeepAlive { get; set; }
+
+    /// <summary>Chờ ngần này giây trước khi khởi động lại, để app kịp nhả cổng/file.</summary>
+    public int RestartDelaySeconds { get; set; } = 5;
+
+    /// <summary>
+    /// Trần số lần tự khởi động lại trong một giờ; chạm trần thì bỏ cuộc và báo lỗi.
+    /// 0 = không giới hạn. Không có trần này, một app hỏng hẳn sẽ bị khởi động lại vô tận.
+    /// </summary>
+    public int MaxRestartsPerHour { get; set; } = 10;
+
     /// <summary>Thứ tự hiển thị và thứ tự chạy khi bấm "Chạy tất cả".</summary>
     public int Order { get; set; }
 
@@ -89,6 +104,9 @@ public sealed class ManagedApp
         WindowStyle = WindowStyle,
         SingleInstance = SingleInstance,
         TimeoutMinutes = TimeoutMinutes,
+        KeepAlive = KeepAlive,
+        RestartDelaySeconds = RestartDelaySeconds,
+        MaxRestartsPerHour = MaxRestartsPerHour,
         Order = Order,
         CreatedAt = CreatedAt,
         LastScheduledRunAt = LastScheduledRunAt,

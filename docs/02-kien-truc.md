@@ -17,6 +17,7 @@
 │  Cowork.Core  (net8.0, không tham chiếu WPF)             │
 │                                                          │
 │  Services/          ProcessManager    DailyScheduler     │
+│                     KeepAliveSupervisor KeepAlivePolicy   │
 │                     JsonWorkspaceStore JsonRunHistoryStore│
 │                     ScheduleEvaluator  FileLogger        │
 │  Configuration/     JsonConfigEditor  IniConfigEditor    │
@@ -125,6 +126,53 @@ ngược lại                   → tới hạn khi (now - LastScheduledRunAt) 
 
 **Lịch khi mở Cowork (`OnCoworkStartup`)** không do timer xử lý — `RunStartupApps()` được gọi một
 lần lúc khởi động.
+
+## Giữ app luôn chạy
+
+`KeepAliveSupervisor` nghe `IProcessManager.RunCompleted`, hỏi `KeepAlivePolicy` rồi hẹn giờ.
+Nó **không tự khởi chạy tiến trình** — cùng nguyên tắc với `DailyScheduler`: chỉ phát `RestartDue`
+và để `MainViewModel.RunApp` lo, nhờ vậy mọi lần chạy (tay, lịch, khởi động lại) đều đi qua cùng một
+chỗ kiểm tra cấu hình và ghi lịch sử.
+
+```
+Process.Exited ──> ProcessManager.RunCompleted
+                          │
+                          ├─> MainViewModel.OnRunCompleted     (lịch sử, thông báo lỗi)
+                          │
+                          └─> KeepAliveSupervisor.OnRunCompleted
+                                  │  KeepAlivePolicy.Decide(app, record, cácLầnTrước, now)
+                                  ├─ StoppedByUser / NeverStarted / NotKeepAlive ──> thôi
+                                  ├─ LimitReached ──> GaveUp ──> trạng thái Failed + thông báo
+                                  └─ Restart ──> Timer(delay) ──> RestartDue ──> RunApp(KeepAlive)
+```
+
+`KeepAlivePolicy.Decide` là hàm thuần nhận `now`, giữ đúng ràng buộc số 5 — nhờ vậy cửa sổ đếm
+"tối đa N lần mỗi giờ" kiểm thử được mà không phải chờ một giờ thật.
+
+Ba quyết định đáng chú ý:
+
+- **Dừng tay thì không khởi động lại.** `RunOutcome.Cancelled` chỉ sinh ra từ nút Dừng/Dừng tất cả;
+  đó là ý người dùng.
+- **Chưa từng chạy được thì không thử lại.** Thiếu file hay bị từ chối quyền (`NotStarted`) chạy lại
+  cũng thế — khởi động lại chỉ tạo vòng lặp vô nghĩa.
+- **Timeout vẫn được khởi động lại.** Với keep-alive, chỉ có "app còn chạy hay không" là quan trọng,
+  nên *timeout + keep-alive* trở thành cách tự khởi động lại định kỳ.
+
+Supervisor đọc lại app **tại thời điểm tới giờ** chứ không giữ bản chụp lúc app thoát: người dùng có
+thể vừa tắt keep-alive hoặc tắt app trong lúc đếm ngược.
+
+`MainViewModel` có thêm một lưới lọc nhỏ: sau khi khởi động lại nhanh, tiến trình *cũ* có thể báo
+"đã thoát" **sau** khi tiến trình mới đã chạy; `IsStaleExit` so PID để không hiện Idle trong khi app
+đang chạy.
+
+## Thông báo
+
+`MainViewModel` chỉ phát `NotificationRaised(title, message, severity)`; `MainWindow` hiện bong bóng
+ở khay qua `TaskbarIcon.ShowBalloonTip` và mở lại cửa sổ khi bấm vào. Không dùng Windows toast API
+vì nó kéo theo package và đăng ký AUMID, trong khi bong bóng khay có sẵn từ thư viện đã dùng.
+
+Chạy tay thì không thông báo — người dùng đang nhìn thanh trạng thái. Thông báo chỉ dành cho lúc
+Cowork nằm dưới khay: lịch, khởi động, và mọi app bật keep-alive.
 
 ## Bộ đọc-ghi cấu hình
 

@@ -47,9 +47,15 @@ vẫn giữ định dạng là bài toán khó hơn nhiều so với giá trị 
 Cowork theo dõi tối đa một tiến trình cho mỗi app. Tắt `SingleInstance` thì vẫn khởi chạy được nhiều
 lần, nhưng chỉ tiến trình mới nhất được theo dõi và dừng được từ giao diện.
 
-### Chưa có thông báo khi lỗi
+### Thông báo chỉ là bong bóng ở khay
 
-App chạy lỗi lúc 2h sáng thì sáng ra mở Cowork mới biết. Không có toast, không có email.
+Cowork báo lỗi bằng bong bóng khay hệ thống, đủ cho người ngồi tại máy. Không có email, không có
+webhook — app lỗi lúc 2h sáng thì sáng ra vẫn phải nhìn khay hoặc tab Lịch sử.
+
+### Giữ luôn chạy không biết app "treo"
+
+Keep-alive chỉ nhìn thấy tiến trình *thoát*. App còn sống nhưng đơ (deadlock, treo mạng) thì Cowork
+vẫn coi là đang chạy. Cách vòng: đặt *Tự dừng sau N phút* để ép khởi động lại định kỳ.
 
 ## Hướng phát triển
 
@@ -57,8 +63,9 @@ Xếp theo giá trị mang lại trên công sức bỏ ra.
 
 ### Ưu tiên cao
 
-**Thông báo khi app lỗi.** Toast Windows khi một lần chạy theo lịch kết thúc với mã thoát khác 0.
-Điểm móc đã có sẵn: sự kiện `IProcessManager.RunCompleted`. Ước lượng nhỏ.
+**Kiểm tra sức khoẻ cho app giữ luôn chạy.** Ping một cổng/URL định kỳ; không phản hồi thì coi
+như treo và khởi động lại. Bịt đúng giới hạn nói ở trên. Cần thêm trường `HealthCheck` và một bộ
+đếm riêng trong `KeepAliveSupervisor`.
 
 **Phụ thuộc giữa các app.** "Chỉ chạy B sau khi A xong và thành công". Hiện "Chạy tất cả" khởi chạy
 song song theo thứ tự danh sách chứ không chờ nhau. Cần thêm trường `DependsOn` và một hàng đợi
@@ -118,7 +125,7 @@ song: app nào chọn "lịch hệ thống" thì đăng ký sang Task Scheduler.
 **Chạy test**
 
 ```bash
-dotnet test                                        # toàn bộ 118 test
+dotnet test                                        # toàn bộ test
 dotnet test --filter FullyQualifiedName~Schedule   # chỉ nhóm lịch
 ```
 

@@ -37,6 +37,9 @@ Một app do Cowork quản lý.
 | `WindowStyle` | `AppWindowStyle` | `Normal` / `Minimized` / `Hidden` |
 | `SingleInstance` | `bool` | Chặn khởi chạy nếu instance trước còn sống |
 | `TimeoutMinutes` | `int` | Tự kill sau ngần này phút; `0` = không giới hạn |
+| `KeepAlive` | `bool` | Tự khởi động lại khi tiến trình tự thoát (không áp dụng khi bấm Dừng) |
+| `RestartDelaySeconds` | `int` | Chờ ngần này giây trước khi khởi động lại (mặc định `5`) |
+| `MaxRestartsPerHour` | `int` | Trần số lần khởi động lại mỗi giờ, chạm trần thì bỏ cuộc; `0` = không giới hạn (mặc định `10`) |
 | `Order` | `int` | Thứ tự hiển thị **và** thứ tự khi bấm "Chạy tất cả" |
 | `LastScheduledRunAt` | `DateTimeOffset?` | Lần cuối **scheduler** kích hoạt — dùng để tính mốc kế tiếp |
 | `LastRunAt` | `DateTimeOffset?` | Lần cuối chạy (kể cả chạy tay) |
@@ -92,7 +95,7 @@ Lưu trong `history.json`, tối đa 5000 bản ghi (trần cứng, ngoài cấu
 |---|---|---|
 | `Id` | `Guid` | Khoá; ghi lại cùng `Id` = **cập nhật**, không tạo bản ghi mới |
 | `AppId` / `AppName` | `Guid` / `string` | Tên được chụp lại tại thời điểm chạy, nên đổi tên app sau này không làm sai lịch sử |
-| `Trigger` | `RunTrigger` | `Manual` / `Schedule` / `Startup` / `RunAll` |
+| `Trigger` | `RunTrigger` | `Manual` / `Schedule` / `Startup` / `RunAll` / `KeepAlive` |
 | `Outcome` | `RunOutcome` | `Running` / `Succeeded` / `Failed` / `Cancelled` / `TimedOut` / `NotStarted` |
 | `StartedAt` / `FinishedAt` | `DateTimeOffset` | Mốc thời gian |
 | `ExitCode` | `int?` | Mã thoát; `0` = thành công |
@@ -108,6 +111,9 @@ Lưu trong `history.json`, tối đa 5000 bản ghi (trần cứng, ngoài cấu
 | `StartWithWindows` | `false` | Ghi khoá `HKCU\...\Run` (không cần quyền admin) |
 | `OutputBufferLines` | `2000` | Số dòng output giữ trong RAM mỗi app |
 | `HistoryRetentionDays` | `30` | Số ngày giữ lịch sử chạy |
+| `NotifyOnFailure` | `true` | Bong bóng ở khay khi app chạy lỗi hoặc không giữ chạy được |
+| `Theme` | `Dark` | `Dark` / `Light` / `Midnight` / `HighContrast` |
+| `Language` | `Vietnamese` | `Vietnamese` / `English` |
 
 ## Schema `workspace.json`
 
@@ -152,6 +158,9 @@ Enum ghi thành chuỗi, `TimeSpan` ghi dạng `"HH:mm:ss"` — file đọc và 
       "WindowStyle": "Hidden",
       "SingleInstance": true,
       "TimeoutMinutes": 90,
+      "KeepAlive": false,
+      "RestartDelaySeconds": 5,
+      "MaxRestartsPerHour": 10,
       "Order": 0,
       "CreatedAt": "2026-09-04T14:00:00+07:00",
       "LastScheduledRunAt": "2026-09-04T02:15:00+07:00",
@@ -164,7 +173,10 @@ Enum ghi thành chuỗi, `TimeSpan` ghi dạng `"HH:mm:ss"` — file đọc và 
     "MinimizeToTray": true,
     "StartWithWindows": false,
     "OutputBufferLines": 2000,
-    "HistoryRetentionDays": 30
+    "HistoryRetentionDays": 30,
+    "NotifyOnFailure": true,
+    "Theme": "Dark",
+    "Language": "Vietnamese"
   }
 }
 ```

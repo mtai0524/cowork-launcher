@@ -40,6 +40,9 @@ public sealed partial class AppViewModel : ObservableObject
         _singleInstance = model.SingleInstance;
         _windowStyle = model.WindowStyle;
         _timeoutMinutes = model.TimeoutMinutes;
+        _keepAlive = model.KeepAlive;
+        _restartDelaySeconds = model.RestartDelaySeconds;
+        _maxRestartsPerHour = model.MaxRestartsPerHour;
 
         _scheduleEnabled = model.Schedule.Enabled;
         _scheduleKind = model.Schedule.Kind;
@@ -98,6 +101,9 @@ public sealed partial class AppViewModel : ObservableObject
     [ObservableProperty] private bool _singleInstance;
     [ObservableProperty] private AppWindowStyle _windowStyle;
     [ObservableProperty] private int _timeoutMinutes;
+    [ObservableProperty] private bool _keepAlive;
+    [ObservableProperty] private int _restartDelaySeconds;
+    [ObservableProperty] private int _maxRestartsPerHour;
 
     partial void OnNameChanged(string value)
     {
@@ -138,6 +144,9 @@ public sealed partial class AppViewModel : ObservableObject
     partial void OnSingleInstanceChanged(bool value) => Sync(() => Model.SingleInstance = value);
     partial void OnWindowStyleChanged(AppWindowStyle value) => Sync(() => Model.WindowStyle = value);
     partial void OnTimeoutMinutesChanged(int value) => Sync(() => Model.TimeoutMinutes = Math.Max(0, value));
+    partial void OnKeepAliveChanged(bool value) => Sync(() => Model.KeepAlive = value);
+    partial void OnRestartDelaySecondsChanged(int value) => Sync(() => Model.RestartDelaySeconds = Math.Max(0, value));
+    partial void OnMaxRestartsPerHourChanged(int value) => Sync(() => Model.MaxRestartsPerHour = Math.Max(0, value));
 
     /// <summary>Nguồn cho ComboBox chọn kiểu cửa sổ.</summary>
     public IReadOnlyList<ChoiceViewModel<AppWindowStyle>> WindowStyleOptions { get; }
@@ -348,6 +357,15 @@ public sealed partial class AppViewModel : ObservableObject
     [ObservableProperty]
     private string? _lastError;
 
+    /// <summary>Lần tự khởi động lại đang chờ (0 = không chờ) và số giây chờ — chỉ để hiển thị.</summary>
+    [ObservableProperty]
+    private int _pendingRestartAttempt;
+
+    [ObservableProperty]
+    private int _pendingRestartSeconds;
+
+    partial void OnPendingRestartAttemptChanged(int value) => OnPropertyChanged(nameof(StatusText));
+
     public ObservableCollection<AppOutputLine> OutputLines { get; }
 
     partial void OnRuntimeStateChanged(AppRuntimeState value)
@@ -371,6 +389,7 @@ public sealed partial class AppViewModel : ObservableObject
                 AppRuntimeState.Running => Loc.T("State.Running", ProcessId),
                 AppRuntimeState.Stopping => Loc.T("State.Stopping"),
                 AppRuntimeState.Failed => Loc.T("State.Failed"),
+                AppRuntimeState.WaitingRestart => Loc.T("State.WaitingRestart", PendingRestartSeconds, PendingRestartAttempt),
                 _ => Model.LastRunAt is { } last
                     ? Loc.T("State.LastRunAt", last.ToString("dd/MM HH:mm"))
                     : Loc.T("State.NeverRun"),

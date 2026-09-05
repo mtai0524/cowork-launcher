@@ -188,6 +188,36 @@ Giá trị hỗ trợ tham chiếu biến khác: `%USERPROFILE%\data`.
 Dùng để tách cấu hình theo môi trường: cùng một script, hai app khác `DB_HOST` là có bản chạy thật
 và bản chạy thử.
 
+## Giữ app luôn chạy
+
+Dành cho app kiểu dịch vụ — server cục bộ, tunnel, bot — thứ phải *đang chạy* chứ không phải *đã
+chạy xong*. Tab **Tổng quan → Tuỳ chọn khi chạy**, tick **Giữ app luôn chạy**.
+
+Từ đó, mỗi khi tiến trình tự thoát (crash, thoát êm, hay bị dừng vì quá giờ), Cowork chờ số giây
+đã đặt rồi chạy lại. Danh sách app hiện *Sẽ khởi động lại sau 5s (lần 2)* trong lúc đếm ngược; lịch
+sử ghi nguồn kích hoạt là **Tự khởi động lại**.
+
+Hai chỗ Cowork **không** khởi động lại, cố ý:
+
+- **Bạn bấm Dừng.** Dừng tay là ý bạn. Bấm Dừng trong lúc đang đếm ngược cũng huỷ luôn lần chờ.
+- **App chưa hề chạy được** (thiếu file, bị từ chối quyền). Chạy lại cũng thế, chỉ tạo vòng lặp.
+
+**Tối đa (lần / giờ)** là lưới an toàn: một app hỏng hẳn sẽ crash ngay sau khi lên, và không có
+trần thì Cowork sẽ khởi động lại nó vô tận. Chạm trần, Cowork bỏ cuộc, đánh dấu app lỗi và báo ở
+khay. Bấm **Chạy** để thử lại bằng tay. Đặt `0` nếu bạn thật sự muốn không giới hạn.
+
+Muốn app tự lên ngay khi mở Cowork thì kết hợp với lịch **Chạy một lần khi mở Cowork** — keep-alive
+chỉ lo phần *giữ*, không lo phần *khởi động lần đầu*.
+
+> Mẹo: **Giữ luôn chạy** + **Tự dừng sau N phút** = tự khởi động lại định kỳ mỗi N phút, tiện cho
+> app rò rỉ bộ nhớ.
+
+## Khởi động lại nhanh
+
+Nút **↻ Khởi động lại** trên thanh công cụ dừng app đang chọn (lịch sự rồi mới kill) và chạy lại
+ngay — thay cho ba thao tác Dừng, chờ, Chạy. Dùng sau khi sửa file cấu hình, vì app chỉ đọc config
+lúc khởi động.
+
 ## Chạy nhiều app cùng lúc
 
 **Chạy tất cả** khởi chạy mọi app đang bật, theo thứ tự trên danh sách. Dùng nút **↑ ↓** để sắp
@@ -205,6 +235,10 @@ loại trừ nhau về mặt kỹ thuật). Log đầy đủ luôn được ghi 
 
 **Tab Lịch sử chạy** — mọi lần chạy: thời điểm, nguồn kích hoạt, kết quả, mã thoát, thời lượng.
 Mã thoát `0` = thành công.
+
+**Thông báo ở khay** — khi một app chạy theo lịch (hoặc app đang giữ luôn chạy) kết thúc lỗi, Cowork
+hiện bong bóng ở khay hệ thống kể cả khi đang thu nhỏ; bấm vào bong bóng để mở lại cửa sổ. Chạy tay
+thì không báo, vì bạn đang nhìn thanh trạng thái. Tắt ở tab **Thiết lập → Chạy nền** nếu thấy phiền.
 
 ## Chạy nền
 
@@ -225,6 +259,8 @@ Tab **Thiết lập**:
 | Tab Nhật ký trống | Chưa bật *Thu nhật ký output*, hoặc đang bật *Chạy quyền quản trị*. Xem log trong `%APPDATA%\Cowork\logs`. |
 | "App đang chạy, bỏ qua lần khởi chạy này" | `SingleInstance` đang bật và instance cũ còn sống. Dừng nó trước, hoặc tắt tuỳ chọn này. |
 | App không tự chạy theo lịch | Kiểm tra: công tắc *Chạy theo lịch* trên thanh công cụ · *Bật lịch tự động* của app · app đang bật · ngày trong tuần có tick. Bấm **Kiểm tra lịch** để chạy ngay một vòng rà soát. |
+| "đã tự khởi động lại N lần trong 60 phút, tạm dừng giữ chạy" | App crash liên tục ngay sau khi lên — thường là lỗi cấu hình hoặc thiếu phụ thuộc. Xem tab Nhật ký / Lịch sử để biết mã thoát, sửa nguyên nhân rồi bấm **Chạy**. |
+| Bật *Giữ luôn chạy* nhưng app không lên khi mở Cowork | Keep-alive chỉ *giữ* app đã chạy. Đặt thêm lịch **Chạy một lần khi mở Cowork**. |
 | Bảng cấu hình trống, có báo lỗi đỏ | File sai cú pháp. Cowork chuyển sang chế độ sửa nguồn để bạn sửa tay. |
 | Sửa config xong app vẫn dùng giá trị cũ | App đọc config lúc khởi động. Dừng rồi chạy lại. |
 | Lỡ sửa hỏng file config | Khôi phục từ `<tên file>.cowork.bak` nằm cùng thư mục. |

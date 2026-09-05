@@ -43,6 +43,12 @@ public static class AppValidator
         if (app.TimeoutMinutes < 0)
             issues.Add(new ValidationIssue(nameof(app.TimeoutMinutes), Loc.T("Val.TimeoutNegative"), true));
 
+        if (app.RestartDelaySeconds < 0)
+            issues.Add(new ValidationIssue(nameof(app.RestartDelaySeconds), Loc.T("Val.RestartDelayNegative"), true));
+
+        if (app.MaxRestartsPerHour < 0)
+            issues.Add(new ValidationIssue(nameof(app.MaxRestartsPerHour), Loc.T("Val.RestartLimitNegative"), true));
+
         if (app.RunAsAdministrator && app.CaptureOutput)
         {
             issues.Add(new ValidationIssue(nameof(app.CaptureOutput),

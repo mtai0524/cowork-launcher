@@ -7,6 +7,9 @@ public enum RunTrigger
     Schedule = 1,
     Startup = 2,
     RunAll = 3,
+
+    /// <summary>Cowork tự khởi động lại vì app bật "giữ luôn chạy".</summary>
+    KeepAlive = 4,
 }
 
 public enum RunOutcome

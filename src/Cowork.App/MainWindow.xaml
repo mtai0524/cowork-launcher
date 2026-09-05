@@ -28,6 +28,9 @@
                 <DataTrigger Binding="{Binding RuntimeState}" Value="Failed">
                     <Setter Property="Fill" Value="{DynamicResource StateFailedBrush}" />
                 </DataTrigger>
+                <DataTrigger Binding="{Binding RuntimeState}" Value="WaitingRestart">
+                    <Setter Property="Fill" Value="{DynamicResource StateStartingBrush}" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
 
@@ -94,6 +97,8 @@
                             Command="{Binding RunSelectedCommand}" ToolTip="{loc:Tr Main.RunTip}" />
                     <Button Content="{loc:Tr Main.Stop}" Command="{Binding StopSelectedCommand}"
                             ToolTip="{loc:Tr Main.StopTip}" />
+                    <Button Content="{loc:Tr Main.Restart}" Command="{Binding RestartSelectedCommand}"
+                            ToolTip="{loc:Tr Main.RestartTip}" />
                     <Border Width="1" Margin="6,4" Background="{DynamicResource BorderBrush}" />
                     <Button Content="{loc:Tr Main.RunAll}" Command="{Binding RunAllCommand}"
                             ToolTip="{loc:Tr Main.RunAllTip}" />
@@ -334,6 +339,35 @@
                                                 <TextBox Text="{Binding TimeoutMinutes, UpdateSourceTrigger=PropertyChanged}" />
                                             </StackPanel>
                                         </Grid>
+
+                                        <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0"
+                                                Margin="0,14,0,0" Padding="0,12,0,0">
+                                            <StackPanel>
+                                                <CheckBox Content="{loc:Tr Overview.KeepAlive}" IsChecked="{Binding KeepAlive}" />
+                                                <TextBlock Style="{StaticResource HintText}"
+                                                           Text="{loc:Tr Overview.KeepAliveHint}" />
+
+                                                <Grid Margin="0,10,0,0" IsEnabled="{Binding KeepAlive}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="16" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="{loc:Tr Overview.RestartDelay}"
+                                                                   Style="{StaticResource LabelText}" />
+                                                        <TextBox Text="{Binding RestartDelaySeconds, UpdateSourceTrigger=PropertyChanged}" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="{loc:Tr Overview.RestartLimit}"
+                                                                   Style="{StaticResource LabelText}" />
+                                                        <TextBox Text="{Binding MaxRestartsPerHour, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBlock Style="{StaticResource HintText}"
+                                                                   Text="{loc:Tr Overview.RestartLimitHint}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
                                 </Border>
 
@@ -845,6 +879,8 @@
                                               IsChecked="{Binding MinimizeToTray}" />
                                     <CheckBox Content="{loc:Tr Settings.StartupCheck}"
                                               IsChecked="{Binding StartWithWindows}" />
+                                    <CheckBox Content="{loc:Tr Settings.NotifyCheck}"
+                                              IsChecked="{Binding NotifyOnFailure}" />
                                     <TextBlock Style="{StaticResource HintText}"
                                                Text="{loc:Tr Settings.BackgroundHint}" />
                                 </StackPanel>

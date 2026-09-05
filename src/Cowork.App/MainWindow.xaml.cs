@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Cowork.App.ViewModels;
 using Cowork.Core.Localization;
+using Hardcodet.Wpf.TaskbarNotification;
 
 namespace Cowork.App;
 
@@ -24,6 +25,24 @@ public partial class MainWindow : Window
         // Nhật ký tự cuộn xuống dòng mới nhất.
         if (OutputList.Items is INotifyCollectionChanged items)
             items.CollectionChanged += OnOutputCollectionChanged;
+
+        if (ViewModel is { } viewModel)
+            viewModel.NotificationRaised += OnNotificationRaised;
+
+        TrayIcon.TrayBalloonTipClicked += (_, _) => RestoreWindow();
+    }
+
+    /// <summary>Thông báo bong bóng ở khay: thứ duy nhất còn thấy được khi Cowork đang thu nhỏ.</summary>
+    private void OnNotificationRaised(object? sender, UserNotification notification)
+    {
+        var icon = notification.Severity switch
+        {
+            NotificationSeverity.Error => BalloonIcon.Error,
+            NotificationSeverity.Warning => BalloonIcon.Warning,
+            _ => BalloonIcon.Info,
+        };
+
+        TrayIcon.ShowBalloonTip(notification.Title, notification.Message, icon);
     }
 
     private void OnOutputCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)

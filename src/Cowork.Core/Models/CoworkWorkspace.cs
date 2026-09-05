@@ -46,6 +46,9 @@ public sealed class WorkspaceSettings
     /// <summary>Số ngày giữ lịch sử chạy.</summary>
     public int HistoryRetentionDays { get; set; } = 30;
 
+    /// <summary>Hiện thông báo ở khay hệ thống khi app chạy lỗi hoặc không giữ chạy được.</summary>
+    public bool NotifyOnFailure { get; set; } = true;
+
     /// <summary>Chủ đề màu đang dùng.</summary>
     public AppTheme Theme { get; set; } = AppTheme.Dark;
 

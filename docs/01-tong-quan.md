@@ -36,7 +36,8 @@ Một cửa sổ duy nhất chứa đủ ba việc:
 - **Quét thư mục để tự dò tìm file cấu hình**, chấm điểm tin cậy và loại bỏ nhiễu
   (`node_modules`, `bin`, file lock, manifest dự án).
 - Lịch chạy: mốc giờ cố định, chu kỳ lặp, chạy khi mở Cowork; lọc theo ngày trong tuần.
-- Nhật ký output, lịch sử chạy, log ra file.
+- Giữ app luôn chạy: tự khởi động lại khi app thoát, có trần số lần mỗi giờ.
+- Nhật ký output, lịch sử chạy, log ra file, thông báo ở khay khi app lỗi.
 - Chạy nền dưới khay hệ thống, khởi động cùng Windows.
 
 ### Không làm (có chủ ý)
@@ -60,7 +61,7 @@ Một cửa sổ duy nhất chứa đủ ba việc:
 | **Lịch** (`ScheduleRule`) | Quy tắc app tự chạy: kiểu lịch + mốc giờ + ngày trong tuần |
 | **Mốc chạy** (occurrence) | Một thời điểm cụ thể mà lịch quy định app phải chạy |
 | **Lần chạy** (`AppRunRecord`) | Một lượt khởi chạy: bắt đầu lúc nào, mã thoát bao nhiêu, do ai kích hoạt |
-| **Trạng thái** (`AppRuntimeState`) | Idle / Starting / Running / Stopping / Failed — chỉ tồn tại trong bộ nhớ |
+| **Trạng thái** (`AppRuntimeState`) | Idle / Starting / Running / Stopping / Failed / WaitingRestart — chỉ tồn tại trong bộ nhớ |
 
 ## Nguyên tắc thiết kế
 

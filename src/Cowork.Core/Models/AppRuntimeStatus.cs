@@ -8,6 +8,9 @@ public enum AppRuntimeState
     Running = 2,
     Stopping = 3,
     Failed = 4,
+
+    /// <summary>Đã thoát, đang đếm ngược để tự khởi động lại.</summary>
+    WaitingRestart = 5,
 }
 
 public sealed record AppStatusChanged(Guid AppId, AppRuntimeState State, int ProcessId, string? Message);
