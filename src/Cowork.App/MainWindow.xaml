@@ -1046,7 +1046,58 @@
                                 </StackPanel>
                             </DockPanel>
 
-                            <DataGrid ItemsSource="{Binding History}" IsReadOnly="True">
+                            <!-- Output của lần chạy đang chọn, nằm dưới bảng; kéo thanh chia để đổi tỉ lệ. -->
+                            <Grid DockPanel.Dock="Bottom" Height="230">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <DockPanel Grid.Row="0" Margin="0,8,0,6">
+                                    <Button DockPanel.Dock="Right" Content="{loc:Tr History.OpenRunLog}"
+                                            Margin="0" Padding="10,3" FontSize="12"
+                                            Command="{Binding OpenRunLogCommand}" />
+                                    <TextBlock Foreground="{DynamicResource MutedBrush}" FontSize="12"
+                                               VerticalAlignment="Center">
+                                        <Run Text="{loc:Tr History.RunOutputTitle}" FontWeight="SemiBold" />
+                                        <Run Text="{Binding SelectedRunOutputNote, Mode=OneWay}" />
+                                    </TextBlock>
+                                </DockPanel>
+
+                                <Border Grid.Row="1" Background="{DynamicResource CodeBackgroundBrush}"
+                                        BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="1" CornerRadius="6">
+                                    <ListBox ItemsSource="{Binding SelectedRunOutput}"
+                                             Background="Transparent" BorderThickness="0"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                             VirtualizingStackPanel.IsVirtualizing="True">
+                                        <ListBox.ItemContainerStyle>
+                                            <Style TargetType="ListBoxItem">
+                                                <Setter Property="Padding" Value="8,1" />
+                                                <Setter Property="Background" Value="Transparent" />
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="ListBoxItem">
+                                                            <ContentPresenter Margin="{TemplateBinding Padding}" />
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}"
+                                                           Foreground="{DynamicResource OutputTextBrush}"
+                                                           FontFamily="Cascadia Mono, Consolas, monospace"
+                                                           FontSize="12" TextWrapping="Wrap" />
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Border>
+                            </Grid>
+
+                            <DataGrid ItemsSource="{Binding History}" IsReadOnly="True"
+                                      SelectedItem="{Binding SelectedHistoryRecord}">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="{loc:Tr History.ColStarted}" Width="150"
                                                         Binding="{Binding StartedAt, StringFormat='dd/MM/yyyy HH:mm:ss'}" />

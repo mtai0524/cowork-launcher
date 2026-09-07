@@ -403,6 +403,11 @@ loại trừ nhau về mặt kỹ thuật). Log đầy đủ luôn được ghi 
 **Tab Lịch sử chạy** — mọi lần chạy: thời điểm, nguồn kích hoạt, kết quả, mã thoát, thời lượng.
 Mã thoát `0` = thành công.
 
+Bấm vào một dòng để xem lại **output của đúng lần chạy đó** ở khung phía dưới — kể cả lần chạy từ
+tuần trước, miễn là file log chưa bị dọn theo *Số ngày giữ file log*. Khung chỉ hiện 5000 dòng cuối;
+bấm **Mở file log** để xem đủ. Lần chạy không thu output (tắt *Thu nhật ký output*, hoặc chạy quyền
+admin) thì khung nói rõ lý do.
+
 **Thông báo ở khay** — khi một app chạy theo lịch (hoặc app đang giữ luôn chạy) kết thúc lỗi, Cowork
 hiện bong bóng ở khay hệ thống kể cả khi đang thu nhỏ; bấm vào bong bóng để mở lại cửa sổ. Chạy tay
 thì không báo, vì bạn đang nhìn thanh trạng thái. App có đặt *Thử lại khi lỗi* chỉ báo khi hết lượt
@@ -420,8 +425,8 @@ Tab **Thiết lập**:
 ## Dọn lịch sử và log
 
 Tab **Thiết lập → Lịch sử & nhật ký** có hai ô: *Số ngày giữ lịch sử chạy* và *Số ngày giữ file log*
-(mặc định đều 30). Mỗi app mỗi ngày sinh một file log trong `%APPDATA%\Cowork\logs`, nên app giữ luôn
-chạy in log liên tục sẽ chiếm đĩa dần. Cowork dọn lúc mở và vào đầu mỗi ngày khi đang chạy dưới khay;
+(mặc định đều 30). Mỗi **lần chạy** sinh một file log trong `%APPDATA%\Cowork\logs`, nên app khởi
+động lại liên tục sẽ chiếm đĩa dần. Cowork dọn lúc mở và vào đầu mỗi ngày khi đang chạy dưới khay;
 chỉ file do Cowork tự sinh mới bị xoá, file khác chép vào thư mục đó được để nguyên.
 
 ## Xử lý sự cố

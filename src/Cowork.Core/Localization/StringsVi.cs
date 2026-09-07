@@ -184,6 +184,12 @@ internal static class StringsVi
             ["History.ColExitCode"] = "Mã thoát",
             ["History.ColDuration"] = "Thời lượng",
             ["History.ColNote"] = "Ghi chú",
+            ["History.RunOutputTitle"] = "Output của lần chạy đang chọn:",
+            ["History.OpenRunLog"] = "Mở file log",
+            ["History.NoOutputFile"] = "lần chạy này không thu output (tắt “Thu nhật ký output”, chạy quyền admin, hoặc file log đã bị dọn)",
+            ["History.OutputEmpty"] = "app không in ra dòng nào",
+            ["History.OutputLines"] = "{0} dòng",
+            ["History.OutputTruncated"] = "chỉ hiện {0} dòng cuối — mở file log để xem đủ",
 
             // ---------- Thiết lập ----------
             ["Settings.AppearanceCard"] = "Giao diện",

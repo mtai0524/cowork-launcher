@@ -77,6 +77,10 @@ public sealed class ProcessManager : IProcessManager, IDisposable
 
             if (startInfo.RedirectStandardOutput)
             {
+                // Chốt tên file log ngay từ đầu: tính lại mỗi lần ghi thì một lần chạy vắt qua
+                // nửa đêm sẽ rơi vào hai file khác nhau.
+                record.OutputLogFile = CoworkPaths.RunLogFileName(record.Id, record.StartedAt);
+
                 process.OutputDataReceived += (_, e) => HandleOutput(entry, e.Data, isError: false);
                 process.ErrorDataReceived += (_, e) => HandleOutput(entry, e.Data, isError: true);
             }
@@ -174,7 +178,7 @@ public sealed class ProcessManager : IProcessManager, IDisposable
 
         var line = new AppOutputLine(entry.AppId, DateTimeOffset.Now, text, isError);
         entry.Append(line);
-        entry.WriteToLog(_paths.OutputLogFile(entry.AppId), isError);
+        entry.WriteToLog(_paths);
         OutputReceived?.Invoke(this, line);
     }
 
@@ -366,8 +370,11 @@ public sealed class ProcessManager : IProcessManager, IDisposable
         }
 
         /// <summary>Xả bộ đệm log xuống đĩa; lỗi ghi file không được ảnh hưởng tới app.</summary>
-        public void WriteToLog(string path, bool _)
+        public void WriteToLog(CoworkPaths paths)
         {
+            if (Record.OutputLogFile is not { } fileName)
+                return;
+
             List<string> batch;
             lock (_gate)
             {
@@ -379,7 +386,7 @@ public sealed class ProcessManager : IProcessManager, IDisposable
 
             try
             {
-                File.AppendAllLines(path, batch, System.Text.Encoding.UTF8);
+                File.AppendAllLines(paths.RunLogFile(fileName), batch, System.Text.Encoding.UTF8);
             }
             catch (IOException)
             {

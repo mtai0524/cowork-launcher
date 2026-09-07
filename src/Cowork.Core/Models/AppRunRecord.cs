@@ -48,5 +48,12 @@ public sealed class AppRunRecord
     public int ProcessId { get; set; }
     public string? Error { get; set; }
 
+    /// <summary>
+    /// Tên file log chứa output của chính lần chạy này, nằm trong thư mục logs. Chỉ lưu tên chứ
+    /// không lưu đường dẫn đầy đủ, để chuyển thư mục dữ liệu sang máy khác vẫn mở lại được.
+    /// Null khi app không thu output.
+    /// </summary>
+    public string? OutputLogFile { get; set; }
+
     public TimeSpan? Duration => FinishedAt.HasValue ? FinishedAt.Value - StartedAt : null;
 }

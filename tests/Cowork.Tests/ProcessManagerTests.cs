@@ -281,6 +281,42 @@ public class ProcessManagerTests
     }
 
     [Fact]
+    public async Task EachRun_GetsItsOwnLogFile_NamedOnTheRecord()
+    {
+        using var temp = new TempDirectory();
+        var paths = new CoworkPaths(temp.Path);
+        using var manager = new ProcessManager(NullLogger.Instance, paths);
+
+        var first = await RunAndWaitAsync(manager, EchoApp("LAN_MOT"));
+        var second = await RunAndWaitAsync(manager, EchoApp("LAN_HAI"));
+        await Task.Delay(300); // để nốt output kịp xả xuống đĩa
+
+        Assert.NotNull(first.OutputLogFile);
+        Assert.NotEqual(first.OutputLogFile, second.OutputLogFile);
+
+        // Bảng Lịch sử đọc lại đúng lần chạy đó, không lẫn với lần khác.
+        Assert.Contains(RunLog.Read(paths, first).Lines, l => l.Contains("LAN_MOT"));
+        Assert.DoesNotContain(RunLog.Read(paths, first).Lines, l => l.Contains("LAN_HAI"));
+        Assert.Contains(RunLog.Read(paths, second).Lines, l => l.Contains("LAN_HAI"));
+    }
+
+    [Fact]
+    public async Task ARunWithoutOutputCapture_HasNoLogFile()
+    {
+        using var temp = new TempDirectory();
+        var paths = new CoworkPaths(temp.Path);
+        using var manager = new ProcessManager(NullLogger.Instance, paths);
+
+        var app = EchoApp("x");
+        app.CaptureOutput = false;
+
+        var record = await RunAndWaitAsync(manager, app);
+
+        Assert.Null(record.OutputLogFile);
+        Assert.False(RunLog.Read(paths, record).Exists);
+    }
+
+    [Fact]
     public async Task TerminateAsync_RecordsTheGivenOutcomeAndReason()
     {
         using var temp = new TempDirectory();

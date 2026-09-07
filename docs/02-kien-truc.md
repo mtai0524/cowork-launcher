@@ -477,9 +477,16 @@ sao chép và trình cài đặt trả 3010 khi cần khởi động lại máy 
 báo lỗi giả, kéo theo cả thử lại vô ích.
 
 **Output có trần.** Mỗi app giữ một hàng đợi vòng (mặc định 2000 dòng) trong bộ nhớ; toàn bộ output
-vẫn được nối vào file log riêng theo ngày. Một app chạy cả ngày in log liên tục không làm phình RAM.
-Trên đĩa thì `LogPruner` xoá file cũ hơn `LogRetentionDays` lúc mở Cowork và vào đầu mỗi ngày; phần
-chọn file nhận `today` làm tham số và chỉ đụng đúng hai mẫu tên Cowork tự sinh.
+vẫn được nối vào file log. Một app chạy cả ngày in log liên tục không làm phình RAM. Trên đĩa thì
+`LogPruner` xoá file cũ hơn `LogRetentionDays` lúc mở Cowork và vào đầu mỗi ngày; phần chọn file
+nhận `today` làm tham số và chỉ đụng đúng những mẫu tên Cowork tự sinh.
+
+**Một file log cho mỗi lần chạy.** Tên file (`run-<ngày>-<mã lần chạy>.log`) được chốt ngay lúc khởi
+chạy và ghi vào `AppRunRecord.OutputLogFile`, nên bảng Lịch sử mở lại được đúng output của từng lần.
+Gộp cả ngày của một app vào một file thì rẻ hơn nhưng sai ở hai chỗ: hai lần chạy chồng nhau trộn
+dòng vào nhau, và một lần chạy vắt qua nửa đêm bị cắt làm đôi. `RunLog.Read` đọc theo luồng với hàng
+đợi vòng nên file hàng trăm nghìn dòng cũng không bị nuốt hết vào RAM — giao diện chỉ cần phần đuôi,
+vì đó là chỗ có lỗi.
 
 ## Luồng dữ liệu giữa view-model và model
 

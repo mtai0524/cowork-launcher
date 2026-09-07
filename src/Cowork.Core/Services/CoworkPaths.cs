@@ -35,7 +35,15 @@ public sealed class CoworkPaths
 
     public string AppLogFile => Path.Combine(LogDirectory, $"cowork-{DateTime.Now:yyyyMMdd}.log");
 
-    /// <summary>Log riêng cho output của một app trong ngày.</summary>
-    public string OutputLogFile(Guid appId)
-        => Path.Combine(LogDirectory, $"app-{appId:N}-{DateTime.Now:yyyyMMdd}.log");
+    /// <summary>
+    /// Log output của <em>một lần chạy</em>. Tên bắt đầu bằng ngày để <see cref="LogPruner"/> dọn được,
+    /// và mang mã lần chạy để bảng Lịch sử mở lại đúng lần đó.
+    ///
+    /// Mỗi lần chạy một file, thay vì gộp cả ngày của một app vào một file: gộp thì hai lần chạy
+    /// chồng nhau sẽ trộn dòng vào nhau, và một lần chạy vắt qua nửa đêm bị cắt làm đôi.
+    /// </summary>
+    public static string RunLogFileName(Guid runId, DateTimeOffset startedAt)
+        => $"run-{startedAt:yyyyMMdd}-{runId:N}.log";
+
+    public string RunLogFile(string fileName) => Path.Combine(LogDirectory, fileName);
 }

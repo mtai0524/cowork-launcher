@@ -146,6 +146,7 @@ Lưu trong `history.json`, tối đa 5000 bản ghi (trần cứng, ngoài cấu
 | `ExitCode` | `int?` | Mã thoát; thành công khi nằm trong `SuccessExitCodes` của app (mặc định chỉ `0`) |
 | `ProcessId` | `int` | PID |
 | `Error` | `string?` | Lý do lỗi ở dạng đọc được |
+| `OutputLogFile` | `string?` | Tên file log chứa output của chính lần chạy này (trong thư mục `logs`). Chỉ tên, không đường dẫn — đổi chỗ thư mục dữ liệu vẫn mở lại được. Null khi app không thu output |
 
 ## `WorkspaceSettings`
 

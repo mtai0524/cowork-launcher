@@ -9,10 +9,12 @@ namespace Cowork.Core.Services;
 /// </summary>
 public static class LogPruner
 {
-    // cowork-20260905.log · app-<32 ký tự hex>-20260905.log — chỉ đụng đúng hai mẫu Cowork tự sinh,
-    // thứ gì khác nằm trong thư mục này (người dùng tự chép vào) để nguyên.
-    private static readonly Regex LogFileName =
-        new(@"^(?:cowork|app-[0-9a-f]{32})-(\d{8})\.log$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    // cowork-20260905.log · run-20260905-<32 ký tự hex>.log · app-<32 hex>-20260905.log (mẫu cũ,
+    // giữ lại để file sinh trước đây vẫn được dọn). Chỉ đụng đúng những mẫu Cowork tự sinh; thứ gì
+    // khác nằm trong thư mục này (người dùng tự chép vào) để nguyên.
+    private static readonly Regex LogFileName = new(
+        @"^(?:cowork-(?<day>\d{8})|run-(?<day>\d{8})-[0-9a-f]{32}|app-[0-9a-f]{32}-(?<day>\d{8}))\.log$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     /// <summary>
     /// Trong danh sách file, chọn ra những file có ngày cũ hơn <paramref name="retentionDays"/> tính tới
@@ -34,7 +36,7 @@ public static class LogPruner
             if (!match.Success)
                 continue;
 
-            if (!DateTime.TryParseExact(match.Groups[1].Value, "yyyyMMdd", CultureInfo.InvariantCulture,
+            if (!DateTime.TryParseExact(match.Groups["day"].Value, "yyyyMMdd", CultureInfo.InvariantCulture,
                     DateTimeStyles.None, out var day))
             {
                 continue;

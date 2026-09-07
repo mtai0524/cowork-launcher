@@ -1392,6 +1392,51 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         StatusMessage = Loc.T("Msg.HistoryCleared");
     }
 
+    // ---------- Output của một lần chạy đã qua ----------
+
+    /// <summary>Dòng đang chọn ở bảng Lịch sử; chọn dòng nào thì nạp output của đúng lần chạy đó.</summary>
+    [ObservableProperty]
+    private AppRunRecord? _selectedHistoryRecord;
+
+    public ObservableCollection<string> SelectedRunOutput { get; } = new();
+
+    [ObservableProperty]
+    private string _selectedRunOutputNote = string.Empty;
+
+    partial void OnSelectedHistoryRecordChanged(AppRunRecord? value)
+    {
+        SelectedRunOutput.Clear();
+        OpenRunLogCommand.NotifyCanExecuteChanged();
+
+        if (value is null)
+        {
+            SelectedRunOutputNote = string.Empty;
+            return;
+        }
+
+        var content = RunLog.Read(_paths, value);
+        foreach (var line in content.Lines)
+            SelectedRunOutput.Add(line);
+
+        SelectedRunOutputNote = content switch
+        {
+            { Exists: false } => Loc.T("History.NoOutputFile"),
+            { Truncated: true } => Loc.T("History.OutputTruncated", RunLog.MaxLines),
+            { Lines.Count: 0 } => Loc.T("History.OutputEmpty"),
+            _ => Loc.T("History.OutputLines", content.Lines.Count),
+        };
+    }
+
+    private bool CanOpenRunLog()
+        => SelectedHistoryRecord is { } record && RunLog.PathOf(_paths, record) is { } path && File.Exists(path);
+
+    [RelayCommand(CanExecute = nameof(CanOpenRunLog))]
+    private void OpenRunLog()
+    {
+        if (SelectedHistoryRecord is { } record && RunLog.PathOf(_paths, record) is { } path)
+            RevealInExplorer(path);
+    }
+
     private void RefreshAllRunInfo()
     {
         foreach (var app in Apps)

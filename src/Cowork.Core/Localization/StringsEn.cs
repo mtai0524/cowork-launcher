@@ -184,6 +184,12 @@ internal static class StringsEn
             ["History.ColExitCode"] = "Exit code",
             ["History.ColDuration"] = "Duration",
             ["History.ColNote"] = "Note",
+            ["History.RunOutputTitle"] = "Output of the selected run:",
+            ["History.OpenRunLog"] = "Open the log file",
+            ["History.NoOutputFile"] = "this run captured no output (“Capture output” off, ran as administrator, or the log file has been pruned)",
+            ["History.OutputEmpty"] = "the app printed nothing",
+            ["History.OutputLines"] = "{0} lines",
+            ["History.OutputTruncated"] = "showing the last {0} lines only — open the log file for everything",
 
             // ---------- Settings ----------
             ["Settings.AppearanceCard"] = "Appearance",

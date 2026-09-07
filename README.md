@@ -38,6 +38,7 @@ không cần mở Notepad tìm đường dẫn.
 | **Lịch chạy** | Mốc giờ cố định trong ngày, chu kỳ lặp, chạy khi mở Cowork; lọc theo ngày trong tuần; chạy bù khi lỡ |
 | **Sự kiện của máy** | Chạy khi máy thức dậy sau khi ngủ, khi mở khoá màn hình, hoặc khi có mạng trở lại — độc lập với lịch, có độ trễ và khoảng lặng chống bắn trùng |
 | **Theo dõi** | Nhật ký output realtime, lịch sử chạy có mã thoát và thời lượng, log ra file, thông báo ở khay khi app chạy lỗi |
+| **Output từng lần chạy** | Mỗi lần chạy một file log riêng; bấm một dòng ở tab Lịch sử là xem lại đúng output của lần đó |
 | **Chạy nền** | Thu nhỏ xuống khay hệ thống, khởi động cùng Windows |
 | **Quản lý từ xa** | Nhiều máy nối ra một hub web: xem trạng thái, bấm Chạy / Dừng / Khởi động lại từ trình duyệt — xem [docs/06](docs/06-quan-ly-tu-xa.md) |
 
@@ -85,7 +86,7 @@ Nằm trong `%APPDATA%\Cowork`:
 | `history.json` | Lịch sử các lần chạy |
 | `backups\workspace-YYYYMMDD.json` | Ảnh chụp workspace đầu mỗi ngày, giữ 10 bản gần nhất |
 | `logs\cowork-YYYYMMDD.log` | Log hoạt động của Cowork |
-| `logs\app-<id>-YYYYMMDD.log` | Output đầy đủ của từng app; file cũ hơn số ngày đặt trong Thiết lập được tự xoá |
+| `logs\run-YYYYMMDD-<mã lần chạy>.log` | Output đầy đủ của **một lần chạy**; file cũ hơn số ngày đặt trong Thiết lập được tự xoá |
 
 ## Tài liệu
 
