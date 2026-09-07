@@ -37,6 +37,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     private readonly KeepAliveSupervisor _keepAlive;
     private readonly RetrySupervisor _retry;
     private readonly HealthMonitor _health;
+    private readonly RunQueue _runQueue;
     private readonly HubClient _hubClient;
     private HubLinkState _hubState = HubLinkState.Disabled;
     private readonly Dispatcher _dispatcher;
@@ -118,6 +119,15 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
 
         _health = new HealthMonitor(_processManager, this, SystemClock.Instance, _logger, new NetworkHealthProbe());
         _health.Unhealthy += OnUnhealthy;
+
+        // Hàng đợi gọi runner từ luồng của sự kiện tiến trình; RunApp đụng view-model nên phải
+        // nhảy về luồng giao diện và chờ kết quả — hàng đợi cần biết app có chạy được hay không.
+        _runQueue = new RunQueue(
+            _processManager,
+            app => _dispatcher.Invoke(() => FindApp(app.Id) is { } vm && RunApp(vm, RunTrigger.RunAll)),
+            _logger);
+        _runQueue.Skipped += OnRunQueueSkipped;
+        _runQueue.Finished += OnRunQueueFinished;
 
         _hubClient = new HubClient(this, _logger);
         _hubClient.StateChanged += OnHubStateChanged;
@@ -387,7 +397,25 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     partial void OnSelectedAppChanged(AppViewModel? value)
     {
         value?.SelectedConfigFile?.Reload();
+        if (value is not null)
+            RefreshDependencies(value);
+
         RefreshAppCommands();
+    }
+
+    /// <summary>
+    /// Dựng lại bảng phụ thuộc của một app và câu cảnh báo đi kèm. Bảng nói về *những app khác* nên
+    /// chỉ view-model gốc mới dựng được; làm lúc chọn app là đủ tươi mà không phải theo dõi liên tục.
+    /// </summary>
+    private void RefreshDependencies(AppViewModel app)
+    {
+        var models = Apps.Select(a => a.Model).ToList();
+        app.RefreshDependencyOptions(models);
+
+        var issues = DependencyGraph.Validate(models);
+        app.DependencyWarning = issues.Count == 0
+            ? null
+            : string.Join(Environment.NewLine, issues.Select(i => "• " + i.Message));
     }
 
     private bool FilterApp(object item)
@@ -431,6 +459,8 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             or nameof(AppViewModel.SelectedWindowStyle)
             or nameof(AppViewModel.SelectedHealthProbe)
             or nameof(AppViewModel.HasHealthProbe)
+            or nameof(AppViewModel.DependencyWarning)
+            or nameof(AppViewModel.HasDependencyOptions)
             or nameof(AppViewModel.PendingRestartAttempt)
             or nameof(AppViewModel.PendingRestartSeconds)
             or nameof(AppViewModel.PendingIsRetry)
@@ -516,6 +546,11 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         app.PropertyChanged -= OnAppPropertyChanged;
         _workspace.Apps.Remove(app.Model);
         Apps.Remove(app);
+
+        // Dọn các khai báo trỏ tới app vừa xoá, nếu không chúng thành lỗi treo vĩnh viễn.
+        foreach (var other in Apps)
+            other.Model.DependsOn.RemoveAll(d => d.AppId == app.Id);
+
         SelectedApp = Apps.FirstOrDefault();
 
         Reorder();
@@ -591,18 +626,50 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             : Loc.T("Msg.NotRunning");
     }
 
+    /// <summary>
+    /// Chạy mọi app đang bật. Hàng đợi lo thứ tự: app có khai phụ thuộc chỉ lên sau khi thứ nó chờ
+    /// đã sẵn sàng; app không khai gì thì lên ngay như trước.
+    /// </summary>
     [RelayCommand]
     private void RunAll()
     {
-        var started = 0;
-        foreach (var app in Apps.Where(a => a.IsEnabled))
+        var batch = Apps.Where(a => a.IsEnabled).Select(a => a.Model).ToList();
+        if (batch.Count == 0)
         {
-            if (RunApp(app, RunTrigger.RunAll))
-                started++;
+            StatusMessage = Loc.T("Msg.StartedCount", 0);
+            return;
         }
 
-        StatusMessage = Loc.T("Msg.StartedCount", started);
+        _skippedInRun = 0;
+        StatusMessage = Loc.T("Msg.RunAllQueued", batch.Count);
+        _runQueue.Start(batch);
     }
+
+    /// <summary>Số app bị bỏ qua trong lượt chạy hiện tại, để tổng kết một lần lúc xong.</summary>
+    private int _skippedInRun;
+
+    private void OnRunQueueSkipped(object? sender, QueueSkippedEventArgs e)
+        => _dispatcher.Invoke(() =>
+        {
+            _skippedInRun++;
+
+            if (FindApp(e.App.Id) is not { } app)
+                return;
+
+            app.LastError = e.Message;
+            StatusMessage = e.Message;
+            PushToHub(app);
+        });
+
+    private void OnRunQueueFinished(object? sender, QueueFinishedEventArgs e)
+        => _dispatcher.Invoke(() =>
+        {
+            StatusMessage = Loc.T("Msg.RunAllFinished", e.Succeeded, e.Failed, e.Skipped);
+
+            // Bỏ qua vì phụ thuộc là thứ dễ trôi qua không ai thấy khi Cowork nằm dưới khay.
+            if (e.Skipped > 0)
+                Notify(Loc.T("Notify.RunAllSkippedTitle"), StatusMessage, NotificationSeverity.Warning);
+        });
 
     /// <summary>Dừng rồi chạy lại — một cú bấm thay cho Dừng, chờ, rồi Chạy.</summary>
     [RelayCommand(CanExecute = nameof(HasSelectedApp))]
@@ -626,6 +693,9 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     [RelayCommand]
     private async Task StopAllAsync()
     {
+        // Bỏ luôn phần còn lại của lượt chạy: dừng tất cả mà vẫn lần lượt khởi chạy tiếp thì vô lý.
+        _runQueue.Cancel();
+
         foreach (var app in Apps)
             CancelPendingRestart(app);
 
@@ -1333,6 +1403,10 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
 
         _health.Unhealthy -= OnUnhealthy;
         _health.Dispose();
+
+        _runQueue.Skipped -= OnRunQueueSkipped;
+        _runQueue.Finished -= OnRunQueueFinished;
+        _runQueue.Dispose();
 
         _hubClient.StateChanged -= OnHubStateChanged;
         try

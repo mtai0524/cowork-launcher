@@ -247,6 +247,47 @@ public sealed partial class AppViewModel : ObservableObject
             .Where(line => line.Length > 0)
             .ToList();
 
+    // ---------- Phụ thuộc ----------
+
+    public ObservableCollection<DependencyOptionViewModel> DependencyOptions { get; } = new();
+
+    public bool HasDependencyOptions => DependencyOptions.Count > 0;
+
+    /// <summary>Cảnh báo về đồ thị phụ thuộc (vòng lặp, trỏ tới app đã xoá…). Do MainViewModel tính.</summary>
+    [ObservableProperty]
+    private string? _dependencyWarning;
+
+    /// <summary>
+    /// Dựng lại bảng phụ thuộc từ danh sách app hiện có. Gọi mỗi khi người dùng chọn app khác hoặc
+    /// danh sách app thay đổi — bảng này nói về *những app khác*, nên không tự cập nhật được.
+    /// </summary>
+    public void RefreshDependencyOptions(IEnumerable<ManagedApp> others)
+    {
+        ArgumentNullException.ThrowIfNull(others);
+
+        var existing = Model.DependsOn.ToDictionary(d => d.AppId, d => d);
+
+        DependencyOptions.Clear();
+        foreach (var target in others.Where(a => a.Id != Model.Id))
+            DependencyOptions.Add(new DependencyOptionViewModel(target, existing.GetValueOrDefault(target.Id), SyncDependencies));
+
+        OnPropertyChanged(nameof(HasDependencyOptions));
+    }
+
+    /// <summary>
+    /// Ghi lại danh sách phụ thuộc theo các ô đã tick. Bảng chứa đủ mọi app khác nên nó là nguồn
+    /// sự thật đầy đủ — kể cả việc dọn những khai báo trỏ tới app đã bị xoá.
+    /// </summary>
+    private void SyncDependencies() => Sync(() =>
+    {
+        Model.DependsOn = DependencyOptions
+            .Where(o => o.IsSelected)
+            .Select(o => new AppDependency { AppId = o.TargetId, Wait = o.Wait })
+            .ToList();
+
+        OnPropertyChanged(nameof(DependencyOptions));
+    });
+
     /// <summary>Nguồn cho ComboBox chọn kiểu cửa sổ.</summary>
     public IReadOnlyList<ChoiceViewModel<AppWindowStyle>> WindowStyleOptions { get; }
 
@@ -565,6 +606,9 @@ public sealed partial class AppViewModel : ObservableObject
 
         foreach (var option in HealthProbeOptions)
             option.RefreshLabel();
+
+        foreach (var option in DependencyOptions)
+            option.RefreshLocalizedText();
 
         foreach (var config in ConfigFiles)
             config.RefreshLocalizedText();

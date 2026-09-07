@@ -46,6 +46,12 @@ public sealed class ManagedApp
     /// </summary>
     public HealthCheck HealthCheck { get; set; } = new();
 
+    /// <summary>
+    /// Các app phải sẵn sàng trước khi app này chạy trong lượt "Chạy tất cả". Chỉ áp dụng cho lượt
+    /// chạy đó — bấm Chạy một app là ý người dùng muốn đúng app đó, không kéo theo gì.
+    /// </summary>
+    public List<AppDependency> DependsOn { get; set; } = new();
+
     /// <summary>App bị tắt sẽ không chạy tay lẫn chạy theo lịch.</summary>
     public bool Enabled { get; set; } = true;
 
@@ -126,6 +132,7 @@ public sealed class ManagedApp
         ConfigFiles = ConfigFiles.Select(c => c.Clone()).ToList(),
         Schedule = Schedule.Clone(),
         HealthCheck = HealthCheck.Clone(),
+        DependsOn = DependsOn.Select(d => d.Clone()).ToList(),
         Enabled = Enabled,
         RunAsAdministrator = RunAsAdministrator,
         CaptureOutput = CaptureOutput,

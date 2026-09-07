@@ -10,6 +10,7 @@ CoworkWorkspace
           ├─ ConfigFiles : List<ConfigFileRef>
           ├─ HealthCheck : HealthCheck
           │               └─ FailurePatterns : List<string>
+          ├─ DependsOn : List<AppDependency>
           └─ Schedule : ScheduleRule
                         ├─ Times : List<TimeSpan>
                         └─ DaysOfWeek : List<DayOfWeek>
@@ -34,6 +35,7 @@ Một app do Cowork quản lý.
 | `ConfigFiles` | `List<ConfigFileRef>` | Các file cấu hình thuộc app này |
 | `Schedule` | `ScheduleRule` | Lịch chạy tự động |
 | `HealthCheck` | `HealthCheck` | Cách nhận ra app treo |
+| `DependsOn` | `List<AppDependency>` | Các app phải sẵn sàng trước, khi bấm "Chạy tất cả" |
 | `Enabled` | `bool` | Tắt ⇒ không chạy tay lẫn theo lịch |
 | `RunAsAdministrator` | `bool` | Chạy qua ShellExecute verb `runas` (bật UAC) |
 | `CaptureOutput` | `bool` | Thu stdout/stderr; **không có tác dụng khi bật `RunAsAdministrator`** |
@@ -91,6 +93,20 @@ là đang chạy.
 Một lần thăm dò thành công đặt lại bộ đếm về 0 — chỉ chuỗi lỗi *liên tiếp* mới tính. Watchdog theo
 output cần `CaptureOutput` bật và `RunAsAdministrator` tắt; không thì Cowork không thấy dòng nào, và
 `AppValidator` cảnh báo.
+
+## `AppDependency`
+
+| Trường | Kiểu | Ý nghĩa |
+|---|---|---|
+| `AppId` | `Guid` | `Id` của app phải chờ |
+| `Wait` | `DependencyWait` | `Completed` = chờ nó chạy xong và thành công · `Running` = chỉ chờ nó lên |
+
+`Completed` dành cho job (sao lưu xong mới nén). `Running` dành cho dịch vụ: app bật `KeepAlive`
+không bao giờ "xong việc", nên chờ nó kết thúc là chờ mãi — `DependencyGraph.Validate` báo lỗi
+trường hợp này và hàng đợi bỏ qua app phía sau thay vì treo.
+
+Tự trỏ vào chính mình và `Guid.Empty` bị bỏ khi nạp. Xoá một app cũng dọn luôn các khai báo trỏ
+tới nó.
 
 ## `ConfigFileRef`
 
@@ -173,6 +189,9 @@ Enum ghi thành chuỗi, `TimeSpan` ghi dạng `"HH:mm:ss"` — file đọc và 
           "Format": "Ini",
           "BackupOnSave": true
         }
+      ],
+      "DependsOn": [
+        { "AppId": "a1b2c3d4-0000-0000-0000-000000000009", "Wait": "Running" }
       ],
       "HealthCheck": {
         "Probe": "HttpGet",

@@ -19,6 +19,7 @@
 │  Services/          ProcessManager    DailyScheduler     │
 │                     KeepAliveSupervisor KeepAlivePolicy   │
 │                     HealthMonitor     HealthPolicy       │
+│                     RunQueue          DependencyGraph    │
 │                     JsonWorkspaceStore JsonRunHistoryStore│
 │                     ScheduleEvaluator  FileLogger        │
 │  Configuration/     JsonConfigEditor  IniConfigEditor    │
@@ -172,6 +173,46 @@ sinh ra để xử lý thì không cần đánh thức ai.
 `MainViewModel` có thêm một lưới lọc nhỏ: sau khi khởi động lại nhanh, tiến trình *cũ* có thể báo
 "đã thoát" **sau** khi tiến trình mới đã chạy; `IsStaleExit` so PID để không hiện Idle trong khi app
 đang chạy.
+
+## Phụ thuộc giữa các app
+
+"Chạy tất cả" trước đây bung mọi app cùng lúc theo thứ tự danh sách. `RunQueue` giữ nguyên hành vi
+đó cho app không khai gì, và chờ đúng thứ tự cho app có khai.
+
+```
+RunAll ──> RunQueue.Start(batch)
+              │
+              ├─ DependencyGraph.TopologicalOrder ──> app trong vòng lặp: bỏ qua ngay
+              │
+              └─ Pump()  ◄──────────────────┐
+                   │                         │ StatusChanged(Running) · RunCompleted
+                   ├─ đủ phụ thuộc ──> runner(app) ──> MainViewModel.RunApp
+                   ├─ chắc chắn không đủ ──> Skipped
+                   └─ cả lượt đứng yên ──> Finished
+```
+
+Bốn điểm đáng biết:
+
+- **Hàng đợi nhận một `runner` thay vì phát sự kiện**, khác mọi supervisor khác. Lý do: nó cần
+  *biết kết quả* của lệnh khởi chạy. Cấu hình lỗi thì `RunApp` trả false mà không có `RunCompleted`
+  nào tới — không biết điều đó thì các app phía sau chờ mãi. Tầng ứng dụng vẫn là nơi quyết định
+  chạy thế nào; hàng đợi chỉ hỏi "chạy được không".
+- **`Pump` chạy ngoài khoá và lặp cho tới khi đứng yên.** `ProcessManager` phát "đang chạy" *ngay
+  trong* lệnh khởi chạy, nên `runner` có thể gọi ngược vào hàng đợi khi nó còn đang xét — cờ
+  `_pumping`/`_pumpAgain` gộp lần gọi lồng đó vào vòng sau. Mỗi vòng có động tĩnh (khởi chạy hoặc bỏ
+  qua) đều kéo theo một vòng nữa, vì bỏ qua một app làm những app chờ nó cũng phải bỏ.
+- **Chờ hết chuỗi thử lại rồi mới kết luận.** Một lần chạy lỗi nhưng app có đặt *Thử lại* thì
+  `RetrySupervisor` sẽ chạy lại; hàng đợi đếm số lần chạy nguồn `Retry` và chỉ coi là hỏng khi đã
+  hết lượt. Không thế thì các app phía sau bị bỏ oan trong khi lần thử lại sắp thành công.
+- **App đang chạy sẵn không bị khởi chạy lại.** *Không chạy chồng* sẽ chặn lần thứ hai; hàng đợi
+  nhận ra và chờ đúng instance đang sống.
+
+`DependencyGraph` giữ toàn bộ phần thứ tự dưới dạng hàm thuần — sắp xếp Kahn, dò vòng lặp, và
+kiểm tra những khai báo không bao giờ thoả được (trỏ tới app đã xoá, chờ "xong việc" ở app giữ luôn
+chạy). Nhờ vậy phần dễ sai nhất kiểm thử được mà không cần tiến trình nào.
+
+Phụ thuộc **chỉ áp dụng cho "Chạy tất cả"**. Bấm ▶ Chạy cho một app là ý người dùng muốn đúng app
+đó; lịch cũng kích hoạt từng app riêng lẻ.
 
 ## Kiểm tra sức khoẻ
 

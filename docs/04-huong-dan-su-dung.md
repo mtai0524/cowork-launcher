@@ -305,6 +305,40 @@ thứ tự ưu tiên.
 Thanh trạng thái báo số app đã khởi chạy được. App nào cấu hình còn thiếu sẽ bị bỏ qua kèm lý do,
 không chặn những app còn lại.
 
+## Bắt app này chờ app kia
+
+Mặc định "Chạy tất cả" bung mọi app cùng lúc. Muốn *xuất báo cáo* chỉ chạy sau khi *sao lưu CSDL*
+xong, mở tab **Tổng quan → Phụ thuộc** của app đi sau và tick app phải chờ.
+
+Cột bên phải chọn "sẵn sàng" nghĩa là gì:
+
+| Chờ tới mức | Khi nào dùng |
+|---|---|
+| **Chạy xong, thành công** | Job nối tiếp nhau: sao lưu xong mới nén, nén xong mới gửi đi |
+| **Đã lên là đủ** | Dịch vụ: chờ server cục bộ hoặc tunnel lên rồi mới chạy client |
+
+Dịch vụ bật *Giữ app luôn chạy* không bao giờ "xong việc", nên chờ nó **chạy xong** là chờ mãi.
+Cowork chặn thẳng trường hợp đó: hiện cảnh báo đỏ ngay trong thẻ và bỏ qua app phía sau thay vì
+treo cả lượt chạy.
+
+Trong lượt chạy:
+
+- App chỉ lên khi mọi thứ nó chờ đã sẵn sàng; những app không ràng buộc gì vẫn lên ngay như trước.
+- Phụ thuộc **lỗi**, bị **bỏ qua**, hay **không chạy được** thì app phía sau cũng bị bỏ qua kèm lý
+  do — chạy vào khoảng không còn tệ hơn không chạy. Cả chuỗi phía sau bị bỏ theo.
+- Phụ thuộc có đặt *Thử lại khi lỗi* thì Cowork chờ hết chuỗi thử lại rồi mới kết luận.
+- Xong lượt, thanh trạng thái tổng kết *bao nhiêu thành công, lỗi, bị bỏ qua*; có app bị bỏ qua thì
+  khay hệ thống báo một lần.
+
+Hai chỗ **không** áp dụng phụ thuộc, cố ý:
+
+- **Bấm ▶ Chạy cho một app.** Bạn đang chỉ đích danh app đó, Cowork không tự kéo theo thứ khác.
+- **Lịch chạy.** Mỗi app tới giờ là chạy riêng. Muốn một chuỗi chạy theo lịch, đặt lịch cho app đầu
+  chuỗi và để các app sau chờ nó trong lượt "Chạy tất cả" — hoặc bấm Chạy tất cả theo lịch của bạn.
+
+Vòng lặp phụ thuộc (A chờ B, B chờ A) được phát hiện ngay: thẻ **Phụ thuộc** hiện cảnh báo đỏ, và
+lượt chạy bỏ qua đúng những app trong vòng lặp, phần còn lại vẫn chạy bình thường.
+
 ## Theo dõi
 
 **Tab Nhật ký** — output realtime của app đang chọn, tự cuộn xuống dòng mới; dòng lỗi (stderr) màu đỏ.
@@ -351,6 +385,9 @@ chỉ file do Cowork tự sinh mới bị xoá, file khác chép vào thư mục
 | App đơ nhưng Cowork vẫn báo đang chạy | Keep-alive chỉ thấy app *thoát*. Đặt **Kiểm tra sức khoẻ** ở tab Tổng quan: thăm dò cổng/URL, hoặc watchdog theo output. |
 | Lịch sử báo **Treo** mà app vẫn tốt | Ngưỡng quá gắt: tăng *Lỗi liên tiếp*, *Chờ phản hồi tối đa*, *Bỏ qua kiểm tra trong N giây đầu*, hoặc nới *không có output trong N phút*. Lý do cụ thể nằm ở cột Ghi chú. |
 | Đặt watchdog theo output mà không thấy tác dụng | Cần bật *Thu nhật ký output* và tắt *Chạy với quyền quản trị*. Cowork cảnh báo ngay dưới ô cấu hình khi thiếu. |
+| Đặt phụ thuộc nhưng bấm ▶ Chạy vẫn chạy ngay | Phụ thuộc chỉ áp dụng cho **Chạy tất cả**. Bấm Chạy cho một app là chỉ đích danh app đó. |
+| "… bị bỏ qua vì … không thành công" | Đúng như tên gọi: app đi trước lỗi nên app sau không chạy. Sửa app đi trước rồi Chạy tất cả lại. |
+| "… chờ một app không nằm trong lượt chạy" | App được chờ đang bị tắt, hoặc đã bị xoá. Bật lại nó, hoặc bỏ tick trong thẻ Phụ thuộc. |
 | App chạy đúng nhưng lịch sử báo lỗi, khay hiện thông báo | Công cụ trả mã thoát khác 0 khi thành công (robocopy trả 1). Thêm mã đó vào *Mã thoát coi là thành công* ở tab Tổng quan. |
 | Đặt số lần thử lại nhưng app lỗi không thấy chạy lại | Kiểm tra: app không bật *Giữ luôn chạy* · lần chạy đó kết thúc lỗi hay quá giờ, chứ không phải bị bấm Dừng hay không chạy được. |
 | Bấm Dừng mà app console mất vài giây mới dừng | Cowork đang chờ app tự thoát sau Ctrl+C. Giảm *Chờ dừng lịch sự tối đa* nếu app không cần dọn dẹp. |

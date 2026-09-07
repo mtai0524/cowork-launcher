@@ -150,6 +150,8 @@ public sealed class JsonWorkspaceStore : IWorkspaceStore
             app.HealthCheck ??= new HealthCheck();
             app.HealthCheck.Target ??= string.Empty;
             app.HealthCheck.FailurePatterns ??= new List<string>();
+            app.DependsOn ??= new List<AppDependency>();
+            app.DependsOn.RemoveAll(d => d is null || d.AppId == Guid.Empty || d.AppId == app.Id);
 
             // File cũ không có trường này, hoặc người dùng sửa tay thành mảng rỗng: quay về mặc định 0.
             app.SuccessExitCodes = ExitCodes.Normalize(app.SuccessExitCodes);

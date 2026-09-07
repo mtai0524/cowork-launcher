@@ -60,6 +60,12 @@ lần, nhưng chỉ tiến trình mới nhất được theo dõi và dừng đ�
 Cowork báo lỗi bằng bong bóng khay hệ thống, đủ cho người ngồi tại máy. Không có email, không có
 webhook — app lỗi lúc 2h sáng thì sáng ra vẫn phải nhìn khay hoặc tab Lịch sử.
 
+### Phụ thuộc chỉ áp dụng cho "Chạy tất cả"
+
+Lịch kích hoạt từng app riêng lẻ, nên hai app cùng đặt lịch 02:00 vẫn chạy song song dù có khai phụ
+thuộc. Cách vòng hiện có: đặt lịch cho app đầu chuỗi, còn lại để trong lượt "Chạy tất cả". Làm cho
+lịch tôn trọng phụ thuộc cần bộ lập lịch đẩy cả chuỗi vào `RunQueue` thay vì phát từng `AppDue`.
+
 ### Kiểm tra sức khoẻ không thay được giám sát thật
 
 *Kiểm tra sức khoẻ* bắt được app đơ qua thăm dò cổng/URL và watchdog theo output, nhưng nó chạy
@@ -78,10 +84,6 @@ Phần "không sửa từ xa" là chủ ý bảo mật chứ không phải chưa
 Xếp theo giá trị mang lại trên công sức bỏ ra.
 
 ### Ưu tiên cao
-
-**Phụ thuộc giữa các app.** "Chỉ chạy B sau khi A xong và thành công". Hiện "Chạy tất cả" khởi chạy
-song song theo thứ tự danh sách chứ không chờ nhau. Cần thêm trường `DependsOn` và một hàng đợi
-tuần tự.
 
 **Theo dõi file cấu hình bị sửa bên ngoài.** `FileSystemWatcher` trên các file đang mở, hiện cảnh
 báo "file đã đổi trên đĩa, tải lại?" — bịt đúng lỗ hổng ghi đè nói ở trên.
@@ -130,6 +132,7 @@ song: app nào chọn "lịch hệ thống" thì đăng ký sang Task Scheduler.
 | Mẫu nhận diện chương trình mới | `ProgramScanner`: thêm vào `RunnableExtensions`, `LauncherNames` hoặc hàm `Score`. Lưu ý danh sách thư mục nhiễu ở đây **ngược** với bộ quét cấu hình |
 | Trường mới trên app | `ManagedApp` + `Clone()` + `AppViewModel` + XAML. `JsonWorkspaceStore.Normalize` lo phần tương thích ngược |
 | Kiểu thăm dò sức khoẻ mới | Thêm giá trị vào `HealthProbeKind`, xử lý trong `NetworkHealthProbe.ProbeAsync`, thêm quy tắc vào `HealthTarget.IsValid`, khai nhãn `HealthProbe.<tên>` ở cả hai bảng ngôn ngữ |
+| Kiểu chờ phụ thuộc mới | Thêm giá trị vào `DependencyWait`, xử lý trong `RunQueue.Evaluate`, thêm quy tắc vào `DependencyGraph.Validate`, khai nhãn `DependencyWait.<tên>` ở cả hai bảng ngôn ngữ |
 
 **Ràng buộc phải giữ**
 

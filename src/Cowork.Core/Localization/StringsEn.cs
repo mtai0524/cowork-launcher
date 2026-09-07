@@ -524,5 +524,27 @@ internal static class StringsEn
             ["Val.HealthSilenceNegative"] = "The silence limit cannot be negative.",
             ["Val.HealthOutputNotCaptured"] = "The output watchdog needs “Capture output” on and no administrator elevation; it will be ignored as configured.",
             ["Val.HealthPatternInvalid"] = "“{0}” is not a valid regex and will be matched as plain text.",
+
+            // ---------- Dependencies between apps ----------
+            ["DependencyWait.Completed"] = "Finished successfully",
+            ["DependencyWait.Running"] = "Up and running",
+            ["Overview.DependsOnCard"] = "Dependencies",
+            ["Overview.DependsOnHint"] = "During “Run all”, this app starts only once every ticked app is ready. If a dependency fails or is skipped, this app is skipped too. Pressing ▶ Run on a single app ignores dependencies — that is the app you asked for.",
+            ["Overview.DependsOnEmpty"] = "There is no other app to depend on yet.",
+            ["Overview.DependsOnColApp"] = "Wait for",
+            ["Overview.DependsOnColWait"] = "Wait until",
+            ["Overview.DependsOnWaitHint"] = "“Finished successfully” suits jobs (back up, then compress). “Up and running” suits services — an app that is kept running never finishes.",
+            ["Queue.SkipCycle"] = "“{0}” sits in a dependency cycle.",
+            ["Queue.SkipMissing"] = "“{0}” waits for an app that is neither in this run nor already running.",
+            ["Queue.SkipNeverCompletes"] = "“{0}” waits for “{1}” to finish, but that app is kept running and never finishes.",
+            ["Queue.SkipDependencyFailed"] = "“{0}” was skipped because “{1}” did not succeed.",
+            ["Queue.SkipCannotStart"] = "“{0}” could not be started.",
+            ["Msg.RunAllQueued"] = "Running {0} apps in dependency order.",
+            ["Msg.RunAllFinished"] = "Run finished: {0} succeeded, {1} failed, {2} skipped.",
+            ["Notify.RunAllSkippedTitle"] = "Some apps were skipped",
+            ["Val.DependencyUnknown"] = "“{0}” depends on an app that no longer exists.",
+            ["Val.DependencyDisabled"] = "“{0}” depends on “{1}”, which is disabled, so it will be skipped during Run all.",
+            ["Val.DependencyKeepAliveCompleted"] = "“{0}” waits for “{1}” to finish, but that app is kept running and never finishes. Switch it to “Up and running”.",
+            ["Val.DependencyCycle"] = "Dependency cycle: {0}",
         };
 }

@@ -62,6 +62,7 @@ public class LocalizationTests
             AssertAllNamed<ScanConfidence>("Confidence.");
             AssertAllNamed<AppRuntimeState>("WebState.");
             AssertAllNamed<HealthProbeKind>("HealthProbe.");
+            AssertAllNamed<DependencyWait>("DependencyWait.");
         });
     }
 

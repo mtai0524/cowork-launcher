@@ -524,5 +524,27 @@ internal static class StringsVi
             ["Val.HealthSilenceNegative"] = "Thời gian im lặng không được âm.",
             ["Val.HealthOutputNotCaptured"] = "Watchdog theo output cần bật “Thu nhật ký output” và không chạy quyền admin; hiện tại nó sẽ bị bỏ qua.",
             ["Val.HealthPatternInvalid"] = "Mẫu “{0}” không phải regex hợp lệ, sẽ được so như chuỗi thường.",
+
+            // ---------- Phụ thuộc giữa các app ----------
+            ["DependencyWait.Completed"] = "Chạy xong, thành công",
+            ["DependencyWait.Running"] = "Đã lên là đủ",
+            ["Overview.DependsOnCard"] = "Phụ thuộc",
+            ["Overview.DependsOnHint"] = "Trong lượt “Chạy tất cả”, app này chỉ khởi chạy sau khi các app đã tick sẵn sàng. Phụ thuộc lỗi hay bị bỏ qua thì app này cũng bị bỏ qua. Bấm ▶ Chạy cho một app thì không kéo theo phụ thuộc — đó là ý bạn muốn đúng app đó.",
+            ["Overview.DependsOnEmpty"] = "Chưa có app nào khác để chọn làm phụ thuộc.",
+            ["Overview.DependsOnColApp"] = "Chờ app",
+            ["Overview.DependsOnColWait"] = "Chờ tới mức",
+            ["Overview.DependsOnWaitHint"] = "“Chạy xong, thành công” dành cho job (sao lưu xong mới nén). “Đã lên là đủ” dành cho dịch vụ — app giữ luôn chạy không bao giờ xong việc.",
+            ["Queue.SkipCycle"] = "“{0}” nằm trong một vòng lặp phụ thuộc.",
+            ["Queue.SkipMissing"] = "“{0}” chờ một app không nằm trong lượt chạy và cũng không đang chạy.",
+            ["Queue.SkipNeverCompletes"] = "“{0}” chờ “{1}” chạy xong, nhưng app đó giữ luôn chạy nên không bao giờ xong.",
+            ["Queue.SkipDependencyFailed"] = "“{0}” bị bỏ qua vì “{1}” không thành công.",
+            ["Queue.SkipCannotStart"] = "“{0}” không khởi chạy được.",
+            ["Msg.RunAllQueued"] = "Đang chạy {0} app theo thứ tự phụ thuộc.",
+            ["Msg.RunAllFinished"] = "Xong lượt chạy: {0} thành công, {1} lỗi, {2} bị bỏ qua.",
+            ["Notify.RunAllSkippedTitle"] = "Có app bị bỏ qua",
+            ["Val.DependencyUnknown"] = "“{0}” phụ thuộc vào một app không còn tồn tại.",
+            ["Val.DependencyDisabled"] = "“{0}” phụ thuộc vào “{1}” đang bị tắt, nên sẽ bị bỏ qua khi Chạy tất cả.",
+            ["Val.DependencyKeepAliveCompleted"] = "“{0}” chờ “{1}” chạy xong, nhưng app đó giữ luôn chạy nên không bao giờ xong. Đổi sang “Đã lên là đủ”.",
+            ["Val.DependencyCycle"] = "Vòng lặp phụ thuộc: {0}",
         };
 }
