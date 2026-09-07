@@ -1,10 +1,14 @@
+@inject UiLanguage Lang
+@inject UiTheme Theme
+@inject StaticAssets Assets
+
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="@Lang.HtmlLang" data-theme="@Theme.Slug">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
-    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="@Assets.Url("app.css")" />
     <title>Cowork Hub</title>
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>

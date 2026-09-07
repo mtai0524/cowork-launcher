@@ -47,7 +47,10 @@ builder.Services.AddSingleton<AgentAdmin>();
 // ---------- Web ----------
 builder.Services.AddSignalR();
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+builder.Services.AddSingleton<StaticAssets>();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<UiLanguage>();
+builder.Services.AddScoped<UiTheme>();
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -84,6 +87,35 @@ app.MapPost("/auth/login", async (HttpContext http, WebOptions options) =>
     await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
     return Results.Redirect("/");
 }).DisableAntiforgery();
+
+// Ngôn ngữ và phong cách cũng là form POST vì cùng lý do: đặt cookie xong nạp lại trang,
+// nhờ vậy thẻ <html> mang sẵn data-theme đúng và không có cú nháy màu.
+app.MapPost("/ui/theme", async (HttpContext http) =>
+{
+    var form = await http.Request.ReadFormAsync();
+    var theme = UiPreferences.ParseTheme(form["theme"]);
+
+    http.Response.Cookies.Append(UiPreferences.ThemeCookie, theme.ToString(), PreferenceCookie(http));
+    return Results.Redirect(UiPreferences.SafeReturnUrl(form["returnUrl"]));
+}).DisableAntiforgery();
+
+app.MapPost("/ui/language", async (HttpContext http) =>
+{
+    var form = await http.Request.ReadFormAsync();
+    var language = UiPreferences.ParseLanguage(form["language"]);
+
+    http.Response.Cookies.Append(UiPreferences.LanguageCookie, language.ToString(), PreferenceCookie(http));
+    return Results.Redirect(UiPreferences.SafeReturnUrl(form["returnUrl"]));
+}).DisableAntiforgery();
+
+static CookieOptions PreferenceCookie(HttpContext http) => new()
+{
+    MaxAge = UiPreferences.CookieLifetime,
+    HttpOnly = true,
+    SameSite = SameSiteMode.Lax,
+    Secure = http.Request.IsHttps,
+    IsEssential = true,
+};
 
 app.MapPost("/auth/logout", async (HttpContext http) =>
 {

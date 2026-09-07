@@ -33,6 +33,10 @@
     <EmbeddedResource Include="..\..\src\Cowork.App\Themes\Palettes\*.xaml"
                       LogicalName="Cowork.Tests.Palettes.%(Filename).xaml" />
 
+    <!-- Bảng màu bản web, để đối chiếu với bảng màu XAML ở trên. -->
+    <EmbeddedResource Include="..\..\src\Cowork.Hub\wwwroot\app.css"
+                      LogicalName="Cowork.Tests.Web.app.css" />
+
     <!-- Cả phần đánh dấu nữa, để dò ra khoá DynamicResource gõ sai: WPF nuốt im
          lặng khoá không tồn tại, hậu quả là một mảng giao diện mất màu. -->
     <EmbeddedResource Include="..\..\src\Cowork.App\**\*.xaml"

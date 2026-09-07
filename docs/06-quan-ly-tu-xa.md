@@ -89,8 +89,10 @@ Lệnh từ web đi xuống agent, agent trả lời trong 15 giây; kết quả
 lịch sử ghi nguồn kích hoạt là **Từ xa**. Trạng thái cập nhật tức thời khi app đổi trạng thái, và
 toàn bộ được gửi lại mỗi 30 giây (làm nhịp tim, đồng thời cập nhật mốc *Kế tiếp*).
 
-Nút góc trên đổi ngôn ngữ cho riêng phiên trình duyệt đó. Riêng cột *Lịch* và câu trả lời của agent
-là chữ agent gửi lên, theo ngôn ngữ đang đặt trên máy agent.
+Thanh trên cùng có bộ chọn **phong cách hiển thị** (Tối / Nửa đêm / Sáng / Tương phản cao — cùng bảng
+màu với app desktop) và nút đổi **ngôn ngữ**. Cả hai lưu vào cookie riêng của trình duyệt đó, giữ
+nguyên sau khi tải lại, và không ảnh hưởng người khác đang mở cùng hub. Riêng cột *Lịch* và câu trả
+lời của agent là chữ agent gửi lên, theo ngôn ngữ đang đặt trên máy agent.
 
 ### Cấp token
 

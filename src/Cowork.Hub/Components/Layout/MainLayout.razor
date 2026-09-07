@@ -1,10 +1,12 @@
 @inherits LayoutComponentBase
 @inject UiLanguage Lang
-@implements IDisposable
+@inject UiTheme Theme
+@inject NavigationManager Nav
 
 <div class="shell">
     <header class="topbar">
         <a class="brand" href="/">Cowork Hub</a>
+
         <AuthorizeView>
             <Authorized>
                 <nav class="nav">
@@ -13,8 +15,26 @@
                 </nav>
             </Authorized>
         </AuthorizeView>
+
         <div class="topbar-right">
-            <button class="btn" type="button" @onclick="Lang.Toggle">@Lang.T("Web.SwitchLanguage")</button>
+            <form class="themes" method="post" action="/ui/theme" aria-label="@Lang.T("Web.Appearance")">
+                <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+                @foreach (var theme in UiTheme.Available)
+                {
+                    <button type="submit" name="theme" value="@theme"
+                            aria-pressed="@(theme == Theme.Current ? "true" : "false")">
+                        @Lang.T("Theme." + theme)
+                    </button>
+                }
+            </form>
+
+            <form method="post" action="/ui/language">
+                <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+                <button class="btn" type="submit" name="language" value="@Lang.Other">
+                    @Lang.T("Web.SwitchLanguage")
+                </button>
+            </form>
+
             <AuthorizeView>
                 <Authorized>
                     <form method="post" action="/auth/logout">
@@ -24,15 +44,13 @@
             </AuthorizeView>
         </div>
     </header>
+
     <main class="content">
         @Body
     </main>
 </div>
 
 @code {
-    protected override void OnInitialized() => Lang.Changed += OnLanguageChanged;
-
-    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
-
-    public void Dispose() => Lang.Changed -= OnLanguageChanged;
+    /// <summary>Đổi ngôn ngữ hay phong cách xong phải quay lại đúng trang đang xem, không văng về trang chủ.</summary>
+    private string ReturnUrl => "/" + Nav.ToBaseRelativePath(Nav.Uri);
 }

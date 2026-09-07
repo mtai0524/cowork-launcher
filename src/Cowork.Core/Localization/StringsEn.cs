@@ -484,6 +484,7 @@ internal static class StringsEn
             ["Msg.RemoteRestart"] = "Web command: restart “{0}”.",
             ["Msg.RemoteUnknownApp"] = "No app on this machine has that id.",
             ["Msg.RemoteDone"] = "Done.",
+            ["Web.Appearance"] = "Appearance",
             ["Web.SwitchLanguage"] = "Tiếng Việt",
             ["Web.Login"] = "Sign in",
             ["Web.Password"] = "Password",

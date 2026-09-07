@@ -9,11 +9,15 @@
         <div class="notice bad">@Lang.T("Web.LoginFailed")</div>
     }
 
-    <form method="post" action="/auth/login">
-        <label for="password">@Lang.T("Web.Password")</label>
-        <input id="password" name="password" type="password" autofocus autocomplete="current-password" />
-        <button class="btn primary" type="submit">@Lang.T("Web.Login")</button>
-    </form>
+    <div class="card">
+        <form method="post" action="/auth/login">
+            <div class="field">
+                <label for="password">@Lang.T("Web.Password")</label>
+                <input id="password" name="password" type="password" autofocus autocomplete="current-password" />
+            </div>
+            <button class="btn primary" type="submit">@Lang.T("Web.Login")</button>
+        </form>
+    </div>
 </div>
 
 @code {

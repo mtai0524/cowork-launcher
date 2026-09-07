@@ -484,6 +484,7 @@ internal static class StringsVi
             ["Msg.RemoteRestart"] = "Lệnh từ web: khởi động lại “{0}”.",
             ["Msg.RemoteUnknownApp"] = "Không có app nào mang mã này trên máy.",
             ["Msg.RemoteDone"] = "Đã thực hiện.",
+            ["Web.Appearance"] = "Giao diện",
             ["Web.SwitchLanguage"] = "English",
             ["Web.Login"] = "Đăng nhập",
             ["Web.Password"] = "Mật khẩu",

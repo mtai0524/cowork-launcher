@@ -15,12 +15,14 @@
 {
     <section class="card">
         <header class="card-head">
-            <span class="dot @(machine.Online ? "online" : "offline")"></span>
-            <strong>@machine.Name</strong>
-            <span class="muted">@Presence(machine)</span>
+            <span class="presence">
+                <span class="dot @(machine.Online ? "online" : "offline")"></span>
+                <span class="card-title">@machine.Name</span>
+            </span>
+            <span class="muted small">@Presence(machine)</span>
             @if (machine.HostName is not null)
             {
-                <span class="muted">· @machine.HostName</span>
+                <span class="badge">@machine.HostName</span>
             }
         </header>
 
@@ -93,11 +95,7 @@
     private bool _noticeOk;
     private bool _busy;
 
-    protected override void OnInitialized()
-    {
-        Registry.Changed += OnChanged;
-        Lang.Changed += OnChanged;
-    }
+    protected override void OnInitialized() => Registry.Changed += OnChanged;
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
 
@@ -142,9 +140,5 @@
         }
     }
 
-    public void Dispose()
-    {
-        Registry.Changed -= OnChanged;
-        Lang.Changed -= OnChanged;
-    }
+    public void Dispose() => Registry.Changed -= OnChanged;
 }

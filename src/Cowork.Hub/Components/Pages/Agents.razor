@@ -6,8 +6,7 @@
 @implements IDisposable
 
 <h1>@Lang.T("Web.AgentsTitle")</h1>
-
-<p class="muted">@Lang.T("Web.AgentsIntro")</p>
+<p class="lede">@Lang.T("Web.AgentsIntro")</p>
 
 @if (_notice is not null)
 {
@@ -15,19 +14,25 @@
 }
 
 <section class="card">
-    <header class="card-head"><strong>@Lang.T("Web.AddMachine")</strong></header>
+    <header class="card-head"><span class="card-title">@Lang.T("Web.AddMachine")</span></header>
 
     <div class="agent-form">
-        <label for="agent-name">@Lang.T("Web.NewMachineName")</label>
-        <input id="agent-name" @bind="_name" @bind:event="oninput" autocomplete="off" />
-
-        <label for="agent-token">@Lang.T("Web.ColToken")</label>
-        <div class="agent-token-field">
-            <input id="agent-token" class="mono" @bind="_token" @bind:event="oninput" autocomplete="off" />
-            <button class="btn" type="button" @onclick="Regenerate">@Lang.T("Web.GenerateToken")</button>
+        <div class="field">
+            <label for="agent-name">@Lang.T("Web.NewMachineName")</label>
+            <input id="agent-name" type="text" @bind="_name" @bind:event="oninput" autocomplete="off" />
         </div>
 
-        <button class="btn primary" type="button" @onclick="Add">@Lang.T("Web.AddMachine")</button>
+        <div class="field">
+            <label for="agent-token">@Lang.T("Web.ColToken")</label>
+            <div class="with-button">
+                <input id="agent-token" class="mono" type="text" @bind="_token" @bind:event="oninput" autocomplete="off" />
+                <button class="btn" type="button" @onclick="Regenerate">@Lang.T("Web.GenerateToken")</button>
+            </div>
+        </div>
+
+        <div class="submit">
+            <button class="btn primary" type="button" @onclick="Add">@Lang.T("Web.AddMachine")</button>
+        </div>
     </div>
 </section>
 
@@ -53,28 +58,34 @@
                     <tr>
                         <td><strong>@agent.Name</strong></td>
                         <td>
-                            <span class="dot @(Find(agent.Name)?.Online == true ? "online" : "offline")"></span>
-                            <span class="muted">@Presence(agent.Name)</span>
+                            <span class="presence">
+                                <span class="dot @(Find(agent.Name)?.Online == true ? "online" : "offline")"></span>
+                                <span class="muted small">@Presence(agent.Name)</span>
+                            </span>
                         </td>
                         <td>
-                            @if (_revealed.Contains(agent.Name))
-                            {
-                                <code class="token">@agent.Token</code>
-                            }
-                            else
-                            {
-                                <code class="token muted">@Lang.T("Web.TokenHidden")</code>
-                            }
-                            <button class="btn" type="button" @onclick="() => ToggleReveal(agent.Name)">
-                                @Lang.T(_revealed.Contains(agent.Name) ? "Web.HideToken" : "Web.ShowToken")
-                            </button>
+                            <div class="token-cell">
+                                @if (_revealed.Contains(agent.Name))
+                                {
+                                    <code class="token">@agent.Token</code>
+                                }
+                                else
+                                {
+                                    <code class="token hidden">@Lang.T("Web.TokenHidden")</code>
+                                }
+                                <button class="btn tiny" type="button" @onclick="() => ToggleReveal(agent.Name)">
+                                    @Lang.T(_revealed.Contains(agent.Name) ? "Web.HideToken" : "Web.ShowToken")
+                                </button>
+                            </div>
                         </td>
                         <td class="actions">
                             @if (_confirming == agent.Name)
                             {
-                                <span class="muted small">@Lang.T("Web.ConfirmRemove", agent.Name)</span>
-                                <button class="btn danger" type="button" @onclick="() => Remove(agent.Name)">@Lang.T("Web.Remove")</button>
-                                <button class="btn" type="button" @onclick="() => _confirming = null">@Lang.T("Web.Cancel")</button>
+                                <span class="confirm">
+                                    <span class="muted small">@Lang.T("Web.ConfirmRemove", agent.Name)</span>
+                                    <button class="btn danger" type="button" @onclick="() => Remove(agent.Name)">@Lang.T("Web.Remove")</button>
+                                    <button class="btn" type="button" @onclick="() => _confirming = null">@Lang.T("Web.Cancel")</button>
+                                </span>
                             }
                             else
                             {
@@ -97,11 +108,7 @@
     private string? _notice;
     private bool _noticeOk;
 
-    protected override void OnInitialized()
-    {
-        Registry.Changed += OnChanged;
-        Lang.Changed += OnChanged;
-    }
+    protected override void OnInitialized() => Registry.Changed += OnChanged;
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
 
@@ -169,9 +176,5 @@
         _ => Lang.T("Web.SaveFailed", change.Detail ?? string.Empty),
     };
 
-    public void Dispose()
-    {
-        Registry.Changed -= OnChanged;
-        Lang.Changed -= OnChanged;
-    }
+    public void Dispose() => Registry.Changed -= OnChanged;
 }
