@@ -538,6 +538,18 @@ internal static class StringsEn
             ["Web.SaveFailed"] = "Could not write the machine list to disk, so the change was rolled back: {0}",
             ["Web.NoAgents"] = "No machine has a token yet.",
 
+            ["Web.ViewScreen"] = "View screen",
+            ["Web.ScreenTitle"] = "{0} · {1}",
+            ["Web.ScreenTakenAt"] = "Taken at {0}",
+            ["Web.ScreenRefresh"] = "Take again",
+            ["Web.ScreenClose"] = "Close",
+            ["Web.ScreenCapturing"] = "Taking a shot…",
+            ["Web.ScreenMachineOffline"] = "The machine is offline, so nothing can be captured.",
+            ["Web.ScreenUnknownApp"] = "That machine no longer has this app.",
+            ["Web.ScreenNotRunning"] = "The app is not running, so there is nothing to capture.",
+            ["Web.ScreenNoWindow"] = "The app is running but has no window — a background service or a hidden console cannot be captured.",
+            ["Web.ScreenCaptureFailed"] = "Could not capture this app's window.",
+
             ["WebState.Idle"] = "Idle",
             ["WebState.Starting"] = "Starting",
             ["WebState.Running"] = "Running",

@@ -67,6 +67,16 @@ public sealed class HubIntegrationTests : IDisposable
 
             return Task.FromResult(new CommandResult(command.RequestId, true, "da chay"));
         }
+
+        /// <summary>Ảnh giả: chỉ cần vài byte để kiểm rằng dữ liệu nhị phân đi trọn vẹn qua đường mạng.</summary>
+        public byte[] Png { get; set; } = { 0x89, 0x50, 0x4E, 0x47, 1, 2, 3, 4 };
+
+        public ScreenshotFailure Failure { get; set; } = ScreenshotFailure.None;
+
+        public Task<ScreenshotResult> CaptureAsync(ScreenshotRequest request)
+            => Task.FromResult(Failure == ScreenshotFailure.None
+                ? new ScreenshotResult(request.RequestId, ScreenshotFailure.None, Png, 800, 600, DateTimeOffset.Now)
+                : ScreenshotResult.Failed(request.RequestId, Failure, DateTimeOffset.Now));
     }
 
     private HubClient CreateClient(IAgentHost agent)
@@ -159,6 +169,43 @@ public sealed class HubIntegrationTests : IDisposable
         await WaitUntilAsync(() => { lock (states) return states.Contains(HubLinkState.Failed); }, "client báo thất bại");
 
         Assert.DoesNotContain(Registry.Machines, m => m.Name == "may-tam");
+    }
+
+    /// <summary>
+    /// Ảnh chụp là thông điệp lớn nhất đi qua đường này. Mức mặc định 32 KB của SignalR sẽ
+    /// cắt kết nối, nên test đi qua chính đường mạng thật thay vì gọi thẳng registry.
+    /// </summary>
+    [Fact]
+    public async Task Screenshot_TravelsOverTheWire_Intact()
+    {
+        var agent = new FakeAgent { Png = Enumerable.Range(0, 200_000).Select(i => (byte)i).ToArray() };
+        await using var client = CreateClient(agent);
+
+        await client.StartAsync(BaseAddress, Token);
+        await WaitUntilAsync(() => Registry.Machines.Any(m => m.Name == "may-test" && m.Online), "máy lên trực tuyến");
+
+        var result = await Registry.RequestScreenshotAsync("may-test", agent.AppId, Patience);
+
+        Assert.True(result.Ok);
+        Assert.Equal(agent.Png, result.Png);
+        Assert.Equal(800, result.Width);
+    }
+
+    /// <summary>Lý do không chụp được phải về tới web nguyên vẹn, để trang nói đúng chuyện gì đã xảy ra.</summary>
+    [Fact]
+    public async Task Screenshot_CarriesTheFailureReasonBack()
+    {
+        var agent = new FakeAgent { Failure = ScreenshotFailure.NoWindow };
+        await using var client = CreateClient(agent);
+
+        await client.StartAsync(BaseAddress, Token);
+        await WaitUntilAsync(() => Registry.Machines.Any(m => m.Name == "may-test" && m.Online), "máy lên trực tuyến");
+
+        var result = await Registry.RequestScreenshotAsync("may-test", agent.AppId, Patience);
+
+        Assert.False(result.Ok);
+        Assert.Equal(ScreenshotFailure.NoWindow, result.Failure);
+        Assert.Empty(result.Png);
     }
 
     [Fact]

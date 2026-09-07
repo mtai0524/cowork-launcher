@@ -41,7 +41,7 @@ files inside the app, without hunting for paths in Notepad.
 | **Per-run output** | Every run gets its own log file; clicking a row in the History tab replays exactly that run's output |
 | **Outbound alerts** | When an app fails at midnight, get it via webhook (Slack/Discord/Teams), Telegram, or email — sent to every configured channel in parallel, with a quiet period against spam |
 | **Background operation** | Minimize to the system tray, start with Windows |
-| **Remote management** | Several machines connect out to one web hub: see their status and hit Run / Stop / Restart from a browser, and issue agent tokens from the web — see [docs/06](docs/06-quan-ly-tu-xa.md) |
+| **Remote management** | Several machines connect out to one web hub: see their status, hit Run / Stop / Restart from a browser, take a screenshot of a running app's window, and issue agent tokens from the web — see [docs/06](docs/06-quan-ly-tu-xa.md) |
 
 ## Getting started
 

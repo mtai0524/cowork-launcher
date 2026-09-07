@@ -31,6 +31,12 @@ public interface IProcessManager
     /// <summary>Các dòng output gần nhất của app (bộ đệm vòng trong bộ nhớ).</summary>
     IReadOnlyList<AppOutputLine> GetOutput(Guid appId);
 
+    /// <summary>
+    /// Cửa sổ chính của tiến trình, để chụp ảnh gửi lên hub. Trả <c>0</c> khi app không chạy
+    /// hoặc chạy nhưng chưa/không có cửa sổ — dịch vụ nền và console ẩn đều rơi vào đây.
+    /// </summary>
+    nint MainWindowHandle(Guid appId);
+
     event EventHandler<AppStatusChanged>? StatusChanged;
     event EventHandler<AppOutputLine>? OutputReceived;
 

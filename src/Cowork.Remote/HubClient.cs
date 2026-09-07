@@ -10,6 +10,9 @@ public interface IAgentHost
     MachineSnapshot BuildSnapshot();
 
     Task<CommandResult> ExecuteAsync(RemoteCommand command);
+
+    /// <summary>Chụp cửa sổ của một app. Không chụp được thì trả kết quả mang mã lý do, không ném.</summary>
+    Task<ScreenshotResult> CaptureAsync(ScreenshotRequest request);
 }
 
 public enum HubLinkState
@@ -70,6 +73,7 @@ public sealed class HubClient : IAsyncDisposable
 
         var connection = builder.Build();
         connection.On<RemoteCommand>(HubMethods.Execute, command => OnExecuteAsync(connection, command));
+        connection.On<ScreenshotRequest>(HubMethods.Capture, request => OnCaptureAsync(connection, request));
         connection.Reconnecting += error =>
         {
             Set(HubLinkState.Reconnecting, error?.Message);
@@ -211,6 +215,29 @@ public sealed class HubClient : IAsyncDisposable
         catch (Exception ex)
         {
             _logger.Warning("Không gửi được kết quả lệnh lên hub: " + ex.Message);
+        }
+    }
+
+    private async Task OnCaptureAsync(HubConnection connection, ScreenshotRequest request)
+    {
+        ScreenshotResult result;
+        try
+        {
+            result = await _host.CaptureAsync(request).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Lỗi khi chụp màn hình theo yêu cầu của hub.", ex);
+            result = ScreenshotResult.Failed(request.RequestId, ScreenshotFailure.CaptureFailed, DateTimeOffset.Now);
+        }
+
+        try
+        {
+            await connection.SendAsync(HubMethods.ScreenshotResult, result).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.Warning("Không gửi được ảnh chụp lên hub: " + ex.Message);
         }
     }
 

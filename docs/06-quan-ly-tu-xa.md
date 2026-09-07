@@ -85,6 +85,12 @@ thể tự nhận mình là máy B.
 chưa từng nối (để biết máy nào đang thiếu). Mỗi máy: app, trạng thái, chạy lần cuối, mốc kế tiếp, và
 ba nút **Chạy / Dừng / Khởi động lại** — chỉ bấm được khi máy đang trực tuyến.
 
+Nút **Xem màn hình** xin agent chụp một tấm ảnh cửa sổ của app rồi hiện ngay trên trang. Chụp
+theo yêu cầu, không phải luồng liên tục: mỗi lần bấm là một tấm. Chỉ chụp **cửa sổ của app**, không
+chụp cả desktop, nên những thứ khác đang mở trên máy không lọt vào ảnh. App không có cửa sổ — dịch
+vụ nền, console đang ẩn — thì trang nói rõ như vậy thay vì đưa ra ảnh trống. Ảnh được thu nhỏ về tối
+đa 1400 điểm ảnh chiều ngang, giữ trong bộ nhớ hub 10 phút rồi tự mất, và chỉ tải được khi đã đăng nhập.
+
 Lệnh từ web đi xuống agent, agent trả lời trong 15 giây; kết quả hiện ngay trên trang. Trên máy đó,
 lịch sử ghi nguồn kích hoạt là **Từ xa**. Trạng thái cập nhật tức thời khi app đổi trạng thái, và
 toàn bộ được gửi lại mỗi 30 giây (làm nhịp tim, đồng thời cập nhật mốc *Kế tiếp*).
@@ -116,7 +122,11 @@ xoá mọi thứ không có trong thư mục nguồn, không skip là mất sạ
 Một trang web ra lệnh chạy chương trình trên nhiều máy **về bản chất là công cụ thực thi từ xa**. Tài
 khoản web bị lộ nghĩa là kẻ khác chạy được mọi app đã khai trên mọi máy của bạn.
 
-- **HTTPS bắt buộc.** Token agent và cookie đăng nhập đi qua đường này; HTTP trần là lộ hết.
+- **HTTPS bắt buộc.** Token agent, cookie đăng nhập và ảnh màn hình đều đi qua đường này; HTTP trần
+  là lộ hết. Từ khi có tính năng xem màn hình thì điều này nghiêm trọng hơn hẳn: ảnh cửa sổ app có
+  thể chứa dữ liệu khách hàng, đường dẫn nội bộ, hay chính thông tin đăng nhập đang hiện trên màn hình.
+- **Cân nhắc trước khi bật xem màn hình.** Ai vào được web là xem được cửa sổ của mọi app đang chạy
+  trên mọi máy. Nếu không cần, đừng để app nhạy cảm ở trạng thái đang chạy khi không có ai giám sát.
 - **Mật khẩu web dài**, và token **riêng cho từng máy** — thu hồi một máy chỉ cần bấm *Thu hồi*.
 - Web **chỉ kích hoạt app đã khai sẵn** trên máy. Không sửa được đường dẫn, tham số, lịch hay file
   cấu hình từ xa — đây là chủ ý, để tài khoản web bị lộ vẫn không biến thành "chạy bất kỳ thứ gì".

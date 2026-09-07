@@ -93,12 +93,32 @@ internal sealed class RecordingSender : IAgentCommandSender
 
     public bool Throw { get; set; }
 
+    public List<(string ConnectionId, ScreenshotRequest Request)> Shots { get; } = new();
+
+    /// <summary>Ảnh mà agent giả sẽ trả về; null nghĩa là không trả lời gì (để thử quá hạn).</summary>
+    public Func<ScreenshotRequest, ScreenshotResult?>? OnScreenshot { get; set; }
+
+    public MachineRegistry? Registry { get; set; }
+
     public Task SendAsync(string connectionId, RemoteCommand command, CancellationToken cancellationToken)
     {
         if (Throw)
             throw new InvalidOperationException("mat mang");
 
         Sent.Add((connectionId, command));
+        return Task.CompletedTask;
+    }
+
+    public Task SendAsync(string connectionId, ScreenshotRequest request, CancellationToken cancellationToken)
+    {
+        if (Throw)
+            throw new InvalidOperationException("mat mang");
+
+        Shots.Add((connectionId, request));
+
+        if (OnScreenshot?.Invoke(request) is { } result)
+            Registry?.Complete(result);
+
         return Task.CompletedTask;
     }
 }

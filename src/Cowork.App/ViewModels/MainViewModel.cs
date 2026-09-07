@@ -13,6 +13,7 @@ using Cowork.Core.Services;
 using Cowork.Core.Validation;
 using Cowork.Core.Localization;
 using Cowork.App.Localization;
+using Cowork.App.Services;
 using Cowork.App.Themes;
 using Cowork.Remote;
 using Cowork.Remote.Contracts;
@@ -42,6 +43,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     private readonly SystemTriggerSupervisor _systemTriggers;
     private readonly AlertDispatcher _alerts;
     private readonly HubClient _hubClient;
+    private readonly AppScreenshotService _screenshots;
     private HubLinkState _hubState = HubLinkState.Disabled;
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _uiRefreshTimer;
@@ -160,6 +162,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             SystemClock.Instance,
             _logger);
 
+        _screenshots = new AppScreenshotService(_processManager, new GdiWindowCapture(), SystemClock.Instance);
         _hubClient = new HubClient(this, _logger);
         _hubClient.StateChanged += OnHubStateChanged;
 
@@ -466,6 +469,15 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
 
     async Task<CommandResult> IAgentHost.ExecuteAsync(RemoteCommand command)
         => await await _dispatcher.InvokeAsync(() => ExecuteRemoteAsync(command));
+
+    /// <summary>
+    /// Chụp trên luồng giao diện: cửa sổ được vẽ bởi luồng đó, và danh sách app cũng chỉ
+    /// đọc an toàn từ đó.
+    /// </summary>
+    Task<ScreenshotResult> IAgentHost.CaptureAsync(ScreenshotRequest request)
+        => _dispatcher.InvokeAsync(
+            () => _screenshots.Take(request.RequestId, request.AppId, FindApp(request.AppId) is not null))
+            .Task;
 
     private async Task<CommandResult> ExecuteRemoteAsync(RemoteCommand command)
     {

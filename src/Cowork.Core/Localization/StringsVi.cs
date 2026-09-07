@@ -538,6 +538,18 @@ internal static class StringsVi
             ["Web.SaveFailed"] = "Không ghi được danh sách máy xuống đĩa, thay đổi đã được hoàn tác: {0}",
             ["Web.NoAgents"] = "Chưa cấp token cho máy nào.",
 
+            ["Web.ViewScreen"] = "Xem màn hình",
+            ["Web.ScreenTitle"] = "{0} · {1}",
+            ["Web.ScreenTakenAt"] = "Chụp lúc {0}",
+            ["Web.ScreenRefresh"] = "Chụp lại",
+            ["Web.ScreenClose"] = "Đóng",
+            ["Web.ScreenCapturing"] = "Đang chụp…",
+            ["Web.ScreenMachineOffline"] = "Máy đang ngoại tuyến nên không chụp được.",
+            ["Web.ScreenUnknownApp"] = "Máy đó không còn app này.",
+            ["Web.ScreenNotRunning"] = "App không chạy nên không có gì để chụp.",
+            ["Web.ScreenNoWindow"] = "App đang chạy nhưng không có cửa sổ — dịch vụ nền hoặc console ẩn thì không chụp được.",
+            ["Web.ScreenCaptureFailed"] = "Không chụp được cửa sổ của app này.",
+
             ["WebState.Idle"] = "Nghỉ",
             ["WebState.Starting"] = "Đang khởi động",
             ["WebState.Running"] = "Đang chạy",

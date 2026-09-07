@@ -8,6 +8,8 @@ namespace Cowork.Remote;
 public interface IAgentCommandSender
 {
     Task SendAsync(string connectionId, RemoteCommand command, CancellationToken cancellationToken);
+
+    Task SendAsync(string connectionId, ScreenshotRequest request, CancellationToken cancellationToken);
 }
 
 /// <summary>Trạng thái một máy như web nhìn thấy.</summary>
@@ -49,6 +51,7 @@ public sealed class MachineRegistry
     private readonly Dictionary<string, Entry> _byName = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Entry> _byConnection = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<Guid, TaskCompletionSource<CommandResult>> _pending = new();
+    private readonly ConcurrentDictionary<Guid, TaskCompletionSource<ScreenshotResult>> _pendingShots = new();
 
     public MachineRegistry(IAgentCommandSender sender, IClock clock, IEnumerable<string> knownMachines)
     {
@@ -234,6 +237,60 @@ public sealed class MachineRegistry
         {
             _pending.TryRemove(command.RequestId, out _);
         }
+    }
+
+    /// <summary>
+    /// Xin agent một tấm ảnh cửa sổ của app. Trả kết quả mang mã lý do thay vì ném, vì mọi
+    /// nhánh hỏng ở đây đều là chuyện bình thường: máy ngoại tuyến, app không chạy, app không
+    /// có cửa sổ.
+    /// </summary>
+    public async Task<ScreenshotResult> RequestScreenshotAsync(
+        string machineName, Guid appId, TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        var requestId = Guid.NewGuid();
+
+        string connectionId;
+        lock (_gate)
+        {
+            if (!_byName.TryGetValue(machineName, out var entry) || entry.ConnectionId is null)
+                return ScreenshotResult.Failed(requestId, ScreenshotFailure.MachineOffline, _clock.Now);
+
+            connectionId = entry.ConnectionId;
+        }
+
+        var request = new ScreenshotRequest(requestId, appId);
+        var completion = new TaskCompletionSource<ScreenshotResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _pendingShots[requestId] = completion;
+
+        try
+        {
+            await _sender.SendAsync(connectionId, request, cancellationToken).ConfigureAwait(false);
+
+            var finished = await Task.WhenAny(completion.Task, Task.Delay(timeout, cancellationToken)).ConfigureAwait(false);
+            if (finished != completion.Task)
+                return ScreenshotResult.Failed(requestId, ScreenshotFailure.CaptureFailed, _clock.Now);
+
+            return await completion.Task.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return ScreenshotResult.Failed(requestId, ScreenshotFailure.CaptureFailed, _clock.Now);
+        }
+        finally
+        {
+            _pendingShots.TryRemove(requestId, out _);
+        }
+    }
+
+    /// <summary>Agent gửi ảnh về. Ảnh của yêu cầu đã quá hạn bị bỏ qua.</summary>
+    public bool Complete(ScreenshotResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        return _pendingShots.TryGetValue(result.RequestId, out var completion) && completion.TrySetResult(result);
     }
 
     /// <summary>Agent trả lời một lệnh. Trả lời cho lệnh không còn chờ (đã quá hạn) bị bỏ qua.</summary>

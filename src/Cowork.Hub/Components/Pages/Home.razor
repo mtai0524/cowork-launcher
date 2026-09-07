@@ -1,6 +1,7 @@
 @page "/"
 @attribute [Authorize]
 @inject MachineRegistry Registry
+@inject ScreenshotCache Screenshots
 @inject UiLanguage Lang
 @implements IDisposable
 
@@ -9,6 +10,22 @@
 @if (_notice is not null)
 {
     <div class="notice @(_noticeOk ? "ok" : "bad")">@_notice</div>
+}
+
+@if (_shot is not null)
+{
+    <section class="card screen">
+        <header class="card-head">
+            <span class="card-title">@Lang.T("Web.ScreenTitle", _shot.Machine, _shot.App)</span>
+            <span class="muted small">@Lang.T("Web.ScreenTakenAt", _shot.TakenAt.ToString("HH:mm:ss"))</span>
+            <span class="screen-actions">
+                <button class="btn" type="button" disabled="@_capturing"
+                        @onclick="() => CaptureAsync(_shot.Machine, _shot.AppId, _shot.App)">@Lang.T("Web.ScreenRefresh")</button>
+                <button class="btn" type="button" @onclick="() => _shot = null">@Lang.T("Web.ScreenClose")</button>
+            </span>
+        </header>
+        <img src="@_shot.Url" alt="@_shot.App" width="@_shot.Width" height="@_shot.Height" />
+    </section>
 }
 
 @foreach (var machine in Registry.Machines)
@@ -79,6 +96,8 @@
                                         @onclick="() => SendAsync(machine.Name, app, RemoteCommandKind.Stop)">@Lang.T("Web.Stop")</button>
                                 <button class="btn" type="button" disabled="@(!machine.Online || _busy)"
                                         @onclick="() => SendAsync(machine.Name, app, RemoteCommandKind.Restart)">@Lang.T("Web.Restart")</button>
+                                <button class="btn" type="button" disabled="@(!machine.Online || _capturing)"
+                                        @onclick="() => CaptureAsync(machine.Name, app.Id, app.Name)">@Lang.T("Web.ViewScreen")</button>
                             </td>
                         </tr>
                     }
@@ -91,9 +110,14 @@
 @code {
     private static readonly TimeSpan CommandTimeout = TimeSpan.FromSeconds(15);
 
+    /// <summary>Chụp và nén ảnh mất lâu hơn một lệnh chạy/dừng, nhất là cửa sổ lớn.</summary>
+    private static readonly TimeSpan CaptureTimeout = TimeSpan.FromSeconds(25);
+
     private string? _notice;
     private bool _noticeOk;
     private bool _busy;
+    private bool _capturing;
+    private Shot? _shot;
 
     protected override void OnInitialized() => Registry.Changed += OnChanged;
 
@@ -107,6 +131,42 @@
         return machine.LastSeen is { } seen
             ? Lang.T("Web.LastSeen", seen.ToString("dd/MM HH:mm"))
             : Lang.T("Web.NeverConnected");
+    }
+
+    /// <summary>Ảnh đang xem. Chỉ giữ một tấm: xem nhiều cửa sổ cùng lúc không phải việc trang này cần làm.</summary>
+    private sealed record Shot(
+        string Machine, Guid AppId, string App, string Url, int Width, int Height, DateTimeOffset TakenAt);
+
+    private async Task CaptureAsync(string machine, Guid appId, string appName)
+    {
+        _capturing = true;
+        _notice = null;
+
+        try
+        {
+            var result = await Registry.RequestScreenshotAsync(machine, appId, CaptureTimeout);
+
+            if (!result.Ok)
+            {
+                _noticeOk = false;
+                _notice = Lang.T(result.Failure switch
+                {
+                    ScreenshotFailure.MachineOffline => "Web.ScreenMachineOffline",
+                    ScreenshotFailure.UnknownApp => "Web.ScreenUnknownApp",
+                    ScreenshotFailure.NotRunning => "Web.ScreenNotRunning",
+                    ScreenshotFailure.NoWindow => "Web.ScreenNoWindow",
+                    _ => "Web.ScreenCaptureFailed",
+                });
+                return;
+            }
+
+            var id = Screenshots.Put(result.Png);
+            _shot = new Shot(machine, appId, appName, $"/screenshot/{id}", result.Width, result.Height, result.TakenAt);
+        }
+        finally
+        {
+            _capturing = false;
+        }
     }
 
     // Mốc giờ giữ nguyên múi giờ của máy agent, không đổi sang giờ của server.

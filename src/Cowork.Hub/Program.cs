@@ -43,9 +43,11 @@ builder.Services.AddSingleton(sp => new MachineRegistry(
     sp.GetRequiredService<IClock>(),
     sp.GetRequiredService<AgentDirectory>().Names));
 builder.Services.AddSingleton<AgentAdmin>();
+builder.Services.AddSingleton<ScreenshotCache>();
 
 // ---------- Web ----------
-builder.Services.AddSignalR();
+// Ảnh chụp màn hình lớn hơn hẳn mọi thông điệp khác; mức mặc định 32 KB sẽ cắt kết nối.
+builder.Services.AddSignalR(options => options.MaximumReceiveMessageSize = HubMethods.MaxMessageBytes);
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddSingleton<StaticAssets>();
 builder.Services.AddHttpContextAccessor();
@@ -122,6 +124,14 @@ app.MapPost("/auth/logout", async (HttpContext http) =>
     await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     return Results.Redirect("/login");
 }).DisableAntiforgery();
+
+// Ảnh màn hình của máy trong nhà: phải đăng nhập mới xem được. Không đặt cache công khai —
+// URL mang GUID ngẫu nhiên nhưng đó không phải cơ chế kiểm soát truy cập.
+app.MapGet("/screenshot/{id:guid}", (Guid id, ScreenshotCache cache) =>
+{
+    var png = cache.Get(id);
+    return png is null ? Results.NotFound() : Results.File(png, "image/png");
+}).RequireAuthorization();
 
 app.MapHub<AgentHub>(HubMethods.AgentPath);
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();

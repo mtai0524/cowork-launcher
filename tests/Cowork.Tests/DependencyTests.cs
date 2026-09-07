@@ -238,6 +238,8 @@ public class RunQueueTests
         private readonly HashSet<Guid> _running = new();
 
         public bool IsRunning(Guid appId) => _running.Contains(appId);
+
+    public nint MainWindowHandle(Guid appId) => 0;
         public IReadOnlyCollection<Guid> RunningAppIds => _running.ToList();
         public StartResult Start(ManagedApp app, RunTrigger trigger) => StartResult.Ok(1);
         public Task<bool> StopAsync(Guid appId, int graceMs = 5000, CancellationToken cancellationToken = default) => Task.FromResult(false);

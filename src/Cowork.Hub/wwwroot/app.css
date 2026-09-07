@@ -478,3 +478,19 @@ input:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring
     .actions { text-align: left; }
     .confirm { justify-content: flex-start; }
 }
+
+/* ---------- Khung xem màn hình app ---------- */
+
+.screen-actions { margin-left: auto; display: flex; gap: 6px; }
+
+/* Ảnh giữ đúng tỉ lệ và không bao giờ tràn ra ngoài thẻ, kể cả cửa sổ rất rộng.
+   Nền ô cờ giúp phân biệt viền ảnh với nền trang khi cửa sổ chụp được có màu gần giống. */
+.screen img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--code-bg);
+}

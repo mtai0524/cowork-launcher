@@ -39,6 +39,30 @@ public sealed class ProcessManager : IProcessManager, IDisposable
             ? entry.Snapshot()
             : Array.Empty<AppOutputLine>();
 
+    /// <summary>
+    /// Phải gọi <see cref="Process.Refresh"/> trước: <see cref="Process.MainWindowHandle"/> được
+    /// nhớ lại từ lần đọc đầu, mà app mở cửa sổ vài giây sau khi khởi động là chuyện thường —
+    /// không làm mới thì mãi mãi thấy 0.
+    /// </summary>
+    public nint MainWindowHandle(Guid appId)
+    {
+        if (!_running.TryGetValue(appId, out var entry))
+            return 0;
+
+        try
+        {
+            if (entry.Process.HasExited)
+                return 0;
+
+            entry.Process.Refresh();
+            return entry.Process.MainWindowHandle;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException or PlatformNotSupportedException)
+        {
+            return 0;
+        }
+    }
+
     public StartResult Start(ManagedApp app, RunTrigger trigger)
     {
         ArgumentNullException.ThrowIfNull(app);

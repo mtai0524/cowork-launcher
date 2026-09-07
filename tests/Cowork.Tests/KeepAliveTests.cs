@@ -116,6 +116,8 @@ public class KeepAlivePolicyTests
 internal sealed class FakeProcessManager : IProcessManager
 {
     public bool IsRunning(Guid appId) => false;
+
+    public nint MainWindowHandle(Guid appId) => 0;
     public IReadOnlyCollection<Guid> RunningAppIds => Array.Empty<Guid>();
     public StartResult Start(ManagedApp app, RunTrigger trigger) => StartResult.Ok(1);
     public Task<bool> StopAsync(Guid appId, int graceMs = 5000, CancellationToken cancellationToken = default) => Task.FromResult(false);
