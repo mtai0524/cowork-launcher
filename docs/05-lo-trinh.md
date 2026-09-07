@@ -10,8 +10,9 @@ khi đụng phải.
 Bộ lập lịch là một timer trong tiến trình Cowork. Máy tắt hoặc chưa đăng nhập Windows thì không có
 gì chạy.
 
-Giảm nhẹ hiện có: bật *Khởi động cùng Windows* + *Thu nhỏ xuống khay*, và bật *Chạy bù* cho những
-việc bắt buộc phải chạy trong ngày.
+Giảm nhẹ hiện có: bật *Khởi động cùng Windows* + *Thu nhỏ xuống khay*, bật *Chạy bù* cho những việc
+bắt buộc phải chạy trong ngày, và dùng *Chạy khi có sự kiện của máy* cho những việc gắn với lúc máy
+tỉnh dậy. Cả ba đều vẫn cần Cowork đang chạy.
 
 Giải pháp triệt để cần một Windows Service — xem [Hướng phát triển](#hướng-phát-triển).
 
@@ -133,6 +134,7 @@ song: app nào chọn "lịch hệ thống" thì đăng ký sang Task Scheduler.
 | Trường mới trên app | `ManagedApp` + `Clone()` + `AppViewModel` + XAML. `JsonWorkspaceStore.Normalize` lo phần tương thích ngược |
 | Kiểu thăm dò sức khoẻ mới | Thêm giá trị vào `HealthProbeKind`, xử lý trong `NetworkHealthProbe.ProbeAsync`, thêm quy tắc vào `HealthTarget.IsValid`, khai nhãn `HealthProbe.<tên>` ở cả hai bảng ngôn ngữ |
 | Kiểu chờ phụ thuộc mới | Thêm giá trị vào `DependencyWait`, xử lý trong `RunQueue.Evaluate`, thêm quy tắc vào `DependencyGraph.Validate`, khai nhãn `DependencyWait.<tên>` ở cả hai bảng ngôn ngữ |
+| Sự kiện hệ thống mới | Thêm giá trị vào `SystemEventKind`, bắt sự kiện Windows trong `WindowsSystemEventSource`, thêm ô tick ở tab Lịch chạy, khai nhãn `SystemEvent.<tên>` ở cả hai bảng ngôn ngữ |
 
 **Ràng buộc phải giữ**
 

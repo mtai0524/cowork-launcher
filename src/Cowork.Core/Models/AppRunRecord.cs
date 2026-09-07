@@ -16,6 +16,9 @@ public enum RunTrigger
 
     /// <summary>Cowork tự chạy lại vì lần chạy trước kết thúc lỗi và app có đặt số lần thử lại.</summary>
     Retry = 6,
+
+    /// <summary>Máy vừa thức dậy, mở khoá, hoặc có mạng trở lại.</summary>
+    SystemEvent = 7,
 }
 
 public enum RunOutcome

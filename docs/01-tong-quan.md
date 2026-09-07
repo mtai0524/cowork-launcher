@@ -36,6 +36,7 @@ Một cửa sổ duy nhất chứa đủ ba việc:
 - **Quét thư mục để tự dò tìm file cấu hình**, chấm điểm tin cậy và loại bỏ nhiễu
   (`node_modules`, `bin`, file lock, manifest dự án).
 - Lịch chạy: mốc giờ cố định, chu kỳ lặp, chạy khi mở Cowork; lọc theo ngày trong tuần.
+- Chạy theo sự kiện của máy: thức dậy sau khi ngủ, mở khoá màn hình, có mạng trở lại.
 - Giữ app luôn chạy: tự khởi động lại khi app thoát, có trần số lần mỗi giờ.
 - Bắt app treo: thăm dò cổng/URL định kỳ, theo dõi output im lặng hoặc chứa mẫu báo lỗi.
 - Phụ thuộc giữa các app: "Chạy tất cả" chờ đúng thứ tự, phụ thuộc lỗi thì bỏ qua phần phía sau.

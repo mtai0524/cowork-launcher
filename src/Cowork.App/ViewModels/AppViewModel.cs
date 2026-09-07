@@ -59,6 +59,11 @@ public sealed partial class AppViewModel : ObservableObject
         _healthSilenceMinutes = health.SilenceMinutes;
         _healthFailurePatternsText = string.Join(Environment.NewLine, health.FailurePatterns);
 
+        _runOnResume = model.SystemTriggers.Contains(SystemEventKind.Resume);
+        _runOnSessionUnlock = model.SystemTriggers.Contains(SystemEventKind.SessionUnlock);
+        _runOnNetworkAvailable = model.SystemTriggers.Contains(SystemEventKind.NetworkAvailable);
+        _systemTriggerDelaySeconds = model.SystemTriggerDelaySeconds;
+
         _scheduleEnabled = model.Schedule.Enabled;
         _scheduleKind = model.Schedule.Kind;
         _timesText = FormatTimes(model.Schedule.Times);
@@ -317,6 +322,36 @@ public sealed partial class AppViewModel : ObservableObject
     [ObservableProperty] private bool _catchUpMissedRun;
 
     public ObservableCollection<DayToggleViewModel> Days { get; }
+
+    // ---------- Chạy theo sự kiện hệ thống ----------
+
+    [ObservableProperty] private bool _runOnResume;
+    [ObservableProperty] private bool _runOnSessionUnlock;
+    [ObservableProperty] private bool _runOnNetworkAvailable;
+    [ObservableProperty] private int _systemTriggerDelaySeconds;
+
+    partial void OnRunOnResumeChanged(bool value) => SyncSystemTriggers();
+    partial void OnRunOnSessionUnlockChanged(bool value) => SyncSystemTriggers();
+    partial void OnRunOnNetworkAvailableChanged(bool value) => SyncSystemTriggers();
+
+    partial void OnSystemTriggerDelaySecondsChanged(int value)
+        => Sync(() => Model.SystemTriggerDelaySeconds = Math.Max(0, value));
+
+    /// <summary>
+    /// Gán danh sách <em>mới</em> thay vì sửa tại chỗ: supervisor đọc nó từ luồng sự kiện của Windows.
+    /// </summary>
+    private void SyncSystemTriggers() => Sync(() =>
+    {
+        var triggers = new List<SystemEventKind>();
+        if (RunOnResume)
+            triggers.Add(SystemEventKind.Resume);
+        if (RunOnSessionUnlock)
+            triggers.Add(SystemEventKind.SessionUnlock);
+        if (RunOnNetworkAvailable)
+            triggers.Add(SystemEventKind.NetworkAvailable);
+
+        Model.SystemTriggers = triggers;
+    });
 
     public bool IsDailyKind => ScheduleKind == ScheduleKind.DailyAtTimes;
     public bool IsIntervalKind => ScheduleKind == ScheduleKind.Interval;

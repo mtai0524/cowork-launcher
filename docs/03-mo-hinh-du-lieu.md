@@ -36,6 +36,8 @@ Một app do Cowork quản lý.
 | `Schedule` | `ScheduleRule` | Lịch chạy tự động |
 | `HealthCheck` | `HealthCheck` | Cách nhận ra app treo |
 | `DependsOn` | `List<AppDependency>` | Các app phải sẵn sàng trước, khi bấm "Chạy tất cả" |
+| `SystemTriggers` | `List<SystemEventKind>` | Sự kiện của máy khiến app tự chạy: `Resume` / `SessionUnlock` / `NetworkAvailable`. Độc lập với `Schedule` |
+| `SystemTriggerDelaySeconds` | `int` | Chờ ngần này giây sau sự kiện rồi mới chạy (mặc định `15`) |
 | `Enabled` | `bool` | Tắt ⇒ không chạy tay lẫn theo lịch |
 | `RunAsAdministrator` | `bool` | Chạy qua ShellExecute verb `runas` (bật UAC) |
 | `CaptureOutput` | `bool` | Thu stdout/stderr; **không có tác dụng khi bật `RunAsAdministrator`** |
@@ -138,7 +140,7 @@ Lưu trong `history.json`, tối đa 5000 bản ghi (trần cứng, ngoài cấu
 |---|---|---|
 | `Id` | `Guid` | Khoá; ghi lại cùng `Id` = **cập nhật**, không tạo bản ghi mới |
 | `AppId` / `AppName` | `Guid` / `string` | Tên được chụp lại tại thời điểm chạy, nên đổi tên app sau này không làm sai lịch sử |
-| `Trigger` | `RunTrigger` | `Manual` / `Schedule` / `Startup` / `RunAll` / `KeepAlive` / `Remote` / `Retry` |
+| `Trigger` | `RunTrigger` | `Manual` / `Schedule` / `Startup` / `RunAll` / `KeepAlive` / `Remote` / `Retry` / `SystemEvent` |
 | `Outcome` | `RunOutcome` | `Running` / `Succeeded` / `Failed` / `Cancelled` / `TimedOut` / `NotStarted` / `Unhealthy` |
 | `StartedAt` / `FinishedAt` | `DateTimeOffset` | Mốc thời gian |
 | `ExitCode` | `int?` | Mã thoát; thành công khi nằm trong `SuccessExitCodes` của app (mặc định chỉ `0`) |
@@ -193,6 +195,8 @@ Enum ghi thành chuỗi, `TimeSpan` ghi dạng `"HH:mm:ss"` — file đọc và 
       "DependsOn": [
         { "AppId": "a1b2c3d4-0000-0000-0000-000000000009", "Wait": "Running" }
       ],
+      "SystemTriggers": ["Resume", "NetworkAvailable"],
+      "SystemTriggerDelaySeconds": 15,
       "HealthCheck": {
         "Probe": "HttpGet",
         "Target": "http://localhost:8080/health",

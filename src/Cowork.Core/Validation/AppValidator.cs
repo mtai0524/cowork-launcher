@@ -69,6 +69,12 @@ public static class AppValidator
                 Loc.T("Val.AdminNoOutput"), false));
         }
 
+        if (app.SystemTriggerDelaySeconds < 0)
+        {
+            issues.Add(new ValidationIssue(nameof(app.SystemTriggerDelaySeconds),
+                Loc.T("Val.SystemTriggerDelayNegative"), true));
+        }
+
         ValidateSchedule(app.Schedule, issues);
         ValidateHealth(app, issues);
         ValidateConfigFiles(app, issues);

@@ -546,5 +546,20 @@ internal static class StringsEn
             ["Val.DependencyDisabled"] = "“{0}” depends on “{1}”, which is disabled, so it will be skipped during Run all.",
             ["Val.DependencyKeepAliveCompleted"] = "“{0}” waits for “{1}” to finish, but that app is kept running and never finishes. Switch it to “Up and running”.",
             ["Val.DependencyCycle"] = "Dependency cycle: {0}",
+
+            // ---------- System event triggers ----------
+            ["Trigger.SystemEvent"] = "System event",
+            ["SystemEvent.Resume"] = "the machine waking up",
+            ["SystemEvent.SessionUnlock"] = "the screen being unlocked",
+            ["SystemEvent.NetworkAvailable"] = "the network coming back",
+            ["Schedule.SystemCard"] = "Run on system events",
+            ["Schedule.SystemHint"] = "Independent of the schedule kind above — an app can run both on a clock and on events. This covers what a clock misses: the machine waking up, the network dropping and returning.",
+            ["Schedule.OnResume"] = "When the machine wakes from sleep",
+            ["Schedule.OnUnlock"] = "When the screen is unlocked",
+            ["Schedule.OnNetwork"] = "When the network comes back",
+            ["Schedule.SystemDelay"] = "Wait after the event (seconds)",
+            ["Schedule.SystemDelayHint"] = "Right after a wake-up the network and system services are not ready yet, so a few seconds of slack helps. Cowork ignores repeats of the same event within a minute, because Windows often fires several for a single wake-up.",
+            ["Msg.SystemTriggerRun"] = "Running “{0}” because of {1}.",
+            ["Val.SystemTriggerDelayNegative"] = "The delay after a system event cannot be negative.",
         };
 }

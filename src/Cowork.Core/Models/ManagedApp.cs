@@ -52,6 +52,15 @@ public sealed class ManagedApp
     /// </summary>
     public List<AppDependency> DependsOn { get; set; } = new();
 
+    /// <summary>
+    /// Các sự kiện của máy khiến app tự chạy: thức dậy sau khi ngủ, mở khoá màn hình, có mạng lại.
+    /// Độc lập với <see cref="Schedule"/> — một app chạy được cả theo giờ lẫn theo sự kiện.
+    /// </summary>
+    public List<SystemEventKind> SystemTriggers { get; set; } = new();
+
+    /// <summary>Chờ ngần này giây sau sự kiện rồi mới chạy, để mạng và dịch vụ hệ thống kịp ổn định.</summary>
+    public int SystemTriggerDelaySeconds { get; set; } = 15;
+
     /// <summary>App bị tắt sẽ không chạy tay lẫn chạy theo lịch.</summary>
     public bool Enabled { get; set; } = true;
 
@@ -133,6 +142,8 @@ public sealed class ManagedApp
         Schedule = Schedule.Clone(),
         HealthCheck = HealthCheck.Clone(),
         DependsOn = DependsOn.Select(d => d.Clone()).ToList(),
+        SystemTriggers = new List<SystemEventKind>(SystemTriggers),
+        SystemTriggerDelaySeconds = SystemTriggerDelaySeconds,
         Enabled = Enabled,
         RunAsAdministrator = RunAsAdministrator,
         CaptureOutput = CaptureOutput,

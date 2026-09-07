@@ -178,6 +178,31 @@ Khung tóm tắt cuối tab luôn hiện **Lần chạy kế tiếp** để bạ
 > trên thanh công cụ đang bật. Muốn lịch chạy ngay cả khi chưa đăng nhập Windows, xem
 > [05-lo-trinh.md](05-lo-trinh.md).
 
+## Chạy khi có sự kiện của máy
+
+Lịch theo đồng hồ bỏ lỡ đúng lúc đáng chạy nhất: laptop vừa mở nắp, mạng vừa có lại sau khi đứt.
+Tab **Lịch chạy → Chạy khi có sự kiện của máy** có ba mốc, tick bao nhiêu cái cũng được:
+
+| Sự kiện | Xảy ra khi |
+|---|---|
+| **Khi máy thức dậy sau khi ngủ** | Mở nắp laptop, đánh thức máy sau sleep/hibernate |
+| **Khi mở khoá màn hình** | Gõ mật khẩu vào màn hình khoá, hoặc đăng nhập lại |
+| **Khi có mạng trở lại** | Cắm lại dây mạng, Wi-Fi kết nối lại |
+
+Phần này **độc lập với kiểu lịch ở trên** — một app vừa chạy 07:30 hằng ngày, vừa chạy mỗi khi máy
+ngủ dậy là hoàn toàn được.
+
+*Chờ sau sự kiện (giây)* mặc định 15: ngay lúc thức dậy, card mạng và dịch vụ hệ thống chưa sẵn
+sàng, chạy ngay thường lỗi. Tăng lên nếu app cần VPN hay ổ đĩa mạng.
+
+Cowork bỏ qua sự kiện trùng trong vòng **một phút** cho từng cặp app–sự kiện, vì Windows hay bắn
+`Resume` vài lần cho một lần mở nắp máy. App đang chạy và có bật *Không chạy chồng* thì cũng bỏ qua.
+Lịch sử ghi nguồn kích hoạt là **Sự kiện máy**.
+
+> Khác với *Chạy bù*: chạy bù bù lại **mốc giờ đã lỡ**, còn mục này chạy vì **chính sự kiện đó**.
+> Việc cần chạy đúng một lần mỗi ngày thì dùng chạy bù; việc cần chạy mỗi lần máy tỉnh dậy
+> (đồng bộ, nối lại VPN) thì dùng mục này.
+
 ## Biến môi trường riêng
 
 Tab **Biến môi trường** → **+ Thêm biến**. Các biến này chỉ áp dụng cho tiến trình con do Cowork
@@ -385,6 +410,7 @@ chỉ file do Cowork tự sinh mới bị xoá, file khác chép vào thư mục
 | App đơ nhưng Cowork vẫn báo đang chạy | Keep-alive chỉ thấy app *thoát*. Đặt **Kiểm tra sức khoẻ** ở tab Tổng quan: thăm dò cổng/URL, hoặc watchdog theo output. |
 | Lịch sử báo **Treo** mà app vẫn tốt | Ngưỡng quá gắt: tăng *Lỗi liên tiếp*, *Chờ phản hồi tối đa*, *Bỏ qua kiểm tra trong N giây đầu*, hoặc nới *không có output trong N phút*. Lý do cụ thể nằm ở cột Ghi chú. |
 | Đặt watchdog theo output mà không thấy tác dụng | Cần bật *Thu nhật ký output* và tắt *Chạy với quyền quản trị*. Cowork cảnh báo ngay dưới ô cấu hình khi thiếu. |
+| Tick "khi máy thức dậy" mà app không chạy | Cowork phải đang mở (kể cả dưới khay). Kiểm tra thêm: app đang bật · không phải vừa chạy vì đúng sự kiện đó trong vòng một phút · không đang chạy sẵn với *Không chạy chồng*. |
 | Đặt phụ thuộc nhưng bấm ▶ Chạy vẫn chạy ngay | Phụ thuộc chỉ áp dụng cho **Chạy tất cả**. Bấm Chạy cho một app là chỉ đích danh app đó. |
 | "… bị bỏ qua vì … không thành công" | Đúng như tên gọi: app đi trước lỗi nên app sau không chạy. Sửa app đi trước rồi Chạy tất cả lại. |
 | "… chờ một app không nằm trong lượt chạy" | App được chờ đang bị tắt, hoặc đã bị xoá. Bật lại nó, hoặc bỏ tick trong thẻ Phụ thuộc. |

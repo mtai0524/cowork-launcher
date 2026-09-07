@@ -887,6 +887,29 @@
                             </Border>
 
                             <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="{loc:Tr Schedule.SystemCard}"
+                                               Style="{StaticResource HeadingText}" />
+                                    <TextBlock Style="{StaticResource HintText}"
+                                               Text="{loc:Tr Schedule.SystemHint}" />
+
+                                    <CheckBox Content="{loc:Tr Schedule.OnResume}"
+                                              IsChecked="{Binding RunOnResume}" Margin="0,10,0,0" />
+                                    <CheckBox Content="{loc:Tr Schedule.OnUnlock}"
+                                              IsChecked="{Binding RunOnSessionUnlock}" />
+                                    <CheckBox Content="{loc:Tr Schedule.OnNetwork}"
+                                              IsChecked="{Binding RunOnNetworkAvailable}" />
+
+                                    <TextBlock Text="{loc:Tr Schedule.SystemDelay}"
+                                               Style="{StaticResource LabelText}" Margin="0,12,0,4" />
+                                    <TextBox Text="{Binding SystemTriggerDelaySeconds, UpdateSourceTrigger=LostFocus}"
+                                             Width="120" HorizontalAlignment="Left" />
+                                    <TextBlock Style="{StaticResource HintText}"
+                                               Text="{loc:Tr Schedule.SystemDelayHint}" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource Card}">
                                 <StackPanel IsEnabled="{Binding ScheduleEnabled}">
                                     <TextBlock Text="{loc:Tr Schedule.DaysCard}" Style="{StaticResource HeadingText}" />
                                     <ItemsControl ItemsSource="{Binding Days}">

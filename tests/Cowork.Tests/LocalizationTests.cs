@@ -63,6 +63,7 @@ public class LocalizationTests
             AssertAllNamed<AppRuntimeState>("WebState.");
             AssertAllNamed<HealthProbeKind>("HealthProbe.");
             AssertAllNamed<DependencyWait>("DependencyWait.");
+            AssertAllNamed<SystemEventKind>("SystemEvent.");
         });
     }
 

@@ -546,5 +546,20 @@ internal static class StringsVi
             ["Val.DependencyDisabled"] = "“{0}” phụ thuộc vào “{1}” đang bị tắt, nên sẽ bị bỏ qua khi Chạy tất cả.",
             ["Val.DependencyKeepAliveCompleted"] = "“{0}” chờ “{1}” chạy xong, nhưng app đó giữ luôn chạy nên không bao giờ xong. Đổi sang “Đã lên là đủ”.",
             ["Val.DependencyCycle"] = "Vòng lặp phụ thuộc: {0}",
+
+            // ---------- Chạy theo sự kiện hệ thống ----------
+            ["Trigger.SystemEvent"] = "Sự kiện máy",
+            ["SystemEvent.Resume"] = "máy thức dậy",
+            ["SystemEvent.SessionUnlock"] = "mở khoá máy",
+            ["SystemEvent.NetworkAvailable"] = "có mạng lại",
+            ["Schedule.SystemCard"] = "Chạy khi có sự kiện của máy",
+            ["Schedule.SystemHint"] = "Độc lập với kiểu lịch ở trên — một app chạy được cả theo giờ lẫn theo sự kiện. Bịt đúng chỗ lịch hay lỡ: máy ngủ dậy, mất mạng rồi có lại.",
+            ["Schedule.OnResume"] = "Khi máy thức dậy sau khi ngủ",
+            ["Schedule.OnUnlock"] = "Khi mở khoá màn hình",
+            ["Schedule.OnNetwork"] = "Khi có mạng trở lại",
+            ["Schedule.SystemDelay"] = "Chờ sau sự kiện (giây)",
+            ["Schedule.SystemDelayHint"] = "Ngay sau khi thức dậy, mạng và dịch vụ hệ thống chưa sẵn sàng; chờ vài giây thì chắc ăn hơn. Cowork bỏ qua các sự kiện lặp lại trong vòng một phút, vì Windows hay bắn nhiều lần cho cùng một lần thức dậy.",
+            ["Msg.SystemTriggerRun"] = "Chạy “{0}” vì {1}.",
+            ["Val.SystemTriggerDelayNegative"] = "Thời gian chờ sau sự kiện hệ thống không được âm.",
         };
 }

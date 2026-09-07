@@ -38,6 +38,8 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     private readonly RetrySupervisor _retry;
     private readonly HealthMonitor _health;
     private readonly RunQueue _runQueue;
+    private readonly ISystemEventSource _systemEvents;
+    private readonly SystemTriggerSupervisor _systemTriggers;
     private readonly HubClient _hubClient;
     private HubLinkState _hubState = HubLinkState.Disabled;
     private readonly Dispatcher _dispatcher;
@@ -128,6 +130,14 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             _logger);
         _runQueue.Skipped += OnRunQueueSkipped;
         _runQueue.Finished += OnRunQueueFinished;
+
+        _systemEvents = OperatingSystem.IsWindows()
+            ? new Services.WindowsSystemEventSource(_logger)
+            : new NullSystemEventSource();
+        _systemTriggers = new SystemTriggerSupervisor(
+            _systemEvents, this, _processManager, SystemClock.Instance, _logger);
+        _systemTriggers.Due += OnSystemTriggerDue;
+        _systemEvents.Start();
 
         _hubClient = new HubClient(this, _logger);
         _hubClient.StateChanged += OnHubStateChanged;
@@ -831,6 +841,16 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             RunApp(app, e.Trigger);
         });
 
+    private void OnSystemTriggerDue(object? sender, SystemTriggerDueEventArgs e)
+        => _dispatcher.Invoke(() =>
+        {
+            if (FindApp(e.App.Id) is not { } app)
+                return;
+
+            StatusMessage = Loc.T("Msg.SystemTriggerRun", app.DisplayTitle, Loc.T("SystemEvent." + e.Kind));
+            RunApp(app, RunTrigger.SystemEvent);
+        });
+
     private AppViewModel? FindApp(Guid id) => Apps.FirstOrDefault(a => a.Id == id);
 
     private static bool IsStaleExit(AppViewModel app, AppRuntimeState incoming, int processId)
@@ -1407,6 +1427,10 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         _runQueue.Skipped -= OnRunQueueSkipped;
         _runQueue.Finished -= OnRunQueueFinished;
         _runQueue.Dispose();
+
+        _systemTriggers.Due -= OnSystemTriggerDue;
+        _systemTriggers.Dispose();
+        _systemEvents.Dispose();
 
         _hubClient.StateChanged -= OnHubStateChanged;
         try

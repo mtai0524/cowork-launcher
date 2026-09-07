@@ -152,6 +152,9 @@ public sealed class JsonWorkspaceStore : IWorkspaceStore
             app.HealthCheck.FailurePatterns ??= new List<string>();
             app.DependsOn ??= new List<AppDependency>();
             app.DependsOn.RemoveAll(d => d is null || d.AppId == Guid.Empty || d.AppId == app.Id);
+            app.SystemTriggers = app.SystemTriggers is null
+                ? new List<SystemEventKind>()
+                : app.SystemTriggers.Distinct().ToList();
 
             // File cũ không có trường này, hoặc người dùng sửa tay thành mảng rỗng: quay về mặc định 0.
             app.SuccessExitCodes = ExitCodes.Normalize(app.SuccessExitCodes);

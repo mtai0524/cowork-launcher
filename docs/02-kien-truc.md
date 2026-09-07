@@ -20,6 +20,7 @@
 │                     KeepAliveSupervisor KeepAlivePolicy   │
 │                     HealthMonitor     HealthPolicy       │
 │                     RunQueue          DependencyGraph    │
+│                     SystemTriggerSupervisor               │
 │                     JsonWorkspaceStore JsonRunHistoryStore│
 │                     ScheduleEvaluator  FileLogger        │
 │  Configuration/     JsonConfigEditor  IniConfigEditor    │
@@ -173,6 +174,32 @@ sinh ra để xử lý thì không cần đánh thức ai.
 `MainViewModel` có thêm một lưới lọc nhỏ: sau khi khởi động lại nhanh, tiến trình *cũ* có thể báo
 "đã thoát" **sau** khi tiến trình mới đã chạy; `IsStaleExit` so PID để không hiện Idle trong khi app
 đang chạy.
+
+## Chạy theo sự kiện của máy
+
+Lịch dựa trên đồng hồ bỏ lỡ đúng những lúc đáng chạy nhất: máy vừa ngủ dậy, mạng vừa có lại.
+`SystemTriggerSupervisor` bổ sung ba mốc đó, độc lập với `ScheduleRule` để một app dùng được cả hai.
+
+```
+Windows ──> WindowsSystemEventSource        (Cowork.App — SystemEvents, NetworkChange)
+                     │ ISystemEventSource.Occurred
+                     ▼
+            SystemTriggerSupervisor          (Cowork.Core)
+                     │ SystemTriggerPolicy.Decide(app, kind, lầnTrước, đangChạy, now)
+                     ├─ NotSubscribed / CannotRun / AlreadyRunning / TooSoon ──> thôi
+                     └─ chạy ──> Timer(SystemTriggerDelaySeconds) ──> Due ──> RunApp(SystemEvent)
+```
+
+Ba điểm đáng biết:
+
+- **Phần lắng nghe nằm ở tầng ứng dụng.** `SystemEvents` là API Windows, còn `Cowork.Core` phải chạy
+  được ở nơi khác — nên Core chỉ giữ interface `ISystemEventSource` và bản giả
+  `NullSystemEventSource` (cũng là thứ test dùng để bắn sự kiện theo ý mình).
+- **Khoảng lặng một phút cho mỗi cặp app–sự kiện.** Windows bắn `Resume` nhiều lần cho một lần thức
+  dậy, và mạng chập chờn làm `NetworkAvailable` nảy liên tục. Mốc khoảng lặng được ghi **lúc nhận sự
+  kiện**, không phải lúc chạy — nếu ghi lúc chạy thì cả loạt sự kiện dồn trong khoảng chờ sẽ lọt hết.
+- **Độ trễ mặc định 15 giây.** Ngay sau khi thức dậy, card mạng và dịch vụ hệ thống chưa sẵn sàng;
+  chạy ngay thường lỗi. Như mọi supervisor khác, app được đọc lại tại thời điểm tới giờ.
 
 ## Phụ thuộc giữa các app
 
