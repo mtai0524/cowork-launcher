@@ -21,3 +21,9 @@ coverage*.xml
 
 ## Khác
 *.log
+
+## Deploy — chua token that, khong duoc commit
+artifacts/
+
+## Danh sach may cap tren web, sinh luc chay
+App_Data/
