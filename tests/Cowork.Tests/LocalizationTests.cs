@@ -61,6 +61,7 @@ public class LocalizationTests
             AssertAllNamed<DayOfWeek>("Day.");
             AssertAllNamed<ScanConfidence>("Confidence.");
             AssertAllNamed<AppRuntimeState>("WebState.");
+            AssertAllNamed<HealthProbeKind>("HealthProbe.");
         });
     }
 

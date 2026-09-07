@@ -60,10 +60,12 @@ lần, nhưng chỉ tiến trình mới nhất được theo dõi và dừng đ�
 Cowork báo lỗi bằng bong bóng khay hệ thống, đủ cho người ngồi tại máy. Không có email, không có
 webhook — app lỗi lúc 2h sáng thì sáng ra vẫn phải nhìn khay hoặc tab Lịch sử.
 
-### Giữ luôn chạy không biết app "treo"
+### Kiểm tra sức khoẻ không thay được giám sát thật
 
-Keep-alive chỉ nhìn thấy tiến trình *thoát*. App còn sống nhưng đơ (deadlock, treo mạng) thì Cowork
-vẫn coi là đang chạy. Cách vòng: đặt *Tự dừng sau N phút* để ép khởi động lại định kỳ.
+*Kiểm tra sức khoẻ* bắt được app đơ qua thăm dò cổng/URL và watchdog theo output, nhưng nó chạy
+trong tiến trình Cowork: Cowork tắt thì không ai thăm dò. Watchdog theo output cũng chỉ hoạt động
+khi bật *Thu nhật ký output* và app không chạy quyền admin — Windows không cho chuyển hướng stdout
+của tiến trình nâng quyền.
 
 ### Quản lý từ xa mới ở mức xem và ra lệnh
 
@@ -76,10 +78,6 @@ Phần "không sửa từ xa" là chủ ý bảo mật chứ không phải chưa
 Xếp theo giá trị mang lại trên công sức bỏ ra.
 
 ### Ưu tiên cao
-
-**Kiểm tra sức khoẻ cho app giữ luôn chạy.** Ping một cổng/URL định kỳ; không phản hồi thì coi
-như treo và khởi động lại. Bịt đúng giới hạn nói ở trên. Cần thêm trường `HealthCheck` và một bộ
-đếm riêng trong `KeepAliveSupervisor`.
 
 **Phụ thuộc giữa các app.** "Chỉ chạy B sau khi A xong và thành công". Hiện "Chạy tất cả" khởi chạy
 song song theo thứ tự danh sách chứ không chờ nhau. Cần thêm trường `DependsOn` và một hàng đợi
@@ -131,6 +129,7 @@ song: app nào chọn "lịch hệ thống" thì đăng ký sang Task Scheduler.
 | Mẫu nhận diện file cấu hình mới | `ConfigFileScanner`: thêm vào `CandidateExtensions`, `NoiseDirectories` hoặc hàm `Score` |
 | Mẫu nhận diện chương trình mới | `ProgramScanner`: thêm vào `RunnableExtensions`, `LauncherNames` hoặc hàm `Score`. Lưu ý danh sách thư mục nhiễu ở đây **ngược** với bộ quét cấu hình |
 | Trường mới trên app | `ManagedApp` + `Clone()` + `AppViewModel` + XAML. `JsonWorkspaceStore.Normalize` lo phần tương thích ngược |
+| Kiểu thăm dò sức khoẻ mới | Thêm giá trị vào `HealthProbeKind`, xử lý trong `NetworkHealthProbe.ProbeAsync`, thêm quy tắc vào `HealthTarget.IsValid`, khai nhãn `HealthProbe.<tên>` ở cả hai bảng ngôn ngữ |
 
 **Ràng buộc phải giữ**
 

@@ -18,6 +18,7 @@
 │                                                          │
 │  Services/          ProcessManager    DailyScheduler     │
 │                     KeepAliveSupervisor KeepAlivePolicy   │
+│                     HealthMonitor     HealthPolicy       │
 │                     JsonWorkspaceStore JsonRunHistoryStore│
 │                     ScheduleEvaluator  FileLogger        │
 │  Configuration/     JsonConfigEditor  IniConfigEditor    │
@@ -171,6 +172,50 @@ sinh ra để xử lý thì không cần đánh thức ai.
 `MainViewModel` có thêm một lưới lọc nhỏ: sau khi khởi động lại nhanh, tiến trình *cũ* có thể báo
 "đã thoát" **sau** khi tiến trình mới đã chạy; `IsStaleExit` so PID để không hiện Idle trong khi app
 đang chạy.
+
+## Kiểm tra sức khoẻ
+
+Keep-alive chỉ thấy tiến trình *thoát*; app còn sống mà đơ thì nó bó tay. `HealthMonitor` bịt chỗ
+đó bằng ba dấu hiệu, tất cả cùng dẫn tới một kết cục: dừng app với `RunOutcome.Unhealthy`.
+
+```
+StatusChanged(Running) ──> HealthMonitor bắt đầu theo dõi (nếu HealthPolicy.AppliesTo)
+                                  │
+        ┌─────────────────────────┼─────────────────────────┐
+        ▼                         ▼                         ▼
+  Timer mỗi IntervalSeconds   OutputReceived            RunCompleted
+        │                         │                         │
+  HealthPolicy.OnTick        khớp FailurePatterns?     gỡ theo dõi (đúng PID)
+        │                         │
+        ├─ Wait (còn ân hạn)      └─ có ──┐
+        ├─ Terminate (im lặng) ───────────┤
+        └─ Probe ──> IHealthProbe         │
+                       │ lỗi liên tiếp ≥ FailureThreshold
+                       └─────────────────┬┘
+                                         ▼
+                    ProcessManager.TerminateAsync(Unhealthy, lý do)
+                                         │
+                                  RunCompleted(Unhealthy)
+                                         │
+                          KeepAliveSupervisor / RetrySupervisor
+```
+
+Bốn quyết định đáng chú ý:
+
+- **Monitor dừng app trực tiếp**, khác `DailyScheduler` và hai supervisor vốn chỉ phát sự kiện. Dừng
+  không cần kiểm tra cấu hình hay ghi lịch sử riêng: `ProcessManager.TerminateAsync` ghi kết quả và
+  lý do vào đúng bản ghi của lần chạy đó. Còn phần *chạy lại* vẫn đi qua keep-alive / thử lại như
+  mọi lần kết thúc khác — treo với crash từ đó về sau không khác gì nhau.
+- **`HealthPolicy` là hàm thuần nhận `now`**, giữ đúng ràng buộc số 5: thời gian ân hạn và ngưỡng im
+  lặng kiểm thử được bằng `FixedClock` mà không phải chờ phút thật.
+- **Bộ đếm lỗi chỉ tính chuỗi liên tiếp.** Một lần thăm dò thành công đặt lại về 0; mạng chập một
+  nhịp không giết một app đang khoẻ.
+- **Cấu hình được chụp lại mỗi nhịp** (`Snapshot`), vì luồng đọc output không thể hỏi `IAppSource`
+  cho từng dòng — đó thường là view-model, phải nhảy lên luồng giao diện. Bộ regex đã biên dịch được
+  giữ lại khi danh sách mẫu không đổi.
+
+`HealthMonitor` cũng so PID khi gỡ theo dõi, cùng lý do với `IsStaleExit` ở `MainViewModel`: sau một
+lần khởi động lại nhanh, tiến trình cũ có thể báo kết thúc sau khi tiến trình mới đã được theo dõi.
 
 ## Thông báo
 

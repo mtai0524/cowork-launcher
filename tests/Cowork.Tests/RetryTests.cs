@@ -21,6 +21,7 @@ public class RetryPolicyTests
     [Theory]
     [InlineData(RunOutcome.Failed)]
     [InlineData(RunOutcome.TimedOut)]
+    [InlineData(RunOutcome.Unhealthy)]
     public void Retries_FailedAndTimedOutRuns(RunOutcome outcome)
     {
         var decision = RetryPolicy.Decide(App(), Ended(outcome), attemptsSoFar: 0);

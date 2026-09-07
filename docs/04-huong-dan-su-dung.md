@@ -212,14 +212,51 @@ chỉ lo phần *giữ*, không lo phần *khởi động lần đầu*.
 > Mẹo: **Giữ luôn chạy** + **Tự dừng sau N phút** = tự khởi động lại định kỳ mỗi N phút, tiện cho
 > app rò rỉ bộ nhớ.
 
+Keep-alive không biết app *treo* — thứ đó thuộc về [Bắt app treo](#bắt-app-treo) ngay dưới; hai mục
+đi cùng nhau thì app đơ mới được khởi động lại.
+
+## Bắt app treo
+
+Keep-alive chỉ thấy app *thoát*. App còn sống nhưng đơ — deadlock, mất kết nối CSDL, vòng lặp treo —
+vẫn được tính là đang chạy. Tab **Tổng quan → Kiểm tra sức khoẻ** có hai cách nhận ra, dùng riêng
+hoặc chung.
+
+**Thăm dò cổng / URL.** Chọn *Thăm dò* rồi điền *Mục tiêu*:
+
+| Kiểu | Mục tiêu | Còn sống nghĩa là |
+|---|---|---|
+| **Cổng TCP** | `8080` hoặc `db.local:5432` | Mở được kết nối |
+| **Địa chỉ HTTP** | `http://localhost:8080/health` | Trả về mã 2xx |
+
+Cowork thăm dò mỗi *Kiểm tra mỗi (giây)*. Quá *Chờ phản hồi tối đa* mà im, hoặc trả về mã lỗi, thì
+tính là một lần hỏng; đủ *Lỗi liên tiếp trước khi coi là treo* lần liên tiếp mới kết luận. Một lần
+thành công xen giữa là đếm lại từ đầu — mạng chập một nhịp không giết app đang khoẻ.
+
+*Bỏ qua kiểm tra trong N giây đầu* để app kịp mở cổng; server nặng nên để 60–120 giây.
+
+**Watchdog theo output.** Không có cổng nào để thăm dò thì nhìn vào nhật ký:
+
+- *Coi là treo nếu không có output trong N phút* — hợp với app in log đều đặn. Để `0` để tắt.
+- *Mẫu báo lỗi trong output* — mỗi dòng một mẫu, ví dụ `FATAL`, `OutOfMemory`, `connection lost`.
+  Là regex, không phân biệt hoa thường; gõ sai cú pháp regex thì Cowork so như chuỗi thường và
+  cảnh báo chứ không chặn. Một dòng khớp là dừng app ngay, không cần chờ nhịp kiểm tra.
+
+> Watchdog theo output cần bật *Thu nhật ký output* và **không** bật *Chạy với quyền quản trị* —
+> Windows không cho đọc output của tiến trình nâng quyền. Thiếu điều kiện thì Cowork cảnh báo và bỏ
+> qua phần này; thăm dò cổng/URL vẫn chạy bình thường.
+
+Phát hiện treo, Cowork dừng app (lịch sự trước, theo *Chờ dừng lịch sự tối đa*), lịch sử ghi kết quả
+**Treo** kèm lý do. Từ đó trở đi mọi thứ giống hệt một lần crash: app bật *Giữ luôn chạy* được khởi
+động lại, app có đặt *Thử lại khi lỗi* được chạy lại, còn lại thì báo ở khay.
+
 ## Thử lại khi job lỗi
 
 Dành cho job **chạy xong là thoát** — sao lưu, đồng bộ, xuất báo cáo — thứ hay lỗi vì mạng chập chờn
 hay server bận rồi tự hết. Tab **Tổng quan → Tuỳ chọn khi chạy → Thử lại khi lỗi**: đặt *Số lần thử
 lại* và *Chờ trước khi thử lại (giây)*.
 
-Khi một lần chạy kết thúc **lỗi** (mã thoát không nằm trong danh sách thành công) hoặc bị **quá giờ**,
-Cowork chờ rồi chạy lại, tối đa số lần đã đặt. Danh sách app hiện *Sẽ thử lại sau 30s (lần 1/3)*;
+Khi một lần chạy kết thúc **lỗi** (mã thoát không nằm trong danh sách thành công), bị **quá giờ**,
+hoặc bị dừng vì **treo**, Cowork chờ rồi chạy lại, tối đa số lần đã đặt. Danh sách app hiện *Sẽ thử lại sau 30s (lần 1/3)*;
 lịch sử ghi nguồn kích hoạt là **Thử lại**. Lần nào thành công thì chuỗi kết thúc. Hết lượt mà vẫn lỗi
 thì app chuyển sang trạng thái lỗi và khay hệ thống báo **một lần** — các lần lỗi giữa chừng không báo,
 vì xử lý chúng chính là việc của thử lại.
@@ -311,6 +348,9 @@ chỉ file do Cowork tự sinh mới bị xoá, file khác chép vào thư mục
 | App không tự chạy theo lịch | Kiểm tra: công tắc *Chạy theo lịch* trên thanh công cụ · *Bật lịch tự động* của app · app đang bật · ngày trong tuần có tick. Bấm **Kiểm tra lịch** để chạy ngay một vòng rà soát. |
 | "đã tự khởi động lại N lần trong 60 phút, tạm dừng giữ chạy" | App crash liên tục ngay sau khi lên — thường là lỗi cấu hình hoặc thiếu phụ thuộc. Xem tab Nhật ký / Lịch sử để biết mã thoát, sửa nguyên nhân rồi bấm **Chạy**. |
 | Bật *Giữ luôn chạy* nhưng app không lên khi mở Cowork | Keep-alive chỉ *giữ* app đã chạy. Đặt thêm lịch **Chạy một lần khi mở Cowork**. |
+| App đơ nhưng Cowork vẫn báo đang chạy | Keep-alive chỉ thấy app *thoát*. Đặt **Kiểm tra sức khoẻ** ở tab Tổng quan: thăm dò cổng/URL, hoặc watchdog theo output. |
+| Lịch sử báo **Treo** mà app vẫn tốt | Ngưỡng quá gắt: tăng *Lỗi liên tiếp*, *Chờ phản hồi tối đa*, *Bỏ qua kiểm tra trong N giây đầu*, hoặc nới *không có output trong N phút*. Lý do cụ thể nằm ở cột Ghi chú. |
+| Đặt watchdog theo output mà không thấy tác dụng | Cần bật *Thu nhật ký output* và tắt *Chạy với quyền quản trị*. Cowork cảnh báo ngay dưới ô cấu hình khi thiếu. |
 | App chạy đúng nhưng lịch sử báo lỗi, khay hiện thông báo | Công cụ trả mã thoát khác 0 khi thành công (robocopy trả 1). Thêm mã đó vào *Mã thoát coi là thành công* ở tab Tổng quan. |
 | Đặt số lần thử lại nhưng app lỗi không thấy chạy lại | Kiểm tra: app không bật *Giữ luôn chạy* · lần chạy đó kết thúc lỗi hay quá giờ, chứ không phải bị bấm Dừng hay không chạy được. |
 | Bấm Dừng mà app console mất vài giây mới dừng | Cowork đang chờ app tự thoát sau Ctrl+C. Giảm *Chờ dừng lịch sự tối đa* nếu app không cần dọn dẹp. |

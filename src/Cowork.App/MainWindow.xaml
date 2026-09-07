@@ -65,6 +65,9 @@
                 <DataTrigger Binding="{Binding Outcome}" Value="TimedOut">
                     <Setter Property="Foreground" Value="{DynamicResource StateFailedBrush}" />
                 </DataTrigger>
+                <DataTrigger Binding="{Binding Outcome}" Value="Unhealthy">
+                    <Setter Property="Foreground" Value="{DynamicResource StateFailedBrush}" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
     </Window.Resources>
@@ -417,6 +420,100 @@
                                                 </Grid>
                                                 <TextBlock Style="{StaticResource HintText}"
                                                            Text="{loc:Tr Overview.RetryHint}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <TextBlock Text="{loc:Tr Overview.HealthCard}"
+                                                   Style="{StaticResource HeadingText}" />
+                                        <TextBlock Style="{StaticResource HintText}"
+                                                   Text="{loc:Tr Overview.HealthHint}" />
+
+                                        <Grid Margin="0,10,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="16" />
+                                                <ColumnDefinition Width="2*" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{loc:Tr Overview.HealthProbe}"
+                                                           Style="{StaticResource LabelText}" />
+                                                <ComboBox ItemsSource="{Binding HealthProbeOptions}"
+                                                          SelectedItem="{Binding SelectedHealthProbe}"
+                                                          DisplayMemberPath="Label" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" IsEnabled="{Binding HasHealthProbe}">
+                                                <TextBlock Text="{loc:Tr Overview.HealthTarget}"
+                                                           Style="{StaticResource LabelText}" />
+                                                <TextBox Text="{Binding HealthTarget, UpdateSourceTrigger=LostFocus}"
+                                                         FontFamily="Cascadia Mono, Consolas, monospace" />
+                                                <TextBlock Style="{StaticResource HintText}"
+                                                           Text="{loc:Tr Overview.HealthTargetHint}" />
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <Grid Margin="0,10,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="12" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="12" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="12" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{loc:Tr Overview.HealthInterval}"
+                                                           Style="{StaticResource LabelText}" TextWrapping="Wrap" />
+                                                <TextBox Text="{Binding HealthIntervalSeconds, UpdateSourceTrigger=LostFocus}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" IsEnabled="{Binding HasHealthProbe}">
+                                                <TextBlock Text="{loc:Tr Overview.HealthTimeout}"
+                                                           Style="{StaticResource LabelText}" TextWrapping="Wrap" />
+                                                <TextBox Text="{Binding HealthTimeoutSeconds, UpdateSourceTrigger=LostFocus}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="4" IsEnabled="{Binding HasHealthProbe}">
+                                                <TextBlock Text="{loc:Tr Overview.HealthThreshold}"
+                                                           Style="{StaticResource LabelText}" TextWrapping="Wrap" />
+                                                <TextBox Text="{Binding HealthFailureThreshold, UpdateSourceTrigger=LostFocus}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="6">
+                                                <TextBlock Text="{loc:Tr Overview.HealthStartupGrace}"
+                                                           Style="{StaticResource LabelText}" TextWrapping="Wrap" />
+                                                <TextBox Text="{Binding HealthStartupGraceSeconds, UpdateSourceTrigger=LostFocus}" />
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0"
+                                                Margin="0,14,0,0" Padding="0,12,0,0">
+                                            <StackPanel>
+                                                <TextBlock Text="{loc:Tr Overview.HealthOutputTitle}"
+                                                           Style="{StaticResource LabelText}" />
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="16" />
+                                                        <ColumnDefinition Width="2*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="{loc:Tr Overview.HealthSilence}"
+                                                                   Style="{StaticResource LabelText}" TextWrapping="Wrap" />
+                                                        <TextBox Text="{Binding HealthSilenceMinutes, UpdateSourceTrigger=LostFocus}" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="{loc:Tr Overview.HealthPatterns}"
+                                                                   Style="{StaticResource LabelText}" TextWrapping="Wrap" />
+                                                        <TextBox Text="{Binding HealthFailurePatternsText, UpdateSourceTrigger=LostFocus}"
+                                                                 AcceptsReturn="True" MinHeight="52"
+                                                                 VerticalContentAlignment="Top"
+                                                                 FontFamily="Cascadia Mono, Consolas, monospace" />
+                                                    </StackPanel>
+                                                </Grid>
+                                                <TextBlock Style="{StaticResource HintText}"
+                                                           Text="{loc:Tr Overview.HealthOutputHint}" />
                                             </StackPanel>
                                         </Border>
                                     </StackPanel>

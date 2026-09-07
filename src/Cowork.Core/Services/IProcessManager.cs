@@ -17,8 +17,14 @@ public interface IProcessManager
 
     StartResult Start(ManagedApp app, RunTrigger trigger);
 
-    /// <summary>Yêu cầu dừng lịch sự; sau <paramref name="graceMs"/> ms thì kill.</summary>
+    /// <summary>Yêu cầu dừng lịch sự; sau <paramref name="graceMs"/> ms thì kill. Kết quả ghi là <see cref="RunOutcome.Cancelled"/> — dừng tay là ý người dùng.</summary>
     Task<bool> StopAsync(Guid appId, int graceMs = 5000, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Dừng vì lý do khác ý người dùng (kiểm tra sức khoẻ thất bại…): ghi <paramref name="outcome"/> và
+    /// <paramref name="reason"/> vào bản ghi của lần chạy, rồi dừng lịch sự như <see cref="StopAsync"/>.
+    /// </summary>
+    Task<bool> TerminateAsync(Guid appId, RunOutcome outcome, string? reason, int graceMs = 5000, CancellationToken cancellationToken = default);
 
     Task StopAllAsync(CancellationToken cancellationToken = default);
 

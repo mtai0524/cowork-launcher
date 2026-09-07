@@ -8,6 +8,8 @@ CoworkWorkspace
 └─ Apps : List<ManagedApp>
           ├─ EnvironmentVariables : Dictionary<string,string>
           ├─ ConfigFiles : List<ConfigFileRef>
+          ├─ HealthCheck : HealthCheck
+          │               └─ FailurePatterns : List<string>
           └─ Schedule : ScheduleRule
                         ├─ Times : List<TimeSpan>
                         └─ DaysOfWeek : List<DayOfWeek>
@@ -31,6 +33,7 @@ Một app do Cowork quản lý.
 | `EnvironmentVariables` | `Dictionary` | Biến môi trường **riêng cho tiến trình con**, không đụng hệ thống |
 | `ConfigFiles` | `List<ConfigFileRef>` | Các file cấu hình thuộc app này |
 | `Schedule` | `ScheduleRule` | Lịch chạy tự động |
+| `HealthCheck` | `HealthCheck` | Cách nhận ra app treo |
 | `Enabled` | `bool` | Tắt ⇒ không chạy tay lẫn theo lịch |
 | `RunAsAdministrator` | `bool` | Chạy qua ShellExecute verb `runas` (bật UAC) |
 | `CaptureOutput` | `bool` | Thu stdout/stderr; **không có tác dụng khi bật `RunAsAdministrator`** |
@@ -69,6 +72,26 @@ Hai phương thức chính, đều là hàm thuần:
 - `GetNextOccurrence(after)` — mốc kế tiếp sau một thời điểm (hiển thị "Chạy kế tiếp").
 - `GetPreviousOccurrence(now)` — mốc gần nhất đã qua (dùng để xét tới hạn).
 
+## `HealthCheck`
+
+Bịt đúng lỗ hổng của keep-alive: nó chỉ thấy tiến trình *thoát*, còn app sống mà đơ thì vẫn bị coi
+là đang chạy.
+
+| Trường | Kiểu | Ý nghĩa |
+|---|---|---|
+| `Probe` | `HealthProbeKind` | `None` / `TcpPort` / `HttpGet` |
+| `Target` | `string` | TCP: `8080` hoặc `host:8080`. HTTP: `http://localhost:8080/health` (mã 2xx = còn sống) |
+| `IntervalSeconds` | `int` | Chu kỳ kiểm tra, dùng cho cả thăm dò lẫn xét im lặng (mặc định `30`) |
+| `TimeoutSeconds` | `int` | Thăm dò quá ngần này giây không phản hồi ⇒ tính một lần lỗi (mặc định `5`) |
+| `FailureThreshold` | `int` | Số lần thăm dò lỗi **liên tiếp** trước khi coi là treo (mặc định `3`) |
+| `StartupGraceSeconds` | `int` | Bỏ qua mọi kiểm tra trong ngần này giây đầu, để app kịp lên (mặc định `30`) |
+| `SilenceMinutes` | `int` | Không có dòng output nào trong ngần này phút ⇒ treo; `0` = tắt |
+| `FailurePatterns` | `List<string>` | Regex (không phân biệt hoa thường) mà hễ xuất hiện trong output là app hỏng; mẫu sai cú pháp được so như chuỗi thường |
+
+Một lần thăm dò thành công đặt lại bộ đếm về 0 — chỉ chuỗi lỗi *liên tiếp* mới tính. Watchdog theo
+output cần `CaptureOutput` bật và `RunAsAdministrator` tắt; không thì Cowork không thấy dòng nào, và
+`AppValidator` cảnh báo.
+
 ## `ConfigFileRef`
 
 | Trường | Kiểu | Ý nghĩa |
@@ -100,7 +123,7 @@ Lưu trong `history.json`, tối đa 5000 bản ghi (trần cứng, ngoài cấu
 | `Id` | `Guid` | Khoá; ghi lại cùng `Id` = **cập nhật**, không tạo bản ghi mới |
 | `AppId` / `AppName` | `Guid` / `string` | Tên được chụp lại tại thời điểm chạy, nên đổi tên app sau này không làm sai lịch sử |
 | `Trigger` | `RunTrigger` | `Manual` / `Schedule` / `Startup` / `RunAll` / `KeepAlive` / `Remote` / `Retry` |
-| `Outcome` | `RunOutcome` | `Running` / `Succeeded` / `Failed` / `Cancelled` / `TimedOut` / `NotStarted` |
+| `Outcome` | `RunOutcome` | `Running` / `Succeeded` / `Failed` / `Cancelled` / `TimedOut` / `NotStarted` / `Unhealthy` |
 | `StartedAt` / `FinishedAt` | `DateTimeOffset` | Mốc thời gian |
 | `ExitCode` | `int?` | Mã thoát; thành công khi nằm trong `SuccessExitCodes` của app (mặc định chỉ `0`) |
 | `ProcessId` | `int` | PID |
@@ -151,6 +174,16 @@ Enum ghi thành chuỗi, `TimeSpan` ghi dạng `"HH:mm:ss"` — file đọc và 
           "BackupOnSave": true
         }
       ],
+      "HealthCheck": {
+        "Probe": "HttpGet",
+        "Target": "http://localhost:8080/health",
+        "IntervalSeconds": 30,
+        "TimeoutSeconds": 5,
+        "FailureThreshold": 3,
+        "StartupGraceSeconds": 30,
+        "SilenceMinutes": 0,
+        "FailurePatterns": ["FATAL", "OutOfMemory"]
+      },
       "Schedule": {
         "Enabled": true,
         "Kind": "DailyAtTimes",

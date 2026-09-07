@@ -26,6 +26,9 @@ public enum RunOutcome
     Cancelled = 3,
     TimedOut = 4,
     NotStarted = 5,
+
+    /// <summary>Còn sống nhưng treo — kiểm tra sức khoẻ thất bại nên Cowork đã dừng nó. Lý do nằm ở <see cref="AppRunRecord.Error"/>.</summary>
+    Unhealthy = 6,
 }
 
 /// <summary>Một dòng lịch sử chạy, lưu bền để xem lại hôm qua app nào lỗi.</summary>

@@ -224,13 +224,19 @@ public sealed class ProcessManager : IProcessManager, IDisposable
         TryKill(entry.Process);
     }
 
-    public async Task<bool> StopAsync(Guid appId, int graceMs = 5000, CancellationToken cancellationToken = default)
+    public Task<bool> StopAsync(Guid appId, int graceMs = 5000, CancellationToken cancellationToken = default)
+        => TerminateAsync(appId, RunOutcome.Cancelled, reason: null, graceMs, cancellationToken);
+
+    public async Task<bool> TerminateAsync(
+        Guid appId, RunOutcome outcome, string? reason, int graceMs = 5000, CancellationToken cancellationToken = default)
     {
         if (!_running.TryGetValue(appId, out var entry) || entry.Process.HasExited)
             return false;
 
         RaiseStatus(appId, AppRuntimeState.Stopping, entry.Record.ProcessId, null);
-        entry.Record.Outcome = RunOutcome.Cancelled;
+        entry.Record.Outcome = outcome;
+        if (reason is not null)
+            entry.Record.Error = reason;
 
         try
         {

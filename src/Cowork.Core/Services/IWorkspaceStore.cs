@@ -147,6 +147,9 @@ public sealed class JsonWorkspaceStore : IWorkspaceStore
             app.Schedule ??= new ScheduleRule();
             app.Schedule.Times ??= new List<TimeSpan>();
             app.Schedule.DaysOfWeek ??= new List<DayOfWeek>();
+            app.HealthCheck ??= new HealthCheck();
+            app.HealthCheck.Target ??= string.Empty;
+            app.HealthCheck.FailurePatterns ??= new List<string>();
 
             // File cũ không có trường này, hoặc người dùng sửa tay thành mảng rỗng: quay về mặc định 0.
             app.SuccessExitCodes = ExitCodes.Normalize(app.SuccessExitCodes);

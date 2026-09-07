@@ -24,6 +24,7 @@ public class KeepAlivePolicyTests
     [InlineData(RunOutcome.Failed)]
     [InlineData(RunOutcome.Succeeded)]
     [InlineData(RunOutcome.TimedOut)]
+    [InlineData(RunOutcome.Unhealthy)]
     public void Restarts_WheneverTheProcessIsGoneOnItsOwn(RunOutcome outcome)
     {
         var decision = KeepAlivePolicy.Decide(App(), Ended(outcome), NoRestarts, Now);
@@ -111,7 +112,7 @@ public class KeepAlivePolicyTests
     }
 }
 
-/// <summary>Bộ giả lập tiến trình: chỉ để bắn RunCompleted theo ý test.</summary>
+/// <summary>Bộ giả lập tiến trình: bắn các sự kiện theo ý test và ghi lại lệnh dừng nhận được.</summary>
 internal sealed class FakeProcessManager : IProcessManager
 {
     public bool IsRunning(Guid appId) => false;
@@ -121,13 +122,28 @@ internal sealed class FakeProcessManager : IProcessManager
     public Task StopAllAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     public IReadOnlyList<AppOutputLine> GetOutput(Guid appId) => Array.Empty<AppOutputLine>();
 
-#pragma warning disable CS0067 // Sự kiện không dùng trong bộ giả lập.
+    /// <summary>Các lệnh dừng-vì-lý-do đã nhận (kiểm tra sức khoẻ).</summary>
+    public List<(Guid AppId, RunOutcome Outcome, string? Reason, int GraceMs)> Terminations { get; } = new();
+
+    public Task<bool> TerminateAsync(
+        Guid appId, RunOutcome outcome, string? reason, int graceMs = 5000, CancellationToken cancellationToken = default)
+    {
+        lock (Terminations)
+            Terminations.Add((appId, outcome, reason, graceMs));
+        return Task.FromResult(true);
+    }
+
     public event EventHandler<AppStatusChanged>? StatusChanged;
     public event EventHandler<AppOutputLine>? OutputReceived;
-#pragma warning restore CS0067
     public event EventHandler<AppRunRecord>? RunCompleted;
 
-    public void Complete(ManagedApp app, RunOutcome outcome, RunTrigger trigger = RunTrigger.Manual)
+    public void Started(ManagedApp app, int processId)
+        => StatusChanged?.Invoke(this, new AppStatusChanged(app.Id, AppRuntimeState.Running, processId, null));
+
+    public void Output(ManagedApp app, string text, bool isError = false)
+        => OutputReceived?.Invoke(this, new AppOutputLine(app.Id, DateTimeOffset.Now, text, isError));
+
+    public void Complete(ManagedApp app, RunOutcome outcome, RunTrigger trigger = RunTrigger.Manual, int processId = 0)
         => RunCompleted?.Invoke(this, new AppRunRecord
         {
             AppId = app.Id,
@@ -135,6 +151,7 @@ internal sealed class FakeProcessManager : IProcessManager
             Outcome = outcome,
             ExitCode = 1,
             Trigger = trigger,
+            ProcessId = processId,
         });
 }
 

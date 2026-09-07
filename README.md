@@ -27,6 +27,7 @@ không cần mở Notepad tìm đường dẫn.
 | **Chạy** | Chạy tay từng app hoặc "Chạy tất cả", khởi động lại một phát, chặn chạy chồng, tự dừng khi quá giờ; kết quả chấm theo danh sách **mã thoát thành công** của từng app (robocopy trả 1 vẫn là xong việc) |
 | **Dừng lịch sự** | Đóng cửa sổ chính với app GUI, gửi **Ctrl+C** cho app console (node, python, .bat), chờ số giây ân hạn của app rồi mới kill cả cây tiến trình |
 | **Giữ luôn chạy** | App tự thoát hay crash thì Cowork khởi động lại sau vài giây; có trần số lần mỗi giờ để không lặp vô tận với app đã hỏng hẳn |
+| **Bắt app treo** | Thăm dò cổng TCP hoặc URL định kỳ, và theo dõi output (im lặng quá lâu, hoặc in ra mẫu như `FATAL`); treo thì Cowork dừng app rồi để keep-alive / thử lại lo phần chạy lại |
 | **Thử lại khi lỗi** | Job kết thúc lỗi hoặc quá giờ thì chạy lại sau N giây, tối đa M lần; chỉ báo ở khay khi hết lượt vẫn lỗi. Bấm Dừng thì không thử lại |
 | **Tìm chương trình** | Quét thư mục dò `.exe`/`.bat`/`.cmd`/`.ps1`, xếp hạng tin cậy; file `.ps1` được tự bọc qua `powershell.exe` |
 | **Cấu hình app con** | Tham số dòng lệnh, thư mục làm việc, biến môi trường riêng, kiểu cửa sổ, quyền admin |
@@ -55,7 +56,7 @@ Cowork.sln
 ├─ src/Cowork.Core/     Model, service, bộ đọc-ghi config — không phụ thuộc WPF
 │   ├─ Models/          ManagedApp, ScheduleRule, ConfigFileRef, AppRunRecord…
 │   ├─ Configuration/   JsonConfigEditor, IniConfigEditor, XmlConfigEditor, ConfigFileScanner, ProgramScanner…
-│   ├─ Services/        ProcessManager, DailyScheduler, KeepAliveSupervisor, RetrySupervisor, LogPruner, JsonWorkspaceStore…
+│   ├─ Services/        ProcessManager, DailyScheduler, KeepAliveSupervisor, RetrySupervisor, HealthMonitor, LogPruner, JsonWorkspaceStore…
 │   └─ Validation/      AppValidator
 ├─ src/Cowork.App/      WPF, MVVM (CommunityToolkit.Mvvm)
 │   ├─ ViewModels/      MainViewModel, AppViewModel, ConfigFileViewModel, ScanConfigViewModel, ScanProgramViewModel…

@@ -36,6 +36,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     private readonly DailyScheduler _scheduler;
     private readonly KeepAliveSupervisor _keepAlive;
     private readonly RetrySupervisor _retry;
+    private readonly HealthMonitor _health;
     private readonly HubClient _hubClient;
     private HubLinkState _hubState = HubLinkState.Disabled;
     private readonly Dispatcher _dispatcher;
@@ -114,6 +115,9 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         _retry.RetryScheduled += OnRetryScheduled;
         _retry.RetryDue += OnRetryDue;
         _retry.RetriesExhausted += OnRetriesExhausted;
+
+        _health = new HealthMonitor(_processManager, this, SystemClock.Instance, _logger, new NetworkHealthProbe());
+        _health.Unhealthy += OnUnhealthy;
 
         _hubClient = new HubClient(this, _logger);
         _hubClient.StateChanged += OnHubStateChanged;
@@ -425,6 +429,8 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             or nameof(AppViewModel.LastError)
             or nameof(AppViewModel.SelectedConfigFile)
             or nameof(AppViewModel.SelectedWindowStyle)
+            or nameof(AppViewModel.SelectedHealthProbe)
+            or nameof(AppViewModel.HasHealthProbe)
             or nameof(AppViewModel.PendingRestartAttempt)
             or nameof(AppViewModel.PendingRestartSeconds)
             or nameof(AppViewModel.PendingIsRetry)
@@ -728,7 +734,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
                 app.Model.LastRunAt = record.StartedAt;
             app.RefreshRunInfo();
 
-            if (record.Outcome is RunOutcome.Failed or RunOutcome.NotStarted or RunOutcome.TimedOut)
+            if (record.Outcome is RunOutcome.Failed or RunOutcome.NotStarted or RunOutcome.TimedOut or RunOutcome.Unhealthy)
             {
                 app.LastError = record.Error ?? Loc.T("Msg.ExitedWithCode", record.ExitCode);
                 StatusMessage = Loc.T("Msg.ExitedWithError", app.DisplayTitle, record.ExitCode);
@@ -768,8 +774,24 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     {
         RunOutcome.NotStarted => Loc.T("Notify.NotStartedBody", app.DisplayTitle, record.Error),
         RunOutcome.TimedOut => Loc.T("Notify.TimedOutBody", app.DisplayTitle),
+        RunOutcome.Unhealthy => Loc.T("Notify.UnhealthyBody", app.DisplayTitle, record.Error),
         _ => Loc.T("Notify.FailedBody", app.DisplayTitle, record.ExitCode),
     };
+
+    // ---------- Kiểm tra sức khoẻ ----------
+
+    private void OnUnhealthy(object? sender, HealthFailedEventArgs e)
+        => _dispatcher.BeginInvoke(() =>
+        {
+            var app = FindApp(e.App.Id);
+            if (app is null)
+                return;
+
+            // Chỉ báo trên thanh trạng thái. Bản ghi kết thúc (Unhealthy) tới ngay sau, và OnRunCompleted
+            // mới là nơi quyết định có thông báo ở khay hay không — để không báo hai lần.
+            app.LastError = e.Reason;
+            StatusMessage = Loc.T("Msg.Unhealthy", app.DisplayTitle, e.Reason);
+        });
 
     // ---------- Giữ app luôn chạy ----------
 
@@ -880,9 +902,12 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             PushToHub(app);
 
             // Đây là thông báo duy nhất của cả chuỗi, nên nói rõ vì sao lần cuối cũng lỗi.
-            var reason = e.Record.Outcome == RunOutcome.TimedOut
-                ? Loc.T("Notify.ReasonTimedOut")
-                : Loc.T("Notify.ReasonExitCode", e.Record.ExitCode);
+            var reason = e.Record.Outcome switch
+            {
+                RunOutcome.TimedOut => Loc.T("Notify.ReasonTimedOut"),
+                RunOutcome.Unhealthy => Loc.T("Notify.ReasonUnhealthy", e.Record.Error),
+                _ => Loc.T("Notify.ReasonExitCode", e.Record.ExitCode),
+            };
             Notify(Loc.T("Notify.RetryGaveUpTitle"),
                 Loc.T("Notify.RetryGaveUpBody", app.DisplayTitle, e.Attempts, reason),
                 NotificationSeverity.Error);
@@ -1305,6 +1330,9 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         _retry.RetryDue -= OnRetryDue;
         _retry.RetriesExhausted -= OnRetriesExhausted;
         _retry.Dispose();
+
+        _health.Unhealthy -= OnUnhealthy;
+        _health.Dispose();
 
         _hubClient.StateChanged -= OnHubStateChanged;
         try

@@ -50,6 +50,15 @@ public sealed partial class AppViewModel : ObservableObject
         _successExitCodesText = ExitCodes.Format(model.SuccessExitCodes);
         _stopGraceSeconds = model.StopGraceSeconds;
 
+        var health = model.HealthCheck;
+        _healthTarget = health.Target;
+        _healthIntervalSeconds = health.IntervalSeconds;
+        _healthTimeoutSeconds = health.TimeoutSeconds;
+        _healthFailureThreshold = health.FailureThreshold;
+        _healthStartupGraceSeconds = health.StartupGraceSeconds;
+        _healthSilenceMinutes = health.SilenceMinutes;
+        _healthFailurePatternsText = string.Join(Environment.NewLine, health.FailurePatterns);
+
         _scheduleEnabled = model.Schedule.Enabled;
         _scheduleKind = model.Schedule.Kind;
         _timesText = FormatTimes(model.Schedule.Times);
@@ -85,6 +94,12 @@ public sealed partial class AppViewModel : ObservableObject
             AppWindowStyle.Normal, AppWindowStyle.Minimized, AppWindowStyle.Hidden,
         }.Select(style => new ChoiceViewModel<AppWindowStyle>(style, s => Loc.T("WindowStyle." + s))).ToList();
         _selectedWindowStyle = WindowStyleOptions.First(o => o.Value == model.WindowStyle);
+
+        HealthProbeOptions = new[]
+        {
+            HealthProbeKind.None, HealthProbeKind.TcpPort, HealthProbeKind.HttpGet,
+        }.Select(kind => new ChoiceViewModel<HealthProbeKind>(kind, k => Loc.T("HealthProbe." + k))).ToList();
+        _selectedHealthProbe = HealthProbeOptions.First(o => o.Value == health.Probe);
 
         _suspendSync = false;
     }
@@ -179,6 +194,58 @@ public sealed partial class AppViewModel : ObservableObject
 
     /// <summary>Keep-alive đã tự khởi động lại app, nên các ô thử lại chỉ mở khi keep-alive tắt.</summary>
     public bool RetryAvailable => !KeepAlive;
+
+    // ---------- Kiểm tra sức khoẻ ----------
+
+    /// <summary>Nguồn cho ComboBox chọn kiểu thăm dò.</summary>
+    public IReadOnlyList<ChoiceViewModel<HealthProbeKind>> HealthProbeOptions { get; }
+
+    [ObservableProperty] private ChoiceViewModel<HealthProbeKind>? _selectedHealthProbe;
+    [ObservableProperty] private string _healthTarget;
+    [ObservableProperty] private int _healthIntervalSeconds;
+    [ObservableProperty] private int _healthTimeoutSeconds;
+    [ObservableProperty] private int _healthFailureThreshold;
+    [ObservableProperty] private int _healthStartupGraceSeconds;
+    [ObservableProperty] private int _healthSilenceMinutes;
+    [ObservableProperty] private string _healthFailurePatternsText;
+
+    /// <summary>Kiểu thăm dò đang đặt; bắn PropertyChanged cho tên này khi người dùng đổi thật.</summary>
+    public HealthProbeKind HealthProbe => Model.HealthCheck.Probe;
+
+    /// <summary>Các ô mục tiêu / thời gian chờ chỉ có nghĩa khi có thăm dò.</summary>
+    public bool HasHealthProbe => Model.HealthCheck.HasProbe;
+
+    partial void OnSelectedHealthProbeChanged(ChoiceViewModel<HealthProbeKind>? value)
+    {
+        // ComboBox có lúc đẩy null trong quá trình dựng lại danh sách; bỏ qua để không mất lựa chọn.
+        if (value is null || value.Value == Model.HealthCheck.Probe)
+            return;
+
+        Sync(() => Model.HealthCheck.Probe = value.Value);
+        OnPropertyChanged(nameof(HealthProbe));
+        OnPropertyChanged(nameof(HasHealthProbe));
+    }
+
+    partial void OnHealthTargetChanged(string value) => Sync(() => Model.HealthCheck.Target = (value ?? string.Empty).Trim());
+    partial void OnHealthIntervalSecondsChanged(int value) => Sync(() => Model.HealthCheck.IntervalSeconds = Math.Max(1, value));
+    partial void OnHealthTimeoutSecondsChanged(int value) => Sync(() => Model.HealthCheck.TimeoutSeconds = Math.Max(1, value));
+    partial void OnHealthFailureThresholdChanged(int value) => Sync(() => Model.HealthCheck.FailureThreshold = Math.Max(1, value));
+    partial void OnHealthStartupGraceSecondsChanged(int value) => Sync(() => Model.HealthCheck.StartupGraceSeconds = Math.Max(0, value));
+    partial void OnHealthSilenceMinutesChanged(int value) => Sync(() => Model.HealthCheck.SilenceMinutes = Math.Max(0, value));
+
+    partial void OnHealthFailurePatternsTextChanged(string value)
+        => Sync(() => Model.HealthCheck.FailurePatterns = ParsePatterns(value));
+
+    /// <summary>
+    /// Mỗi dòng một mẫu, bỏ dòng trắng. Luôn gán danh sách <em>mới</em> thay vì sửa tại chỗ: bộ theo dõi
+    /// sức khoẻ đọc danh sách này từ luồng khác và chỉ chụp lại ở nhịp kế tiếp.
+    /// </summary>
+    private static List<string> ParsePatterns(string? text)
+        => (text ?? string.Empty)
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .Where(line => line.Length > 0)
+            .ToList();
 
     /// <summary>Nguồn cho ComboBox chọn kiểu cửa sổ.</summary>
     public IReadOnlyList<ChoiceViewModel<AppWindowStyle>> WindowStyleOptions { get; }
@@ -494,6 +561,9 @@ public sealed partial class AppViewModel : ObservableObject
             day.RefreshLabel();
 
         foreach (var option in WindowStyleOptions)
+            option.RefreshLabel();
+
+        foreach (var option in HealthProbeOptions)
             option.RefreshLabel();
 
         foreach (var config in ConfigFiles)

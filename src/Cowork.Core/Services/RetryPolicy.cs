@@ -35,8 +35,12 @@ public sealed record RetryDecision(bool ShouldRetry, TimeSpan Delay, RetryRefusa
 /// </summary>
 public static class RetryPolicy
 {
-    /// <summary>Kết quả nào thì đáng thử lại: lỗi và quá giờ. Dừng tay là ý người dùng; chưa chạy được thì chạy lại cũng thế.</summary>
-    public static bool IsRetryable(RunOutcome outcome) => outcome is RunOutcome.Failed or RunOutcome.TimedOut;
+    /// <summary>
+    /// Kết quả nào thì đáng thử lại: lỗi, quá giờ, và treo (bị dừng vì kiểm tra sức khoẻ thất bại).
+    /// Dừng tay là ý người dùng; chưa chạy được thì chạy lại cũng thế.
+    /// </summary>
+    public static bool IsRetryable(RunOutcome outcome)
+        => outcome is RunOutcome.Failed or RunOutcome.TimedOut or RunOutcome.Unhealthy;
 
     /// <summary>App có thuộc phạm vi thử lại không, bất kể lần chạy vừa rồi ra sao.</summary>
     public static bool AppliesTo(ManagedApp app)

@@ -37,6 +37,7 @@ Một cửa sổ duy nhất chứa đủ ba việc:
   (`node_modules`, `bin`, file lock, manifest dự án).
 - Lịch chạy: mốc giờ cố định, chu kỳ lặp, chạy khi mở Cowork; lọc theo ngày trong tuần.
 - Giữ app luôn chạy: tự khởi động lại khi app thoát, có trần số lần mỗi giờ.
+- Bắt app treo: thăm dò cổng/URL định kỳ, theo dõi output im lặng hoặc chứa mẫu báo lỗi.
 - Thử lại job lỗi: kết thúc lỗi hay quá giờ thì chạy lại vài lần rồi mới báo; mã thoát nào là thành
   công đặt được cho từng app.
 - Dừng lịch sự: đóng cửa sổ chính, hoặc gửi Ctrl+C cho app console, hết thời gian ân hạn mới kill.
@@ -67,6 +68,7 @@ Một cửa sổ duy nhất chứa đủ ba việc:
 | **Lịch** (`ScheduleRule`) | Quy tắc app tự chạy: kiểu lịch + mốc giờ + ngày trong tuần |
 | **Mốc chạy** (occurrence) | Một thời điểm cụ thể mà lịch quy định app phải chạy |
 | **Lần chạy** (`AppRunRecord`) | Một lượt khởi chạy: bắt đầu lúc nào, mã thoát bao nhiêu, do ai kích hoạt |
+| **Kiểm tra sức khoẻ** (`HealthCheck`) | Cách nhận ra app còn sống nhưng đã treo: thăm dò cổng/URL, hoặc theo dõi output |
 | **Trạng thái** (`AppRuntimeState`) | Idle / Starting / Running / Stopping / Failed / WaitingRestart — chỉ tồn tại trong bộ nhớ |
 
 ## Nguyên tắc thiết kế

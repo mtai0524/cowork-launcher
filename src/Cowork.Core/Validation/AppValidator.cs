@@ -1,5 +1,6 @@
 using Cowork.Core.Models;
 using Cowork.Core.Localization;
+using Cowork.Core.Services;
 
 namespace Cowork.Core.Validation;
 
@@ -69,9 +70,54 @@ public static class AppValidator
         }
 
         ValidateSchedule(app.Schedule, issues);
+        ValidateHealth(app, issues);
         ValidateConfigFiles(app, issues);
 
         return issues;
+    }
+
+    private static void ValidateHealth(ManagedApp app, List<ValidationIssue> issues)
+    {
+        var health = app.HealthCheck;
+        const string field = nameof(ManagedApp.HealthCheck);
+
+        if (health.HasProbe)
+        {
+            if (string.IsNullOrWhiteSpace(health.Target))
+                issues.Add(new ValidationIssue(field, Loc.T("Val.HealthTargetRequired"), true));
+            else if (health.Probe == HealthProbeKind.TcpPort && !HealthTarget.TryParseTcp(health.Target, out _, out _))
+                issues.Add(new ValidationIssue(field, Loc.T("Val.HealthTcpTarget"), true));
+            else if (health.Probe == HealthProbeKind.HttpGet && !HealthTarget.TryParseHttp(health.Target, out _))
+                issues.Add(new ValidationIssue(field, Loc.T("Val.HealthHttpTarget"), true));
+
+            if (health.TimeoutSeconds < 1)
+                issues.Add(new ValidationIssue(field, Loc.T("Val.HealthTimeoutTooShort"), true));
+
+            if (health.FailureThreshold < 1)
+                issues.Add(new ValidationIssue(field, Loc.T("Val.HealthThresholdTooLow"), true));
+        }
+
+        if (health.IsEnabled && health.IntervalSeconds < 1)
+            issues.Add(new ValidationIssue(field, Loc.T("Val.HealthIntervalTooShort"), true));
+
+        if (health.StartupGraceSeconds < 0)
+            issues.Add(new ValidationIssue(field, Loc.T("Val.HealthGraceNegative"), true));
+
+        if (health.SilenceMinutes < 0)
+            issues.Add(new ValidationIssue(field, Loc.T("Val.HealthSilenceNegative"), true));
+
+        if (!health.HasOutputWatch)
+            return;
+
+        // Không thu được output thì watchdog theo output mù; bộ theo dõi sẽ bỏ qua nó, nhưng người dùng nên biết.
+        if (!HealthPolicy.OutputIsObservable(app))
+            issues.Add(new ValidationIssue(field, Loc.T("Val.HealthOutputNotCaptured"), false));
+
+        foreach (var pattern in health.FailurePatterns)
+        {
+            if (!string.IsNullOrWhiteSpace(pattern) && !FailurePatternSet.IsValidRegex(pattern.Trim()))
+                issues.Add(new ValidationIssue(field, Loc.T("Val.HealthPatternInvalid", pattern.Trim()), false));
+        }
     }
 
     private static void ValidateSchedule(ScheduleRule schedule, List<ValidationIssue> issues)

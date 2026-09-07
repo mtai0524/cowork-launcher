@@ -281,6 +281,33 @@ public class ProcessManagerTests
     }
 
     [Fact]
+    public async Task TerminateAsync_RecordsTheGivenOutcomeAndReason()
+    {
+        using var temp = new TempDirectory();
+        using var manager = new ProcessManager(NullLogger.Instance, new CoworkPaths(temp.Path));
+
+        var app = EchoApp("x");
+        app.Arguments = "/c ping -n 60 127.0.0.1 > nul";
+
+        var completion = new TaskCompletionSource<AppRunRecord>();
+        manager.RunCompleted += (_, record) => completion.TrySetResult(record);
+
+        Assert.True(manager.Start(app, RunTrigger.Manual).Started);
+        await Task.Delay(300);
+
+        // Kiểm tra sức khoẻ dừng app vì treo: kết quả và lý do phải nằm trên bản ghi của lần chạy.
+        Assert.True(await manager.TerminateAsync(app.Id, RunOutcome.Unhealthy, "không phản hồi", graceMs: 1500));
+
+        var finished = await Task.WhenAny(completion.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+        Assert.Same(completion.Task, finished);
+
+        var completed = await completion.Task;
+        Assert.Equal(RunOutcome.Unhealthy, completed.Outcome);
+        Assert.Equal("không phản hồi", completed.Error);
+        Assert.False(manager.IsRunning(app.Id));
+    }
+
+    [Fact]
     public void ConsoleSignal_ReportsWhyItCouldNotSend()
     {
         // PID 0 là System Idle Process, không có console để nối vào.

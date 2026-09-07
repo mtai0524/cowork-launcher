@@ -39,6 +39,13 @@ public sealed class ManagedApp
 
     public ScheduleRule Schedule { get; set; } = new();
 
+    /// <summary>
+    /// Cách nhận ra app còn sống nhưng đã treo: thăm dò cổng/URL định kỳ, hoặc theo dõi output.
+    /// Treo thì Cowork dừng app với kết quả <see cref="RunOutcome.Unhealthy"/>; phần khởi động lại
+    /// hay thử lại đi theo <see cref="KeepAlive"/> và <see cref="RetryCount"/> như mọi lần kết thúc khác.
+    /// </summary>
+    public HealthCheck HealthCheck { get; set; } = new();
+
     /// <summary>App bị tắt sẽ không chạy tay lẫn chạy theo lịch.</summary>
     public bool Enabled { get; set; } = true;
 
@@ -118,6 +125,7 @@ public sealed class ManagedApp
         EnvironmentVariables = new Dictionary<string, string>(EnvironmentVariables, StringComparer.OrdinalIgnoreCase),
         ConfigFiles = ConfigFiles.Select(c => c.Clone()).ToList(),
         Schedule = Schedule.Clone(),
+        HealthCheck = HealthCheck.Clone(),
         Enabled = Enabled,
         RunAsAdministrator = RunAsAdministrator,
         CaptureOutput = CaptureOutput,
