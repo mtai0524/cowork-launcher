@@ -135,6 +135,7 @@ song: app nào chọn "lịch hệ thống" thì đăng ký sang Task Scheduler.
 | Kiểu thăm dò sức khoẻ mới | Thêm giá trị vào `HealthProbeKind`, xử lý trong `NetworkHealthProbe.ProbeAsync`, thêm quy tắc vào `HealthTarget.IsValid`, khai nhãn `HealthProbe.<tên>` ở cả hai bảng ngôn ngữ |
 | Kiểu chờ phụ thuộc mới | Thêm giá trị vào `DependencyWait`, xử lý trong `RunQueue.Evaluate`, thêm quy tắc vào `DependencyGraph.Validate`, khai nhãn `DependencyWait.<tên>` ở cả hai bảng ngôn ngữ |
 | Sự kiện hệ thống mới | Thêm giá trị vào `SystemEventKind`, bắt sự kiện Windows trong `WindowsSystemEventSource`, thêm ô tick ở tab Lịch chạy, khai nhãn `SystemEvent.<tên>` ở cả hai bảng ngôn ngữ |
+| Chỗ khác cần bảng so sánh | Dựng `DiffViewModel(tiêu đề, nhãn trái, nhãn phải, text trái, text phải)` rồi mở `Views.DiffWindow`; truyền thêm `restore` nếu cần nút khôi phục |
 
 **Ràng buộc phải giữ**
 

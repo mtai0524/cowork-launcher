@@ -1288,6 +1288,52 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         MarkDirty();
     }
 
+    /// <summary>Xem trước những gì sẽ được ghi lên file cấu hình, trước khi bấm Lưu.</summary>
+    [RelayCommand]
+    private void ShowConfigChanges()
+    {
+        if (SelectedApp?.SelectedConfigFile is not { } config)
+            return;
+
+        if (config.BuildPendingText() is not { } pending)
+            return;
+
+        ShowDiff(new DiffViewModel(
+            Loc.T("Diff.PendingTitle", config.DisplayName),
+            Loc.T("Diff.LabelOnDisk"),
+            Loc.T("Diff.LabelPending"),
+            config.ReadDiskText(),
+            pending));
+    }
+
+    /// <summary>So bản sao lưu với nội dung hiện tại, và khôi phục nếu người dùng muốn.</summary>
+    [RelayCommand]
+    private void ShowConfigBackup()
+    {
+        if (SelectedApp?.SelectedConfigFile is not { } config)
+            return;
+
+        if (config.ReadBackupText() is not { } backup)
+        {
+            StatusMessage = Loc.T("Config.NoBackup");
+            return;
+        }
+
+        var viewModel = new DiffViewModel(
+            Loc.T("Diff.BackupTitle", config.DisplayName),
+            Loc.T("Diff.LabelBackup"),
+            Loc.T("Diff.LabelCurrent"),
+            backup,
+            config.ReadDiskText(),
+            restore: () => config.RestoreFromBackup());
+
+        if (ShowDiff(viewModel) && viewModel.Restored)
+            StatusMessage = Loc.T("Msg.ConfigRestored", config.DisplayName);
+    }
+
+    private bool ShowDiff(DiffViewModel viewModel)
+        => new Views.DiffWindow(viewModel) { Owner = Application.Current.MainWindow }.ShowDialog() == true;
+
     [RelayCommand]
     private void OpenDataFolder() => OpenInExplorer(_paths.Root);
 

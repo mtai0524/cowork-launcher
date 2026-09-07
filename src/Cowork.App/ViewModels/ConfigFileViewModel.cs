@@ -226,6 +226,65 @@ public sealed partial class ConfigFileViewModel : ObservableObject
         return true;
     }
 
+    // ---------- So sánh và khôi phục ----------
+
+    /// <summary>Nội dung file như đang nằm trên đĩa lúc này.</summary>
+    public string? ReadDiskText() => _service.ReadRaw(FullPath);
+
+    /// <summary>Có bản sao lưu <c>.cowork.bak</c> để đối chiếu hay khôi phục không.</summary>
+    public bool HasBackup => _service.ReadBackup(FullPath) is not null;
+
+    public string? ReadBackupText() => _service.ReadBackup(FullPath);
+
+    /// <summary>
+    /// Nội dung sẽ được ghi nếu bấm Lưu ngay bây giờ. Null khi chưa nạp được file, hoặc khi
+    /// không có gì để ghi.
+    /// </summary>
+    public string? BuildPendingText()
+    {
+        if (IsRawMode)
+            return RawText;
+
+        if (_document is null)
+            return null;
+
+        var changed = Entries
+            .Where(e => e.IsDirty)
+            .ToDictionary(e => e.Path, e => e.Value, StringComparer.Ordinal);
+
+        try
+        {
+            return _service.PreviewChanges(_document, changed);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException)
+        {
+            ErrorMessage = Loc.T("Config.WriteFailed", ex.Message);
+            return null;
+        }
+    }
+
+    /// <summary>Đưa nội dung bản sao lưu trở lại file rồi nạp lại. Trả về true nếu có gì để khôi phục.</summary>
+    public bool RestoreFromBackup()
+    {
+        bool restored;
+        try
+        {
+            restored = _service.RestoreBackup(FullPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ErrorMessage = Loc.T("Config.WriteFailed", ex.Message);
+            return false;
+        }
+
+        if (!restored)
+            return false;
+
+        Reload();
+        StatusMessage = Loc.T("Config.Restored");
+        return true;
+    }
+
     /// <summary>Nạp lại nhãn định dạng và nhãn kiểu của từng dòng sau khi đổi ngôn ngữ.</summary>
     public void RefreshLocalizedText()
     {

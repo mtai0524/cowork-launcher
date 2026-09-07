@@ -439,6 +439,17 @@ cho từng file của từng app.
 So metadata thay vì băm nội dung là đánh đổi có chủ ý: rẻ để chạy định kỳ, và bắt hụt trường hợp
 "sửa mà giữ nguyên cả giờ ghi lẫn kích thước" — vốn chỉ xảy ra khi ai đó cố tình.
 
+### So sánh và khôi phục
+
+`LineDiff` là hàm thuần, không đụng đĩa, nên dùng lại được cho mọi cặp text: bản sắp ghi với bản
+trên đĩa, bản `.cowork.bak` với bản hiện tại. Cách làm là cắt phần đầu và phần đuôi giống nhau
+trước rồi mới chạy LCS trên khúc giữa — với file cấu hình (sửa vài dòng giữa hàng nghìn dòng) bước
+cắt này giải quyết gần hết, nên bảng quy hoạch động hiếm khi lớn. Khúc giữa vượt `MaxBlockLines`
+thì trả về "bỏ hết bên trái, thêm hết bên phải" thay vì dựng bảng hàng trăm triệu ô.
+
+`RestoreBackup` **tráo** file và bản sao lưu cho nhau thay vì chỉ chép một chiều: khôi phục nhầm
+thì bấm lần nữa là về chỗ cũ, và không có thao tác nào làm mất hẳn một trong hai nội dung.
+
 ## Quản lý tiến trình
 
 `ProcessManager` giữ một `ConcurrentDictionary<Guid, RunningApp>` — mỗi app tối đa một tiến trình

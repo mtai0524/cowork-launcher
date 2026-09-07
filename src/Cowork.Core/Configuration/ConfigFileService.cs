@@ -11,6 +11,9 @@ public interface IConfigFileService
     /// <summary>Ghi các giá trị đã sửa (chế độ bảng). Trả về text mới đã ghi xuống đĩa.</summary>
     string SaveChanges(ConfigDocument document, IReadOnlyDictionary<string, string> changedValues, bool backup);
 
+    /// <summary>Text sẽ được ghi nếu áp dụng các giá trị đã sửa, nhưng không đụng tới đĩa.</summary>
+    string PreviewChanges(ConfigDocument document, IReadOnlyDictionary<string, string> changedValues);
+
     /// <summary>Ghi thẳng text thô (chế độ sửa nguồn).</summary>
     void SaveRaw(string fullPath, string text, bool backup);
 
@@ -19,10 +22,28 @@ public interface IConfigFileService
 
     /// <summary>File trên đĩa đã bị sửa bởi thứ khác kể từ lúc <paramref name="document"/> được đọc chưa.</summary>
     bool HasChangedOnDisk(ConfigDocument document);
+
+    /// <summary>Đường dẫn bản sao lưu Cowork tạo trước mỗi lần ghi.</summary>
+    string BackupPath(string fullPath);
+
+    /// <summary>Nội dung bản sao lưu, hoặc null nếu chưa có bản nào.</summary>
+    string? ReadBackup(string fullPath);
+
+    /// <summary>Đọc nội dung file như đang nằm trên đĩa, không phân tích gì.</summary>
+    string? ReadRaw(string fullPath);
+
+    /// <summary>
+    /// Đưa nội dung bản sao lưu trở lại file, và cất nội dung hiện tại vào chính bản sao lưu đó —
+    /// nhờ vậy bấm nhầm vẫn quay lại được. Trả về false nếu chưa có bản sao lưu.
+    /// </summary>
+    bool RestoreBackup(string fullPath);
 }
 
 public sealed class ConfigFileService : IConfigFileService
 {
+    /// <summary>Đuôi của bản sao lưu Cowork tạo trước mỗi lần ghi.</summary>
+    public const string BackupExtension = ".cowork.bak";
+
     private readonly IReadOnlyDictionary<ConfigFormat, IConfigEditor> _editors;
 
     public ConfigFileService()
@@ -71,12 +92,52 @@ public sealed class ConfigFileService : IConfigFileService
         return FileStamp.HasChanged(document.Stamp, FileStamp.Read(document.FilePath));
     }
 
+    public string BackupPath(string fullPath) => fullPath + BackupExtension;
+
+    public string? ReadBackup(string fullPath) => ReadRaw(BackupPath(fullPath));
+
+    public string? ReadRaw(string fullPath)
+    {
+        if (string.IsNullOrWhiteSpace(fullPath) || !File.Exists(fullPath))
+            return null;
+
+        try
+        {
+            return File.ReadAllText(fullPath, DetectEncoding(fullPath));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    public bool RestoreBackup(string fullPath)
+    {
+        if (ReadBackup(fullPath) is not { } backup)
+            return false;
+
+        // Tráo hai bên: file nhận nội dung cũ, bản sao lưu giữ nội dung vừa bị thay. Khôi phục
+        // nhầm thì bấm khôi phục lần nữa là về chỗ cũ.
+        var current = ReadRaw(fullPath);
+        WriteFile(fullPath, backup, backup: false);
+
+        if (current is not null)
+            WriteFile(BackupPath(fullPath), current, backup: false);
+
+        return true;
+    }
+
     public string SaveChanges(ConfigDocument document, IReadOnlyDictionary<string, string> changedValues, bool backup)
     {
-        var editor = Resolve(document.Format, document.FilePath);
-        var updated = editor.ApplyChanges(document, changedValues);
+        var updated = PreviewChanges(document, changedValues);
         WriteFile(document.FilePath, updated, backup);
         return updated;
+    }
+
+    public string PreviewChanges(ConfigDocument document, IReadOnlyDictionary<string, string> changedValues)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        return Resolve(document.Format, document.FilePath).ApplyChanges(document, changedValues);
     }
 
     public void SaveRaw(string fullPath, string text, bool backup) => WriteFile(fullPath, text, backup);
@@ -105,10 +166,7 @@ public sealed class ConfigFileService : IConfigFileService
             Directory.CreateDirectory(directory);
 
         if (backup && File.Exists(fullPath))
-        {
-            var backupPath = fullPath + ".cowork.bak";
-            File.Copy(fullPath, backupPath, overwrite: true);
-        }
+            File.Copy(fullPath, fullPath + BackupExtension, overwrite: true);
 
         var encoding = File.Exists(fullPath) ? DetectEncoding(fullPath) : new UTF8Encoding(false);
         var temp = fullPath + ".cowork.tmp";

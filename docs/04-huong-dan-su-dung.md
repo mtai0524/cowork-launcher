@@ -122,6 +122,21 @@ Nếu file không nằm trong thư mục làm việc hoặc bạn muốn chỉ �
 
 Bấm **Lưu file** để ghi. Mặc định Cowork tạo bản sao `<tên file>.cowork.bak` trước khi ghi đè.
 
+### Xem trước thay đổi và khôi phục
+
+Hai nút cạnh **Lưu file**:
+
+- **Xem thay đổi** — mở bảng so sánh giữa nội dung đang nằm trên đĩa và nội dung sắp được ghi. Dùng
+  trước khi lưu để chắc chắn chỉ đúng những dòng bạn định đổi bị đụng tới.
+- **Bản sao lưu** — so `.cowork.bak` (nội dung ngay trước lần ghi gần nhất) với nội dung hiện tại,
+  kèm nút **Khôi phục bản sao lưu**.
+
+Bảng so sánh mặc định chỉ hiện phần đã đổi kèm vài dòng ngữ cảnh; bỏ tick *Chỉ hiện phần đã đổi* để
+xem cả file. Dòng nền đỏ dấu `−` là bên trái, nền xanh dấu `+` là bên phải.
+
+Khôi phục **tráo hai bên**: file nhận nội dung của bản sao lưu, còn bản sao lưu giữ nội dung vừa bị
+thay. Bấm nhầm thì bấm khôi phục lần nữa là về chỗ cũ.
+
 ### Khi file bị sửa bằng công cụ khác
 
 Cowork chụp lại dấu của file lúc mở, rồi soi lại mỗi 30 giây. Nếu ai đó — bạn trong Notepad, một
@@ -434,7 +449,7 @@ chỉ file do Cowork tự sinh mới bị xoá, file khác chép vào thư mục
 | Bảng cấu hình trống, có báo lỗi đỏ | File sai cú pháp. Cowork chuyển sang chế độ sửa nguồn để bạn sửa tay. |
 | "File này đã bị sửa bằng công cụ khác…" | Đúng như vậy: ai đó sửa file sau khi Cowork mở nó. **Tải lại** để lấy bản mới, hoặc **Vẫn ghi đè** để giữ bản của bạn. |
 | Sửa config xong app vẫn dùng giá trị cũ | App đọc config lúc khởi động. Dừng rồi chạy lại. |
-| Lỡ sửa hỏng file config | Khôi phục từ `<tên file>.cowork.bak` nằm cùng thư mục. |
+| Lỡ sửa hỏng file config | Bấm **Bản sao lưu** ở tab File cấu hình, xem khác biệt rồi **Khôi phục bản sao lưu**. File `.cowork.bak` cũng nằm ngay cạnh file gốc nếu bạn muốn tự chép tay. |
 | Lỡ xoá nhầm app, hoặc mất danh sách app | Copy bản chụp gần nhất trong `%APPDATA%\Coworkackups\` đè lên `workspace.json` (đóng Cowork trước). |
 | Quét thư mục không thấy file cần tìm | Tăng **Độ sâu tối đa**, tick **Hiện cả kết quả tin cậy Thấp**, hoặc dùng **+ Thêm file thủ công**. |
 | Cowork không mở được, mất hết app | `workspace.json` hỏng đã bị đổi tên thành `workspace.json.corrupt-*` trong `%APPDATA%\Cowork`. Sửa cú pháp rồi đổi tên lại. |

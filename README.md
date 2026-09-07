@@ -34,6 +34,7 @@ không cần mở Notepad tìm đường dẫn.
 | **Cấu hình app con** | Tham số dòng lệnh, thư mục làm việc, biến môi trường riêng, kiểu cửa sổ, quyền admin |
 | **Tìm file cấu hình** | Quét thư mục của app, tự dò file nào là cấu hình — kể cả file **không có đuôi** như `~/.config/app/config` — chấm điểm tin cậy Cao/Vừa/Thấp, bỏ qua `node_modules`/`bin`/file lock |
 | **Sửa file cấu hình** | Mở JSON / INI / .env / XML / App.config ngay trong Cowork — dạng bảng khoá-giá trị hoặc sửa nguồn, có backup tự động; file bị công cụ khác sửa thì cảnh báo trước khi ghi đè |
+| **Xem khác biệt** | So nội dung sắp ghi với nội dung trên đĩa, hoặc so bản `.cowork.bak` với bản hiện tại — kèm nút khôi phục |
 | **Lịch chạy** | Mốc giờ cố định trong ngày, chu kỳ lặp, chạy khi mở Cowork; lọc theo ngày trong tuần; chạy bù khi lỡ |
 | **Sự kiện của máy** | Chạy khi máy thức dậy sau khi ngủ, khi mở khoá màn hình, hoặc khi có mạng trở lại — độc lập với lịch, có độ trễ và khoảng lặng chống bắn trùng |
 | **Theo dõi** | Nhật ký output realtime, lịch sử chạy có mã thoát và thời lượng, log ra file, thông báo ở khay khi app chạy lỗi |
