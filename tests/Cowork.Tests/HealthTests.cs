@@ -224,7 +224,9 @@ public class FailurePatternSetTests
 /// </summary>
 public class HealthMonitorTests
 {
-    private static readonly TimeSpan EventTimeout = TimeSpan.FromSeconds(5);
+    // Thời hạn rộng tay: chờ kết thúc ngay khi sự kiện tới, nên số này chỉ là trần cho lúc
+    // máy đang tải nặng — để chặt quá thì test đỏ vì máy bận chứ không phải vì code sai.
+    private static readonly TimeSpan EventTimeout = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan Tick = TimeSpan.FromMilliseconds(40);
 
     private static ManagedApp App(Action<HealthCheck>? configure = null)

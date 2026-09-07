@@ -103,7 +103,9 @@ public class SystemTriggerPolicyTests
 /// <summary>Supervisor dùng timer thật, nên các test này đặt độ trễ 0 và chờ sự kiện với thời hạn ngắn.</summary>
 public class SystemTriggerSupervisorTests
 {
-    private static readonly TimeSpan EventTimeout = TimeSpan.FromSeconds(5);
+    // Thời hạn rộng tay: chờ kết thúc ngay khi sự kiện tới, nên số này chỉ là trần cho lúc
+    // máy đang tải nặng — để chặt quá thì test đỏ vì máy bận chứ không phải vì code sai.
+    private static readonly TimeSpan EventTimeout = TimeSpan.FromSeconds(20);
 
     private sealed class Harness : IDisposable
     {

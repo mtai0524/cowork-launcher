@@ -122,7 +122,10 @@ public class ConfigExternalChangeTests
         var (service, file) = Setup(temp);
         var document = service.Load(file, ConfigFormat.Auto);
 
-        service.SaveChanges(document, new Dictionary<string, string> { ["port"] = "9090" }, backup: false);
+        // Giá trị mới phải khác *độ dài* giá trị cũ: hai lần ghi cách nhau vài mili giây có thể
+        // nhận cùng một giờ ghi (đồng hồ hệ thống chỉ nhích mỗi ~15ms), nên nếu độ dài cũng bằng
+        // nhau thì dấu file trùng khít và test thành hên xui — đúng cái giới hạn đã ghi ở docs/05.
+        service.SaveChanges(document, new Dictionary<string, string> { ["port"] = "18080" }, backup: false);
 
         // Chính Cowork vừa ghi, nên tài liệu cũ đã lỗi thời — đúng ra phải nạp lại.
         Assert.True(service.HasChangedOnDisk(document));
