@@ -740,6 +740,22 @@
                                     </DockPanel>
 
                                     <Border Style="{StaticResource ErrorCard}" Margin="0,0,0,8"
+                                            Visibility="{Binding ChangedOnDisk, Converter={StaticResource BoolToVisibility}}">
+                                        <DockPanel>
+                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                                        VerticalAlignment="Center" Margin="10,0,0,0">
+                                                <Button Content="{loc:Tr Config.Reload}" Command="{Binding ReloadCommand}"
+                                                        Padding="10,3" FontSize="12" />
+                                                <Button Content="{loc:Tr Config.Overwrite}" Margin="0"
+                                                        Style="{StaticResource DangerButton}" Padding="10,3" FontSize="12"
+                                                        Command="{Binding SaveOverwritingCommand}" />
+                                            </StackPanel>
+                                            <TextBlock Text="{loc:Tr Config.ChangedOnDiskBanner}"
+                                                       Style="{StaticResource ErrorText}" VerticalAlignment="Center" />
+                                        </DockPanel>
+                                    </Border>
+
+                                    <Border Style="{StaticResource ErrorCard}" Margin="0,0,0,8"
                                             Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}">
                                         <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource ErrorText}" />
                                     </Border>

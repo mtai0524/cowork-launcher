@@ -426,6 +426,19 @@ gợi ý.
 trọng với file có tiếng Việt), tạo `.cowork.bak`, và ghi qua file tạm rồi `File.Replace` để mất điện
 giữa chừng không làm hỏng config.
 
+### Phát hiện sửa đồng thời
+
+Mỗi lần đọc, `ConfigFileService` gắn vào tài liệu một `FileStamp` (giờ ghi cuối + kích thước). Dấu
+được chụp **trước** khi đọc nội dung: chụp sau thì một lần ghi xen giữa lúc đọc sẽ lọt lưới.
+
+`ConfigFileViewModel.Save` từ chối ghi khi dấu hiện tại khác dấu đã chụp, và nhịp 30 giây của giao
+diện gọi `CheckForExternalChange` cho đúng file đang mở để dải cảnh báo hiện lên trước cả khi người
+dùng bấm Lưu. Chỉ file đang mở mới bị soi — đủ để bịt lỗ ghi đè mà không phải dựng `FileSystemWatcher`
+cho từng file của từng app.
+
+So metadata thay vì băm nội dung là đánh đổi có chủ ý: rẻ để chạy định kỳ, và bắt hụt trường hợp
+"sửa mà giữ nguyên cả giờ ghi lẫn kích thước" — vốn chỉ xảy ra khi ai đó cố tình.
+
 ## Quản lý tiến trình
 
 `ProcessManager` giữ một `ConcurrentDictionary<Guid, RunningApp>` — mỗi app tối đa một tiến trình

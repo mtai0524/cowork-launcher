@@ -35,11 +35,14 @@ Ctrl+C và tự dọn dẹp bình thường; chỉ cái vỏ `cmd` là chết c�
 sự tối đa* của app đó. App GUI chưa kịp lên cửa sổ và app chạy quyền admin không có console để nhận
 Ctrl+C, nên bị kill ngay.
 
-### Sửa đồng thời không được phát hiện
+### Phát hiện sửa đồng thời dựa trên metadata của file
 
-Nếu bạn mở một file cấu hình trong Cowork, rồi sửa file đó bằng công cụ khác, Cowork **không** biết
-và sẽ ghi đè khi bạn bấm Lưu. Bấm **Tải lại** trước khi sửa nếu nghi ngờ. Bản `.cowork.bak` vẫn giữ
-nội dung ngay trước lần ghi đè đó.
+Cowork so *giờ ghi cuối* và *kích thước* để biết file có bị công cụ khác sửa hay không, chứ không
+băm nội dung — file cấu hình có thể lớn và phép so này chạy mỗi 30 giây. Trường hợp duy nhất lọt
+lưới là ai đó sửa mà giữ nguyên **cả hai** giá trị đó; khi ấy Cowork ghi đè, và bản `.cowork.bak`
+vẫn giữ nội dung ngay trước lần ghi.
+
+Cowork cũng chỉ soi **file đang mở** trên màn hình, không theo dõi mọi file cấu hình đã khai báo.
 
 ### Chế độ sửa nguồn không tô màu cú pháp
 
@@ -85,9 +88,6 @@ Phần "không sửa từ xa" là chủ ý bảo mật chứ không phải chưa
 Xếp theo giá trị mang lại trên công sức bỏ ra.
 
 ### Ưu tiên cao
-
-**Theo dõi file cấu hình bị sửa bên ngoài.** `FileSystemWatcher` trên các file đang mở, hiện cảnh
-báo "file đã đổi trên đĩa, tải lại?" — bịt đúng lỗ hổng ghi đè nói ở trên.
 
 ### Ưu tiên trung bình
 

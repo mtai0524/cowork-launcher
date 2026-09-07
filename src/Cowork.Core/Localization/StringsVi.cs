@@ -114,6 +114,10 @@ internal static class StringsVi
             ["Config.WriteFailed"] = "Không ghi được file: {0}",
             ["Config.SavedAt"] = "Đã lưu lúc {0}",
             ["Config.BackupSuffix"] = " (đã tạo bản sao .cowork.bak)",
+            ["Config.ChangedOnDisk"] = "File này đã bị sửa bằng công cụ khác kể từ lúc Cowork mở nó. Bấm Tải lại để lấy nội dung mới (mất thay đổi bạn đang gõ), hoặc Vẫn ghi đè.",
+            ["Config.ChangedOnDiskBanner"] = "File đã đổi trên đĩa.",
+            ["Config.Overwrite"] = "Vẫn ghi đè",
+            ["Config.OverwroteSuffix"] = " (đã ghi đè thay đổi bên ngoài)",
 
             // ---------- Kiểu giá trị cấu hình ----------
             ["Kind.Number"] = "số",

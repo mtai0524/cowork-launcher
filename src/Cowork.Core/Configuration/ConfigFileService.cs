@@ -16,6 +16,9 @@ public interface IConfigFileService
 
     /// <summary>Kiểm tra text thô có đúng cú pháp định dạng không. Null = hợp lệ.</summary>
     string? Validate(string text, ConfigFormat format, string fullPath);
+
+    /// <summary>File trên đĩa đã bị sửa bởi thứ khác kể từ lúc <paramref name="document"/> được đọc chưa.</summary>
+    bool HasChangedOnDisk(ConfigDocument document);
 }
 
 public sealed class ConfigFileService : IConfigFileService
@@ -52,8 +55,20 @@ public sealed class ConfigFileService : IConfigFileService
             };
         }
 
+        // Chụp dấu *trước* khi đọc: ai đó ghi đè trong lúc ta đang đọc thì dấu cũ khác dấu mới,
+        // nên lần kiểm tra sau vẫn báo đã đổi. Chụp sau thì đúng trường hợp đó bị bỏ lọt.
+        var stamp = FileStamp.Read(fullPath);
         var text = File.ReadAllText(fullPath, DetectEncoding(fullPath));
-        return Resolve(format, fullPath).Parse(fullPath, text);
+        var document = Resolve(format, fullPath).Parse(fullPath, text);
+        document.Stamp = stamp;
+
+        return document;
+    }
+
+    public bool HasChangedOnDisk(ConfigDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        return FileStamp.HasChanged(document.Stamp, FileStamp.Read(document.FilePath));
     }
 
     public string SaveChanges(ConfigDocument document, IReadOnlyDictionary<string, string> changedValues, bool backup)

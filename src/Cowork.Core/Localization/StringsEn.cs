@@ -113,6 +113,10 @@ internal static class StringsEn
             ["Config.NoChanges"] = "Nothing changed, nothing to save.",
             ["Config.WriteFailed"] = "Cannot write the file: {0}",
             ["Config.SavedAt"] = "Saved at {0}",
+            ["Config.ChangedOnDisk"] = "Another tool changed this file after Cowork opened it. Press Reload to take the new contents (losing what you typed), or Overwrite anyway.",
+            ["Config.ChangedOnDiskBanner"] = "The file changed on disk.",
+            ["Config.Overwrite"] = "Overwrite anyway",
+            ["Config.OverwroteSuffix"] = " (overwrote the external change)",
             ["Config.BackupSuffix"] = " (a .cowork.bak copy was created)",
 
             // ---------- Config value kinds ----------

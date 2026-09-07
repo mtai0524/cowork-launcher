@@ -47,5 +47,12 @@ public sealed class ConfigDocument
     /// <summary>Lý do không phân tích được thành bảng (file lỗi cú pháp...). Null nếu ổn.</summary>
     public string? ParseError { get; init; }
 
+    /// <summary>
+    /// Dấu của file tại lúc đọc, để sau này biết có ai sửa file bằng công cụ khác không.
+    /// Null khi file không tồn tại, hoặc khi tài liệu được dựng từ text chứ không phải từ đĩa
+    /// (bộ đọc-ghi chỉ nhận text, nên dấu do <see cref="ConfigFileService"/> gắn vào sau).
+    /// </summary>
+    public FileStamp? Stamp { get; internal set; }
+
     public bool SupportsStructuredEditing => ParseError is null && Format != ConfigFormat.PlainText;
 }

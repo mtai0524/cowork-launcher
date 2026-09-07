@@ -63,6 +63,13 @@ public sealed partial class ConfigFileViewModel : ObservableObject
     [ObservableProperty]
     private bool _supportsTable;
 
+    /// <summary>
+    /// File trên đĩa đã bị công cụ khác sửa kể từ lúc Cowork mở nó. Lưu lúc này sẽ ghi đè
+    /// thay đổi của người kia, nên phải hỏi trước.
+    /// </summary>
+    [ObservableProperty]
+    private bool _changedOnDisk;
+
     private string _loadedRawText = string.Empty;
 
     public bool HasUnsavedChanges =>
@@ -94,11 +101,24 @@ public sealed partial class ConfigFileViewModel : ObservableObject
         OnPropertyChanged(nameof(DisplayName));
     }
 
+    /// <summary>
+    /// Soi lại file trên đĩa xem có ai sửa không. Gọi từ nhịp làm tươi của giao diện, nên phải rẻ:
+    /// chỉ đọc metadata của file, không đọc nội dung.
+    /// </summary>
+    public void CheckForExternalChange()
+    {
+        if (_document is null)
+            return;
+
+        ChangedOnDisk = _service.HasChangedOnDisk(_document);
+    }
+
     [RelayCommand]
     public void Reload()
     {
         ErrorMessage = null;
         StatusMessage = null;
+        ChangedOnDisk = false;
         Entries.Clear();
 
         var path = FullPath;
@@ -143,11 +163,22 @@ public sealed partial class ConfigFileViewModel : ObservableObject
         OnPropertyChanged(nameof(HasUnsavedChanges));
     }
 
-    /// <summary>Ghi thay đổi xuống đĩa. Trả về true nếu lưu thành công.</summary>
-    public bool Save()
+    /// <summary>
+    /// Ghi thay đổi xuống đĩa. Trả về true nếu lưu thành công.
+    /// Từ chối khi file đã bị sửa bên ngoài, trừ khi <paramref name="overwriteExternalChange"/> bật —
+    /// đây chính là chỗ bịt lỗ ghi đè im lặng.
+    /// </summary>
+    public bool Save(bool overwriteExternalChange = false)
     {
         ErrorMessage = null;
         StatusMessage = null;
+
+        if (!overwriteExternalChange && _document is not null && _service.HasChangedOnDisk(_document))
+        {
+            ChangedOnDisk = true;
+            ErrorMessage = Loc.T("Config.ChangedOnDisk");
+            return false;
+        }
 
         try
         {
@@ -206,6 +237,14 @@ public sealed partial class ConfigFileViewModel : ObservableObject
 
     [RelayCommand]
     private void SaveFile() => Save();
+
+    /// <summary>Lưu đè lên thay đổi của công cụ khác, sau khi người dùng đã được hỏi.</summary>
+    [RelayCommand]
+    private void SaveOverwriting()
+    {
+        if (Save(overwriteExternalChange: true))
+            StatusMessage += Loc.T("Config.OverwroteSuffix");
+    }
 
     /// <summary>Bỏ mọi chỉnh sửa chưa lưu, nạp lại từ đĩa.</summary>
     [RelayCommand]

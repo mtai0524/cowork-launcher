@@ -1359,6 +1359,10 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     {
         RefreshAllRunInfo();
 
+        // Chỉ soi file đang mở: đủ để cảnh báo trước khi người dùng bấm Lưu, mà không phải
+        // dựng FileSystemWatcher cho từng file của từng app.
+        SelectedApp?.SelectedConfigFile?.CheckForExternalChange();
+
         var today = DateTime.Today;
         if (today == _lastPruneDay)
             return;
