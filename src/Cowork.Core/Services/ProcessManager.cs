@@ -115,13 +115,21 @@ public sealed class ProcessManager : IProcessManager, IDisposable
             if (!ConsoleSignal.StartChild(process))
                 return StartResult.Fail("Windows từ chối khởi chạy tiến trình.");
 
+            record.ProcessId = process.Id;
+
             if (startInfo.RedirectStandardOutput)
             {
+                // Ghi khối đầu trước khi mở luồng đọc: mở trước thì dòng output đầu tiên có
+                // thể xuống đĩa trước header, và file mất trật tự.
+                entry.WriteHeader(_paths, new RunLogContext(
+                    app.Name, record.Id, trigger, startInfo.FileName, startInfo.Arguments,
+                    startInfo.WorkingDirectory, app.EnvironmentVariables.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList(),
+                    ExitCodes.Normalize(app.SuccessExitCodes).ToList(), record.ProcessId, record.StartedAt));
+
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
             }
 
-            record.ProcessId = process.Id;
             _running[app.Id] = entry;
 
             if (app.TimeoutMinutes > 0)
@@ -195,12 +203,25 @@ public sealed class ProcessManager : IProcessManager, IDisposable
         _ => ex.Message,
     };
 
+    /// <summary>
+    /// Ghi một dòng do chính Cowork sinh ra vào nhật ký của lần chạy. Nằm chung file với
+    /// output của app, theo đúng thứ tự thời gian — tách ra file khác thì lúc dò lỗi phải
+    /// ngồi ghép hai dòng thời gian lại với nhau.
+    /// </summary>
+    private void Note(RunningApp entry, string text)
+    {
+        var line = AppOutputLine.FromCowork(entry.AppId, DateTimeOffset.Now, text);
+        entry.Append(line);
+        entry.WriteToLog(_paths);
+        OutputReceived?.Invoke(this, line);
+    }
+
     private void HandleOutput(RunningApp entry, string? text, bool isError)
     {
         if (text is null)
             return;
 
-        var line = new AppOutputLine(entry.AppId, DateTimeOffset.Now, text, isError);
+        var line = AppOutputLine.FromApp(entry.AppId, DateTimeOffset.Now, text, isError);
         entry.Append(line);
         entry.WriteToLog(_paths);
         OutputReceived?.Invoke(this, line);
@@ -231,6 +252,9 @@ public sealed class ProcessManager : IProcessManager, IDisposable
 
         _logger.Info($"'{entry.AppName}' kết thúc, mã thoát {record.ExitCode?.ToString() ?? "?"} ({record.Outcome}).");
 
+        entry.WriteToLog(_paths);
+        entry.WriteFooter(_paths);
+
         Cleanup(entry.AppId, entry);
 
         RaiseStatus(entry.AppId,
@@ -249,6 +273,7 @@ public sealed class ProcessManager : IProcessManager, IDisposable
         entry.Record.Outcome = RunOutcome.TimedOut;
         entry.Record.Error = "Vượt quá thời gian chạy tối đa.";
         _logger.Warning($"'{entry.AppName}' bị dừng do quá thời gian cho phép.");
+        Note(entry, Loc.T("RunLog.Timeout"));
         TryKill(entry.Process);
     }
 
@@ -266,12 +291,27 @@ public sealed class ProcessManager : IProcessManager, IDisposable
         if (reason is not null)
             entry.Record.Error = reason;
 
+        Note(entry, reason is null
+            ? Loc.T("RunLog.StopRequested", graceMs / 1000.0)
+            : Loc.T("RunLog.StopBecause", reason, graceMs / 1000.0));
+
         try
         {
             // Dừng lịch sự theo thứ tự: đóng cửa sổ chính (app GUI), không có cửa sổ thì gửi Ctrl+C
             // (app console). Cả hai đều không được thì kill ngay, không chờ vô ích.
-            if (!entry.Process.CloseMainWindow() && !TrySendCtrlC(entry))
+            if (entry.Process.CloseMainWindow())
+            {
+                Note(entry, Loc.T("RunLog.ClosedWindow"));
+            }
+            else if (TrySendCtrlC(entry))
+            {
+                Note(entry, Loc.T("RunLog.SentCtrlC"));
+            }
+            else
+            {
+                Note(entry, Loc.T("RunLog.KilledNoSignal"));
                 TryKill(entry.Process);
+            }
 
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(graceMs);
@@ -282,6 +322,7 @@ public sealed class ProcessManager : IProcessManager, IDisposable
             }
             catch (OperationCanceledException)
             {
+                Note(entry, Loc.T("RunLog.GraceExpired"));
                 TryKill(entry.Process);
             }
 
@@ -388,8 +429,28 @@ public sealed class ProcessManager : IProcessManager, IDisposable
                 while (_buffer.Count > _capacity)
                     _buffer.Dequeue();
 
-                _pendingLogLines.Add(
-                    $"{line.Timestamp:HH:mm:ss} {(line.IsError ? "[ERR] " : string.Empty)}{line.Text}");
+                _pendingLogLines.Add(RunLogFormat.Line(line));
+            }
+        }
+
+        /// <summary>Khối đầu file. Ghi thẳng, không qua bộ đệm, để nó chắc chắn nằm trước mọi dòng output.</summary>
+        public void WriteHeader(CoworkPaths paths, RunLogContext context)
+            => Write(paths, RunLogFormat.Header(context));
+
+        public void WriteFooter(CoworkPaths paths)
+            => Write(paths, RunLogFormat.Footer(Record));
+
+        private void Write(CoworkPaths paths, IEnumerable<string> lines)
+        {
+            if (Record.OutputLogFile is not { } fileName)
+                return;
+
+            try
+            {
+                File.AppendAllLines(paths.RunLogFile(fileName), lines, System.Text.Encoding.UTF8);
+            }
+            catch (IOException)
+            {
             }
         }
 
@@ -408,13 +469,7 @@ public sealed class ProcessManager : IProcessManager, IDisposable
                 _pendingLogLines.Clear();
             }
 
-            try
-            {
-                File.AppendAllLines(paths.RunLogFile(fileName), batch, System.Text.Encoding.UTF8);
-            }
-            catch (IOException)
-            {
-            }
+            Write(paths, batch);
         }
 
         public IReadOnlyList<AppOutputLine> Snapshot()

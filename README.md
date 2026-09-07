@@ -38,7 +38,7 @@ files inside the app, without hunting for paths in Notepad.
 | **Schedules** | Fixed times of day, repeating intervals, run-on-startup; filtered by day of week; catch-up runs for missed slots |
 | **Machine events** | Run when the machine wakes from sleep, when the screen unlocks, or when the network comes back — independent of the schedule, with a delay and a quiet period to stop double firing |
 | **Monitoring** | Live output log, run history with exit codes and durations, logging to file, tray notifications when an app fails |
-| **Per-run output** | Every run gets its own log file; clicking a row in the History tab replays exactly that run's output |
+| **Per-run output** | Every run gets its own self-describing log file — a header with the command, arguments, working directory, trigger and PID, then output tagged by source (`out` / `ERR` / `cowork` for lifecycle events like a stop request or a grace-period kill), then a footer with the exit code, outcome and duration. Environment variable *names* are recorded, never their values. Filter the History tab to one app, or read any run's log from the web hub |
 | **Outbound alerts** | When an app fails at midnight, get it via webhook (Slack/Discord/Teams), Telegram, or email — sent to every configured channel in parallel, with a quiet period against spam |
 | **Background operation** | Minimize to the system tray, start with Windows |
 | **Remote management** | Several machines connect out to one web hub: see their status, hit Run / Stop / Restart from a browser, take a screenshot of a running app's window, and issue agent tokens from the web — see [docs/06](docs/06-quan-ly-tu-xa.md) |

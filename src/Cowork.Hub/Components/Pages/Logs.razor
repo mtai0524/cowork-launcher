@@ -1,0 +1,185 @@
+@page "/logs/{Machine}/{AppId:guid}"
+@attribute [Authorize]
+@inject MachineRegistry Registry
+@inject UiLanguage Lang
+@inject NavigationManager Nav
+
+<h1>@AppName</h1>
+<p class="lede">@Lang.T("Web.LogsIntro", Machine)</p>
+
+<p><a href="/">← @Lang.T("Web.NavMachines")</a></p>
+
+@if (_notice is not null)
+{
+    <div class="notice bad">@_notice</div>
+}
+
+<section class="card">
+    <header class="card-head">
+        <span class="card-title">@Lang.T("Web.LogsRuns")</span>
+        <span class="screen-actions">
+            <button class="btn" type="button" disabled="@_busy" @onclick="LoadRunsAsync">@Lang.T("Web.LogsRefresh")</button>
+        </span>
+    </header>
+
+    @if (_runs.Count == 0)
+    {
+        <p class="muted">@(_busy ? Lang.T("Web.LogsLoading") : Lang.T("Web.LogsNoRuns"))</p>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>@Lang.T("Web.ColStarted")</th>
+                    <th>@Lang.T("Web.ColTrigger")</th>
+                    <th>@Lang.T("Web.ColOutcome")</th>
+                    <th>@Lang.T("Web.ColExitCode")</th>
+                    <th>@Lang.T("Web.ColDuration")</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var run in _runs)
+                {
+                    <tr>
+                        <td>@run.StartedAt.ToString("dd/MM HH:mm:ss")</td>
+                        <td class="muted">@Lang.T("Trigger." + run.Trigger)</td>
+                        <td><span class="state @OutcomeClass(run.Outcome)">@Lang.T("Outcome." + run.Outcome)</span></td>
+                        <td>@(run.ExitCode?.ToString() ?? "—")</td>
+                        <td class="muted">@Duration(run)</td>
+                        <td class="actions">
+                            @if (run.HasLog)
+                            {
+                                <button class="btn" type="button" disabled="@_busy"
+                                        @onclick="() => LoadLogAsync(run)">@Lang.T("Web.LogsView")</button>
+                            }
+                            else
+                            {
+                                <span class="muted small">@Lang.T("Web.LogsNoFile")</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@if (_log is not null)
+{
+    <section class="card">
+        <header class="card-head">
+            <span class="card-title">@Lang.T("Web.LogsOf", _log.StartedAt.ToString("dd/MM HH:mm:ss"))</span>
+            @if (_log.Truncated)
+            {
+                <span class="badge">@Lang.T("Web.LogsTruncated", MaxLines)</span>
+            }
+            <span class="screen-actions">
+                <button class="btn" type="button" @onclick="() => _log = null">@Lang.T("Web.ScreenClose")</button>
+            </span>
+        </header>
+
+        @if (_log.Lines.Count == 0)
+        {
+            <p class="muted">@Lang.T("Web.LogsEmpty")</p>
+        }
+        else
+        {
+            <pre class="log">@string.Join("\n", _log.Lines)</pre>
+        }
+    </section>
+}
+
+@code {
+    /// <summary>Đủ để dò một lỗi, không đủ để một dịch vụ chạy cả ngày làm nghẹn trình duyệt.</summary>
+    private const int MaxLines = 2000;
+
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(20);
+
+    [Parameter] public string Machine { get; set; } = string.Empty;
+
+    [Parameter] public Guid AppId { get; set; }
+
+    private sealed record ShownLog(DateTimeOffset StartedAt, bool Truncated, IReadOnlyList<string> Lines);
+
+    private IReadOnlyList<RunSummary> _runs = Array.Empty<RunSummary>();
+    private ShownLog? _log;
+    private string? _notice;
+    private bool _busy;
+
+    /// <summary>Tên app lấy từ ảnh chụp trạng thái mà agent đang báo; máy ngoại tuyến thì lùi về mã.</summary>
+    private string AppName => Registry.Machines
+        .FirstOrDefault(m => string.Equals(m.Name, Machine, StringComparison.OrdinalIgnoreCase))
+        ?.Apps.FirstOrDefault(a => a.Id == AppId)
+        ?.Name ?? AppId.ToString("N")[..8];
+
+    protected override Task OnParametersSetAsync() => LoadRunsAsync();
+
+    private async Task LoadRunsAsync()
+    {
+        _busy = true;
+        _notice = null;
+        _log = null;
+
+        try
+        {
+            _runs = await Registry.RequestRunHistoryAsync(Machine, AppId, MaxRuns, Timeout);
+
+            if (_runs.Count == 0 && !IsOnline)
+                _notice = Lang.T("Web.MachineOffline");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private const int MaxRuns = 50;
+
+    private bool IsOnline => Registry.Machines
+        .Any(m => string.Equals(m.Name, Machine, StringComparison.OrdinalIgnoreCase) && m.Online);
+
+    private async Task LoadLogAsync(RunSummary run)
+    {
+        _busy = true;
+        _notice = null;
+
+        try
+        {
+            var result = await Registry.RequestRunLogAsync(Machine, run.RunId, MaxLines, Timeout);
+
+            if (result is null)
+            {
+                _notice = Lang.T("Web.LogsFetchFailed");
+                return;
+            }
+
+            if (!result.Found)
+            {
+                _notice = Lang.T("Web.LogsNoFile");
+                return;
+            }
+
+            _log = new ShownLog(run.StartedAt, result.Truncated, result.Lines);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string OutcomeClass(RunOutcome outcome) => outcome switch
+    {
+        RunOutcome.Succeeded => "running",
+        RunOutcome.Running => "starting",
+        RunOutcome.Failed or RunOutcome.NotStarted or RunOutcome.Unhealthy => "failed",
+        _ => "idle",
+    };
+
+    // Giữ nguyên múi giờ của máy agent, không đổi sang giờ của server.
+    private static string Duration(RunSummary run)
+        => run.FinishedAt is { } finished
+            ? RunLogFormat.Describe(finished - run.StartedAt)
+            : "—";
+}

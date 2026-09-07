@@ -91,6 +91,10 @@ chụp cả desktop, nên những thứ khác đang mở trên máy không lọt
 vụ nền, console đang ẩn — thì trang nói rõ như vậy thay vì đưa ra ảnh trống. Ảnh được thu nhỏ về tối
 đa 1400 điểm ảnh chiều ngang, giữ trong bộ nhớ hub 10 phút rồi tự mất, và chỉ tải được khi đã đăng nhập.
 
+Nút **Nhật ký** mở trang liệt kê các lần chạy gần đây của app đó — mốc bắt đầu, nguồn kích hoạt,
+kết quả, mã thoát, thời lượng — và mở được nội dung log của từng lần. Dữ liệu đọc thẳng từ máy agent
+tại thời điểm hỏi, hub không lưu bản sao. Log dài chỉ lấy 2000 dòng cuối, vì đuôi mới là chỗ có lỗi.
+
 Lệnh từ web đi xuống agent, agent trả lời trong 15 giây; kết quả hiện ngay trên trang. Trên máy đó,
 lịch sử ghi nguồn kích hoạt là **Từ xa**. Trạng thái cập nhật tức thời khi app đổi trạng thái, và
 toàn bộ được gửi lại mỗi 30 giây (làm nhịp tim, đồng thời cập nhật mốc *Kế tiếp*).
@@ -117,6 +121,44 @@ máy mà lần khởi động sau nó biến mất.
 Khi deploy bằng WebDeploy nhớ **chừa `App_Data` ra** (`-skip:Directory="App_Data"`): `-verb:sync`
 xoá mọi thứ không có trong thư mục nguồn, không skip là mất sạch máy đã cấp token.
 
+### Nhật ký một lần chạy
+
+Mỗi lần chạy có file log riêng trong `%APPDATA%\Cowork\logs`, và file tự mô tả nó là lần chạy nào:
+
+```
+-----------------------------------------------------------------------
+App          : backup db notaion
+Run id       : 3f2a1c889b0e4d7a9c112b6e5a4d0e13
+Trigger      : Theo lịch
+Program      : C:	oolsackup.bat
+Arguments    : --full --verbose
+Working dir  : C:	ools
+Env vars     : API_KEY, DB_HOST
+Success codes: 0, 1
+Process id   : 12345
+Started      : 2026-09-07 10:40:12.345 +07:00
+-----------------------------------------------------------------------
+2026-09-07 10:40:12.501 +07:00  out     Bắt đầu sao lưu…
+2026-09-07 10:40:13.120 +07:00  ERR     cannot open db
+2026-09-07 10:40:20.004 +07:00  cowork  Cowork yêu cầu dừng; chờ tối đa 5s rồi mới kill.
+-----------------------------------------------------------------------
+Finished     : 2026-09-07 10:40:21.900 +07:00
+Duration     : 9.5 s
+Exit code    : 1
+Outcome      : Thành công
+-----------------------------------------------------------------------
+```
+
+Ba điều đáng chú ý:
+
+- Cột nguồn phân biệt `out` (stdout của app), `ERR` (stderr), và `cowork` (do chính Cowork ghi:
+  yêu cầu dừng, hết ân hạn nên kill, quá giờ). Cả ba nằm chung một file theo đúng thứ tự thời gian —
+  tách ra thì lúc dò lỗi phải ngồi ghép hai dòng thời gian lại với nhau.
+- `Env vars` **chỉ ghi tên biến, không bao giờ ghi giá trị**. Đây là chỗ người ta hay để khoá API,
+  mà file này đọc được từ web.
+- Nhãn cấu trúc cố định bằng tiếng Anh và mốc giờ theo culture bất biến, để file không đổi nội dung
+  theo ngôn ngữ giao diện hay vùng miền của máy ghi nó.
+
 ## Bảo mật — đọc trước khi mở ra internet
 
 Một trang web ra lệnh chạy chương trình trên nhiều máy **về bản chất là công cụ thực thi từ xa**. Tài
@@ -127,6 +169,9 @@ khoản web bị lộ nghĩa là kẻ khác chạy được mọi app đã khai 
   thể chứa dữ liệu khách hàng, đường dẫn nội bộ, hay chính thông tin đăng nhập đang hiện trên màn hình.
 - **Cân nhắc trước khi bật xem màn hình.** Ai vào được web là xem được cửa sổ của mọi app đang chạy
   trên mọi máy. Nếu không cần, đừng để app nhạy cảm ở trạng thái đang chạy khi không có ai giám sát.
+- **Nhật ký cũng đọc được từ web.** Output của app thường chứa đường dẫn nội bộ, tên máy chủ, đôi khi
+  cả chuỗi kết nối do chính app in ra. Cowork không ghi giá trị biến môi trường vào log (chỉ ghi tên
+  biến), nhưng những gì app tự in ra thì Cowork không kiểm soát được.
 - **Mật khẩu web dài**, và token **riêng cho từng máy** — thu hồi một máy chỉ cần bấm *Thu hồi*.
 - Web **chỉ kích hoạt app đã khai sẵn** trên máy. Không sửa được đường dẫn, tham số, lịch hay file
   cấu hình từ xa — đây là chủ ý, để tài khoản web bị lộ vẫn không biến thành "chạy bất kỳ thứ gì".

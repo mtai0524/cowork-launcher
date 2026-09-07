@@ -89,35 +89,33 @@ public class SnapshotBuilderTests
 /// <summary>Ghi lại lệnh đã gửi; có thể bảo nó ném lỗi để test đường thất bại.</summary>
 internal sealed class RecordingSender : IAgentCommandSender
 {
-    public List<(string ConnectionId, RemoteCommand Command)> Sent { get; } = new();
+    public List<(string ConnectionId, string Method, object Payload)> Sent { get; } = new();
 
     public bool Throw { get; set; }
 
-    public List<(string ConnectionId, ScreenshotRequest Request)> Shots { get; } = new();
-
-    /// <summary>Ảnh mà agent giả sẽ trả về; null nghĩa là không trả lời gì (để thử quá hạn).</summary>
-    public Func<ScreenshotRequest, ScreenshotResult?>? OnScreenshot { get; set; }
+    /// <summary>Agent giả trả lời: nhận payload gửi xuống, trả về thứ cần đẩy ngược lên registry.</summary>
+    public Func<object, object?>? Answer { get; set; }
 
     public MachineRegistry? Registry { get; set; }
 
-    public Task SendAsync(string connectionId, RemoteCommand command, CancellationToken cancellationToken)
+    public IEnumerable<RemoteCommand> Commands => Sent.Select(s => s.Payload).OfType<RemoteCommand>();
+
+    public IEnumerable<ScreenshotRequest> Shots => Sent.Select(s => s.Payload).OfType<ScreenshotRequest>();
+
+    public Task SendAsync(string connectionId, string method, object payload, CancellationToken cancellationToken)
     {
         if (Throw)
             throw new InvalidOperationException("mat mang");
 
-        Sent.Add((connectionId, command));
-        return Task.CompletedTask;
-    }
+        Sent.Add((connectionId, method, payload));
 
-    public Task SendAsync(string connectionId, ScreenshotRequest request, CancellationToken cancellationToken)
-    {
-        if (Throw)
-            throw new InvalidOperationException("mat mang");
-
-        Shots.Add((connectionId, request));
-
-        if (OnScreenshot?.Invoke(request) is { } result)
-            Registry?.Complete(result);
+        switch (Answer?.Invoke(payload))
+        {
+            case ScreenshotResult shot: Registry?.Complete(shot); break;
+            case CommandResult command: Registry?.Complete(command); break;
+            case RunHistoryResult history: Registry?.Complete(history); break;
+            case RunLogResult log: Registry?.Complete(log); break;
+        }
 
         return Task.CompletedTask;
     }
@@ -245,8 +243,10 @@ public class MachineRegistryTests
 
         var pending = registry.SendAsync("may-a", appId, RemoteCommandKind.Stop, TimeSpan.FromSeconds(5));
 
-        var (connectionId, command) = Assert.Single(sender.Sent);
-        Assert.Equal("c1", connectionId);
+        var sent = Assert.Single(sender.Sent);
+        var command = Assert.IsType<RemoteCommand>(sent.Payload);
+        Assert.Equal("c1", sent.ConnectionId);
+        Assert.Equal(HubMethods.Execute, sent.Method);
         Assert.Equal(appId, command.AppId);
         Assert.Equal(RemoteCommandKind.Stop, command.Kind);
 

@@ -494,3 +494,19 @@ input:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring
     border: 1px solid var(--border);
     background: var(--code-bg);
 }
+
+/* Nhật ký một lần chạy: giữ nguyên xuống dòng và khoảng trắng của file gốc. */
+.log {
+    margin: 0;
+    padding: 12px;
+    max-height: 60vh;
+    overflow: auto;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--divider);
+    background: var(--code-bg);
+    font-family: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+    font-size: 12.5px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+}

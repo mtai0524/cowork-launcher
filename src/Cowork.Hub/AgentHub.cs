@@ -77,6 +77,20 @@ public sealed class AgentHub : Microsoft.AspNetCore.SignalR.Hub
         return Task.CompletedTask;
     }
 
+    [HubMethodName(HubMethods.RunHistoryResult)]
+    public Task ReportRunHistory(RunHistoryResult result)
+    {
+        _registry.Complete(result);
+        return Task.CompletedTask;
+    }
+
+    [HubMethodName(HubMethods.RunLogResult)]
+    public Task ReportRunLog(RunLogResult result)
+    {
+        _registry.Complete(result);
+        return Task.CompletedTask;
+    }
+
     /// <summary>
     /// SignalR client gửi token qua query khi dùng WebSocket/SSE, qua header khi long-polling —
     /// phải nhận cả hai.
@@ -105,9 +119,6 @@ public sealed class HubCommandSender : IAgentCommandSender
 
     public HubCommandSender(IHubContext<AgentHub> hub) => _hub = hub;
 
-    public Task SendAsync(string connectionId, RemoteCommand command, CancellationToken cancellationToken)
-        => _hub.Clients.Client(connectionId).SendAsync(HubMethods.Execute, command, cancellationToken);
-
-    public Task SendAsync(string connectionId, ScreenshotRequest request, CancellationToken cancellationToken)
-        => _hub.Clients.Client(connectionId).SendAsync(HubMethods.Capture, request, cancellationToken);
+    public Task SendAsync(string connectionId, string method, object payload, CancellationToken cancellationToken)
+        => _hub.Clients.Client(connectionId).SendAsync(method, payload, cancellationToken);
 }

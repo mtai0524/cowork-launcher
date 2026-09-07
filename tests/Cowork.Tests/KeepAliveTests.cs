@@ -143,7 +143,7 @@ internal sealed class FakeProcessManager : IProcessManager
         => StatusChanged?.Invoke(this, new AppStatusChanged(app.Id, AppRuntimeState.Running, processId, null));
 
     public void Output(ManagedApp app, string text, bool isError = false)
-        => OutputReceived?.Invoke(this, new AppOutputLine(app.Id, DateTimeOffset.Now, text, isError));
+        => OutputReceived?.Invoke(this, AppOutputLine.FromApp(app.Id, DateTimeOffset.Now, text, isError));
 
     public void Complete(ManagedApp app, RunOutcome outcome, RunTrigger trigger = RunTrigger.Manual, int processId = 0)
         => RunCompleted?.Invoke(this, new AppRunRecord

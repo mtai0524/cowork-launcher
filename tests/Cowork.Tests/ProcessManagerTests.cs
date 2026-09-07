@@ -300,6 +300,43 @@ public class ProcessManagerTests
         Assert.Contains(RunLog.Read(paths, second).Lines, l => l.Contains("LAN_HAI"));
     }
 
+    /// <summary>
+    /// File log phải tự nói lên nó là lần chạy nào. Mở lại sau ba tuần mà chỉ thấy output trần
+    /// thì không biết lệnh nào đã chạy, ai kích hoạt, hay nó kết thúc ra sao.
+    /// </summary>
+    [Fact]
+    public async Task RunLog_OpensWithAHeader_AndClosesWithTheOutcome()
+    {
+        using var temp = new TempDirectory();
+        var paths = new CoworkPaths(temp.Path);
+        using var manager = new ProcessManager(NullLogger.Instance, paths);
+
+        var app = EchoApp("NOI_DUNG");
+        app.EnvironmentVariables["API_KEY"] = "bi-mat-khong-duoc-ghi";
+
+        var record = await RunAndWaitAsync(manager, app);
+        await Task.Delay(400);
+
+        var lines = RunLog.Read(paths, record).Lines;
+        var text = string.Join(Environment.NewLine, lines);
+
+        // Khối đầu phải nằm trước mọi dòng output.
+        Assert.Contains("App", lines[1]);
+        Assert.Contains("Process id", text);
+        Assert.Contains("Started", text);
+
+        // Tên biến môi trường có, giá trị thì tuyệt đối không.
+        Assert.Contains("API_KEY", text);
+        Assert.DoesNotContain("bi-mat-khong-duoc-ghi", text);
+
+        // Khối cuối nói lần chạy kết thúc thế nào.
+        Assert.Contains("Exit code", text);
+        Assert.Contains("Outcome", text);
+
+        // Và output của app vẫn nằm giữa, có nhãn nguồn.
+        Assert.Contains(lines, l => l.Contains("NOI_DUNG") && l.Contains("out"));
+    }
+
     [Fact]
     public async Task ARunWithoutOutputCapture_HasNoLogFile()
     {

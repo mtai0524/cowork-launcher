@@ -98,6 +98,7 @@
                                         @onclick="() => SendAsync(machine.Name, app, RemoteCommandKind.Restart)">@Lang.T("Web.Restart")</button>
                                 <button class="btn" type="button" disabled="@(!machine.Online || _capturing)"
                                         @onclick="() => CaptureAsync(machine.Name, app.Id, app.Name)">@Lang.T("Web.ViewScreen")</button>
+                                <a class="btn" href="@($"/logs/{Uri.EscapeDataString(machine.Name)}/{app.Id}")">@Lang.T("Web.ViewLogs")</a>
                             </td>
                         </tr>
                     }

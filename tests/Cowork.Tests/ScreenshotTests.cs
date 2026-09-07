@@ -189,14 +189,15 @@ public class ScreenshotRequestTests
     {
         var (registry, sender) = Build();
         registry.Connected("may-a", "c1");
-        sender.OnScreenshot = request =>
-            new ScreenshotResult(request.RequestId, ScreenshotFailure.None, new byte[] { 7, 7 }, 320, 240, Now);
+        sender.Answer = payload => payload is ScreenshotRequest request
+            ? new ScreenshotResult(request.RequestId, ScreenshotFailure.None, new byte[] { 7, 7 }, 320, 240, Now)
+            : null;
 
         var result = await registry.RequestScreenshotAsync("may-a", Guid.NewGuid(), TimeSpan.FromSeconds(5));
 
         Assert.True(result.Ok);
         Assert.Equal(new byte[] { 7, 7 }, result.Png);
-        Assert.Equal("c1", Assert.Single(sender.Shots).ConnectionId);
+        Assert.Equal("c1", Assert.Single(sender.Sent).ConnectionId);
     }
 
     /// <summary>Ảnh về muộn sau khi đã quá hạn thì bỏ, không được gán vào yêu cầu khác.</summary>

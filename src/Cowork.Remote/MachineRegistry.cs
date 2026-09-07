@@ -4,12 +4,16 @@ using Cowork.Remote.Contracts;
 
 namespace Cowork.Remote;
 
-/// <summary>Kênh gửi lệnh xuống một kết nối agent cụ thể. Hub cài bằng SignalR; test cài bằng bộ giả.</summary>
+/// <summary>
+/// Kênh gửi xuống một kết nối agent cụ thể. Hub cài bằng SignalR; test cài bằng bộ giả.
+///
+/// Một phương thức nhận tên phương thức SignalR thay vì mỗi loại yêu cầu một nạp chồng:
+/// hub hỏi agent ngày càng nhiều thứ, và mỗi thứ thêm một nạp chồng thì mọi bộ giả trong
+/// test phải sửa theo dù chẳng liên quan.
+/// </summary>
 public interface IAgentCommandSender
 {
-    Task SendAsync(string connectionId, RemoteCommand command, CancellationToken cancellationToken);
-
-    Task SendAsync(string connectionId, ScreenshotRequest request, CancellationToken cancellationToken);
+    Task SendAsync(string connectionId, string method, object payload, CancellationToken cancellationToken);
 }
 
 /// <summary>Trạng thái một máy như web nhìn thấy.</summary>
@@ -50,8 +54,10 @@ public sealed class MachineRegistry
     private readonly object _gate = new();
     private readonly Dictionary<string, Entry> _byName = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Entry> _byConnection = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<Guid, TaskCompletionSource<CommandResult>> _pending = new();
-    private readonly ConcurrentDictionary<Guid, TaskCompletionSource<ScreenshotResult>> _pendingShots = new();
+    private readonly PendingRequests<CommandResult> _commands = new();
+    private readonly PendingRequests<ScreenshotResult> _shots = new();
+    private readonly PendingRequests<RunHistoryResult> _histories = new();
+    private readonly PendingRequests<RunLogResult> _logs = new();
 
     public MachineRegistry(IAgentCommandSender sender, IClock clock, IEnumerable<string> knownMachines)
     {
@@ -211,32 +217,19 @@ public sealed class MachineRegistry
         }
 
         var command = new RemoteCommand(Guid.NewGuid(), appId, kind);
-        var completion = new TaskCompletionSource<CommandResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _pending[command.RequestId] = completion;
 
-        try
-        {
-            await _sender.SendAsync(connectionId, command, cancellationToken).ConfigureAwait(false);
+        var outcome = await _commands.SendAndWaitAsync(
+            command.RequestId,
+            () => _sender.SendAsync(connectionId, HubMethods.Execute, command, cancellationToken),
+            timeout,
+            cancellationToken).ConfigureAwait(false);
 
-            var finished = await Task.WhenAny(completion.Task, Task.Delay(timeout, cancellationToken)).ConfigureAwait(false);
-            if (finished != completion.Task)
-                return CommandOutcome.Fail(CommandFailure.Timeout);
-
-            var result = await completion.Task.ConfigureAwait(false);
-            return new CommandOutcome(result.Ok, CommandFailure.None, result.Message);
-        }
-        catch (OperationCanceledException)
+        return outcome switch
         {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            return CommandOutcome.Fail(CommandFailure.SendFailed, ex.Message);
-        }
-        finally
-        {
-            _pending.TryRemove(command.RequestId, out _);
-        }
+            { Result: { } result } => new CommandOutcome(result.Ok, CommandFailure.None, result.Message),
+            { SendError: { } error } => CommandOutcome.Fail(CommandFailure.SendFailed, error.Message),
+            _ => CommandOutcome.Fail(CommandFailure.Timeout),
+        };
     }
 
     /// <summary>
@@ -249,55 +242,101 @@ public sealed class MachineRegistry
     {
         var requestId = Guid.NewGuid();
 
-        string connectionId;
-        lock (_gate)
-        {
-            if (!_byName.TryGetValue(machineName, out var entry) || entry.ConnectionId is null)
-                return ScreenshotResult.Failed(requestId, ScreenshotFailure.MachineOffline, _clock.Now);
-
-            connectionId = entry.ConnectionId;
-        }
+        if (ConnectionOf(machineName) is not { } connectionId)
+            return ScreenshotResult.Failed(requestId, ScreenshotFailure.MachineOffline, _clock.Now);
 
         var request = new ScreenshotRequest(requestId, appId);
-        var completion = new TaskCompletionSource<ScreenshotResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _pendingShots[requestId] = completion;
 
-        try
-        {
-            await _sender.SendAsync(connectionId, request, cancellationToken).ConfigureAwait(false);
+        var outcome = await _shots.SendAndWaitAsync(
+            requestId,
+            () => _sender.SendAsync(connectionId, HubMethods.Capture, request, cancellationToken),
+            timeout,
+            cancellationToken).ConfigureAwait(false);
 
-            var finished = await Task.WhenAny(completion.Task, Task.Delay(timeout, cancellationToken)).ConfigureAwait(false);
-            if (finished != completion.Task)
-                return ScreenshotResult.Failed(requestId, ScreenshotFailure.Timeout, _clock.Now);
+        return outcome switch
+        {
+            { Result: { } result } => result,
 
-            return await completion.Task.ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception)
-        {
-            return ScreenshotResult.Failed(requestId, ScreenshotFailure.CaptureFailed, _clock.Now);
-        }
-        finally
-        {
-            _pendingShots.TryRemove(requestId, out _);
-        }
+            // Gửi hỏng nghĩa là kết nối vừa đứt, chứ không phải agent chụp không nổi.
+            { SendError: not null } => ScreenshotResult.Failed(requestId, ScreenshotFailure.MachineOffline, _clock.Now),
+            _ => ScreenshotResult.Failed(requestId, ScreenshotFailure.Timeout, _clock.Now),
+        };
+    }
+
+    /// <summary>
+    /// Xin agent danh sách các lần chạy gần đây của một app. Trả danh sách rỗng khi máy
+    /// ngoại tuyến hoặc không trả lời — web hiển thị "không có" chứ không phải lỗi đỏ.
+    /// </summary>
+    public async Task<IReadOnlyList<RunSummary>> RequestRunHistoryAsync(
+        string machineName, Guid appId, int limit, TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        var requestId = Guid.NewGuid();
+
+        if (ConnectionOf(machineName) is not { } connectionId)
+            return Array.Empty<RunSummary>();
+
+        var request = new RunHistoryRequest(requestId, appId, limit);
+
+        var outcome = await _histories.SendAndWaitAsync(
+            requestId,
+            () => _sender.SendAsync(connectionId, HubMethods.RunHistory, request, cancellationToken),
+            timeout,
+            cancellationToken).ConfigureAwait(false);
+
+        return outcome.Result?.Runs ?? Array.Empty<RunSummary>();
+    }
+
+    /// <summary>Xin agent nội dung file log của một lần chạy. <c>null</c> nghĩa là không lấy được.</summary>
+    public async Task<RunLogResult?> RequestRunLogAsync(
+        string machineName, Guid runId, int maxLines, TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        var requestId = Guid.NewGuid();
+
+        if (ConnectionOf(machineName) is not { } connectionId)
+            return null;
+
+        var request = new RunLogRequest(requestId, runId, maxLines);
+
+        var outcome = await _logs.SendAndWaitAsync(
+            requestId,
+            () => _sender.SendAsync(connectionId, HubMethods.RunLog, request, cancellationToken),
+            timeout,
+            cancellationToken).ConfigureAwait(false);
+
+        return outcome.Result;
+    }
+
+    /// <summary>Kết nối hiện hành của một máy, hoặc null nếu máy lạ hoặc đang ngoại tuyến.</summary>
+    private string? ConnectionOf(string machineName)
+    {
+        lock (_gate)
+            return _byName.TryGetValue(machineName, out var entry) ? entry.ConnectionId : null;
     }
 
     /// <summary>Agent gửi ảnh về. Ảnh của yêu cầu đã quá hạn bị bỏ qua.</summary>
     public bool Complete(ScreenshotResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
-        return _pendingShots.TryGetValue(result.RequestId, out var completion) && completion.TrySetResult(result);
+        return _shots.Complete(result.RequestId, result);
+    }
+
+    public bool Complete(RunHistoryResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        return _histories.Complete(result.RequestId, result);
+    }
+
+    public bool Complete(RunLogResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        return _logs.Complete(result.RequestId, result);
     }
 
     /// <summary>Agent trả lời một lệnh. Trả lời cho lệnh không còn chờ (đã quá hạn) bị bỏ qua.</summary>
     public bool Complete(CommandResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
-        return _pending.TryGetValue(result.RequestId, out var completion) && completion.TrySetResult(result);
+        return _commands.Complete(result.RequestId, result);
     }
 
     private sealed class Entry

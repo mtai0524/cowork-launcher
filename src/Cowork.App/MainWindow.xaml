@@ -1043,6 +1043,9 @@
                                             Command="{Binding OpenLogFolderCommand}" />
                                     <Button Content="{loc:Tr History.Clear}" Style="{StaticResource DangerButton}"
                                             Command="{Binding ClearHistoryCommand}" Margin="0" />
+                                    <CheckBox Content="{loc:Tr History.OnlySelectedApp}" Margin="0,0,12,0"
+                                              VerticalAlignment="Center"
+                                              IsChecked="{Binding HistoryForSelectedAppOnly}" />
                                 </StackPanel>
                             </DockPanel>
 
@@ -1096,7 +1099,7 @@
                                 </Border>
                             </Grid>
 
-                            <DataGrid ItemsSource="{Binding History}" IsReadOnly="True"
+                            <DataGrid ItemsSource="{Binding HistoryView}" IsReadOnly="True"
                                       SelectedItem="{Binding SelectedHistoryRecord}">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="{loc:Tr History.ColStarted}" Width="150"

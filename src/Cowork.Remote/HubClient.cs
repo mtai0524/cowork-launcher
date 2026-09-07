@@ -13,6 +13,12 @@ public interface IAgentHost
 
     /// <summary>Chụp cửa sổ của một app. Không chụp được thì trả kết quả mang mã lý do, không ném.</summary>
     Task<ScreenshotResult> CaptureAsync(ScreenshotRequest request);
+
+    /// <summary>Các lần chạy gần đây của một app trên máy này.</summary>
+    Task<RunHistoryResult> RunHistoryAsync(RunHistoryRequest request);
+
+    /// <summary>Nội dung file log của một lần chạy.</summary>
+    Task<RunLogResult> RunLogAsync(RunLogRequest request);
 }
 
 public enum HubLinkState
@@ -74,6 +80,14 @@ public sealed class HubClient : IAsyncDisposable
         var connection = builder.Build();
         connection.On<RemoteCommand>(HubMethods.Execute, command => OnExecuteAsync(connection, command));
         connection.On<ScreenshotRequest>(HubMethods.Capture, request => OnCaptureAsync(connection, request));
+        connection.On<RunHistoryRequest>(HubMethods.RunHistory, request => AnswerAsync(
+            connection, HubMethods.RunHistoryResult, "lịch sử chạy",
+            () => _host.RunHistoryAsync(request),
+            () => new RunHistoryResult(request.RequestId, Array.Empty<RunSummary>())));
+        connection.On<RunLogRequest>(HubMethods.RunLog, request => AnswerAsync(
+            connection, HubMethods.RunLogResult, "nhật ký lần chạy",
+            () => _host.RunLogAsync(request),
+            () => new RunLogResult(request.RequestId, false, false, Array.Empty<string>())));
         connection.Reconnecting += error =>
         {
             Set(HubLinkState.Reconnecting, error?.Message);
@@ -238,6 +252,34 @@ public sealed class HubClient : IAsyncDisposable
         catch (Exception ex)
         {
             _logger.Warning("Không gửi được ảnh chụp lên hub: " + ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Hỏi phía agent rồi gửi câu trả lời về hub. Agent ném thì gửi câu trả lời rỗng chứ không
+    /// im lặng: im lặng khiến bên kia phải chờ hết thời hạn mới biết là hỏng.
+    /// </summary>
+    private async Task AnswerAsync<T>(
+        HubConnection connection, string method, string what, Func<Task<T>> ask, Func<T> onError)
+    {
+        T answer;
+        try
+        {
+            answer = await ask().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"Lỗi khi lấy {what} theo yêu cầu của hub.", ex);
+            answer = onError();
+        }
+
+        try
+        {
+            await connection.SendAsync(method, answer).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.Warning($"Không gửi được {what} lên hub: " + ex.Message);
         }
     }
 

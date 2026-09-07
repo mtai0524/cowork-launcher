@@ -73,6 +73,16 @@ public sealed class HubIntegrationTests : IDisposable
 
         public ScreenshotFailure Failure { get; set; } = ScreenshotFailure.None;
 
+        public List<RunSummary> Runs { get; } = new();
+
+        public RunLogResult Log { get; set; } = new(Guid.Empty, false, false, Array.Empty<string>());
+
+        public Task<RunHistoryResult> RunHistoryAsync(RunHistoryRequest request)
+            => Task.FromResult(new RunHistoryResult(request.RequestId, Runs));
+
+        public Task<RunLogResult> RunLogAsync(RunLogRequest request)
+            => Task.FromResult(Log with { RequestId = request.RequestId });
+
         public Task<ScreenshotResult> CaptureAsync(ScreenshotRequest request)
             => Task.FromResult(Failure == ScreenshotFailure.None
                 ? new ScreenshotResult(request.RequestId, ScreenshotFailure.None, Png, 800, 600, DateTimeOffset.Now)
@@ -207,6 +217,53 @@ public sealed class HubIntegrationTests : IDisposable
         Assert.Equal(ScreenshotFailure.NoWindow, result.Failure);
         Assert.Empty(result.Png);
     }
+
+    /// <summary>Lịch sử chạy của một app phải về tới web nguyên vẹn, kể cả mốc giờ và mã thoát.</summary>
+    [Fact]
+    public async Task RunHistory_ComesBackFromTheAgent()
+    {
+        var agent = new FakeAgent();
+        var started = new DateTimeOffset(2026, 9, 7, 10, 40, 0, TimeSpan.FromHours(7));
+        agent.Runs.Add(new RunSummary(
+            Guid.NewGuid(), started, started.AddSeconds(9), RunOutcome.Failed, 2, RunTrigger.Schedule, true));
+
+        await using var client = CreateClient(agent);
+        await client.StartAsync(BaseAddress, Token);
+        await WaitUntilAsync(() => Registry.Machines.Any(m => m.Name == "may-test" && m.Online), "máy lên trực tuyến");
+
+        var runs = await Registry.RequestRunHistoryAsync("may-test", agent.AppId, 50, Patience);
+
+        var run = Assert.Single(runs);
+        Assert.Equal(RunOutcome.Failed, run.Outcome);
+        Assert.Equal(2, run.ExitCode);
+        Assert.Equal(started, run.StartedAt);
+        Assert.True(run.HasLog);
+    }
+
+    [Fact]
+    public async Task RunLog_ComesBackFromTheAgent_WithItsTruncationFlag()
+    {
+        var agent = new FakeAgent
+        {
+            Log = new RunLogResult(Guid.Empty, true, true, new[] { "dong mot", "dong hai" }),
+        };
+
+        await using var client = CreateClient(agent);
+        await client.StartAsync(BaseAddress, Token);
+        await WaitUntilAsync(() => Registry.Machines.Any(m => m.Name == "may-test" && m.Online), "máy lên trực tuyến");
+
+        var log = await Registry.RequestRunLogAsync("may-test", Guid.NewGuid(), 2000, Patience);
+
+        Assert.NotNull(log);
+        Assert.True(log!.Found);
+        Assert.True(log.Truncated);
+        Assert.Equal(new[] { "dong mot", "dong hai" }, log.Lines);
+    }
+
+    /// <summary>Máy ngoại tuyến thì trả rỗng chứ không treo tới hết thời hạn.</summary>
+    [Fact]
+    public async Task RunHistory_OfAnOfflineMachine_IsEmpty()
+        => Assert.Empty(await Registry.RequestRunHistoryAsync("may-test", Guid.NewGuid(), 50, Patience));
 
     [Fact]
     public async Task WrongToken_IsRejected_AndTheMachineNeverShowsOnline()

@@ -77,6 +77,9 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         AppsView = CollectionViewSource.GetDefaultView(Apps);
         AppsView.Filter = FilterApp;
 
+        HistoryView = CollectionViewSource.GetDefaultView(History);
+        HistoryView.Filter = FilterHistory;
+
         History = new ObservableCollection<AppRunRecord>(_history.All());
 
         foreach (var app in _workspace.Apps.OrderBy(a => a.Order))
@@ -184,6 +187,23 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     public ICollectionView AppsView { get; }
 
     public ObservableCollection<AppRunRecord> History { get; }
+
+    /// <summary>Bảng Lịch sử qua bộ lọc: xem chung mọi app, hoặc chỉ app đang chọn.</summary>
+    public ICollectionView HistoryView { get; }
+
+    /// <summary>
+    /// Lọc lịch sử về đúng app đang chọn. Một máy chạy chục app thì bảng chung trôi rất nhanh,
+    /// và câu hỏi thường gặp là "app này hôm qua chạy thế nào" chứ không phải "máy này có gì".
+    /// </summary>
+    [ObservableProperty]
+    private bool _historyForSelectedAppOnly;
+
+    partial void OnHistoryForSelectedAppOnlyChanged(bool value) => HistoryView.Refresh();
+
+    private bool FilterHistory(object item)
+        => !HistoryForSelectedAppOnly
+           || SelectedApp is not { } app
+           || (item is AppRunRecord record && record.AppId == app.Model.Id);
 
     [ObservableProperty]
     private AppViewModel? _selectedApp;
@@ -455,6 +475,9 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     private void PushToHub(AppViewModel app)
         => _ = _hubClient.PushAppAsync(app.ToSnapshot(DateTimeOffset.Now));
 
+    /// <summary>Trần số lần chạy gửi lên web trong một lần hỏi.</summary>
+    private const int MaxRemoteRuns = 100;
+
     private static readonly string AgentVersion =
         typeof(MainViewModel).Assembly.GetName().Version?.ToString() ?? "?";
 
@@ -478,6 +501,36 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         => _dispatcher.InvokeAsync(
             () => _screenshots.Take(request.RequestId, request.AppId, FindApp(request.AppId) is not null))
             .Task;
+
+    /// <summary>Sổ lịch sử nằm trong bộ nhớ của luồng giao diện, nên đọc từ đúng luồng đó.</summary>
+    Task<RunHistoryResult> IAgentHost.RunHistoryAsync(RunHistoryRequest request)
+        => _dispatcher.InvokeAsync(() => new RunHistoryResult(
+            request.RequestId,
+            _history.ForApp(request.AppId)
+                .OrderByDescending(r => r.StartedAt)
+                .Take(Math.Clamp(request.Limit, 1, MaxRemoteRuns))
+                .Select(r => new RunSummary(
+                    r.Id, r.StartedAt, r.FinishedAt, r.Outcome, r.ExitCode, r.Trigger,
+                    !string.IsNullOrWhiteSpace(r.OutputLogFile)))
+                .ToList())).Task;
+
+    /// <summary>
+    /// Tra bản ghi trên luồng giao diện, nhưng đọc file ở luồng nền: một dịch vụ chạy cả ngày
+    /// để lại file hàng trăm nghìn dòng, đọc trên luồng giao diện là đứng hình cửa sổ.
+    /// </summary>
+    async Task<RunLogResult> IAgentHost.RunLogAsync(RunLogRequest request)
+    {
+        var record = await _dispatcher.InvokeAsync(
+            () => _history.All().FirstOrDefault(r => r.Id == request.RunId));
+
+        if (record is null)
+            return new RunLogResult(request.RequestId, false, false, Array.Empty<string>());
+
+        var maxLines = Math.Clamp(request.MaxLines, 1, RunLog.MaxLines);
+        var content = await Task.Run(() => RunLog.Read(_paths, record, maxLines)).ConfigureAwait(false);
+
+        return new RunLogResult(request.RequestId, content.Exists, content.Truncated, content.Lines);
+    }
 
     private async Task<CommandResult> ExecuteRemoteAsync(RemoteCommand command)
     {
@@ -530,6 +583,9 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         value?.SelectedConfigFile?.Reload();
         if (value is not null)
             RefreshDependencies(value);
+
+        if (HistoryForSelectedAppOnly)
+            HistoryView.Refresh();
 
         RefreshAppCommands();
     }

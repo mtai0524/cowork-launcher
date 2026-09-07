@@ -88,6 +88,34 @@ public sealed record ScreenshotResult(
         => new(requestId, failure, Array.Empty<byte>(), 0, 0, now);
 }
 
+/// <summary>Web xin danh sách các lần chạy gần đây của một app.</summary>
+public sealed record RunHistoryRequest(Guid RequestId, Guid AppId, int Limit);
+
+/// <summary>
+/// Một dòng trong bảng lịch sử nhìn từ web. Cố ý gửi enum và mốc giờ thô thay vì nhãn đã dịch,
+/// để web tự dịch theo ngôn ngữ người đang xem.
+/// </summary>
+public sealed record RunSummary(
+    Guid RunId,
+    DateTimeOffset StartedAt,
+    DateTimeOffset? FinishedAt,
+    RunOutcome Outcome,
+    int? ExitCode,
+    RunTrigger Trigger,
+    bool HasLog);
+
+public sealed record RunHistoryResult(Guid RequestId, IReadOnlyList<RunSummary> Runs);
+
+/// <summary>Web xin nội dung file log của một lần chạy cụ thể.</summary>
+public sealed record RunLogRequest(Guid RequestId, Guid RunId, int MaxLines);
+
+/// <summary>
+/// Nội dung log gửi về. <see cref="Truncated"/> báo rằng agent đã cắt bớt phần đầu —
+/// giữ phần đuôi vì đó là chỗ có lỗi.
+/// </summary>
+public sealed record RunLogResult(
+    Guid RequestId, bool Found, bool Truncated, IReadOnlyList<string> Lines);
+
 /// <summary>Tên các phương thức SignalR — một chỗ duy nhất để hai đầu không lệch nhau.</summary>
 public static class HubMethods
 {
@@ -104,8 +132,12 @@ public static class HubMethods
     public const string UpdateApp = "UpdateApp";
     public const string CommandResult = "ReportResult";
     public const string ScreenshotResult = "ReportScreenshot";
+    public const string RunHistoryResult = "ReportRunHistory";
+    public const string RunLogResult = "ReportRunLog";
 
     // Hub -> agent
     public const string Execute = "Execute";
     public const string Capture = "Capture";
+    public const string RunHistory = "RunHistory";
+    public const string RunLog = "RunLog";
 }
