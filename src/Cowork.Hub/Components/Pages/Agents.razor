@@ -1,0 +1,177 @@
+@page "/agents"
+@attribute [Authorize]
+@inject AgentAdmin Admin
+@inject MachineRegistry Registry
+@inject UiLanguage Lang
+@implements IDisposable
+
+<h1>@Lang.T("Web.AgentsTitle")</h1>
+
+<p class="muted">@Lang.T("Web.AgentsIntro")</p>
+
+@if (_notice is not null)
+{
+    <div class="notice @(_noticeOk ? "ok" : "bad")">@_notice</div>
+}
+
+<section class="card">
+    <header class="card-head"><strong>@Lang.T("Web.AddMachine")</strong></header>
+
+    <div class="agent-form">
+        <label for="agent-name">@Lang.T("Web.NewMachineName")</label>
+        <input id="agent-name" @bind="_name" @bind:event="oninput" autocomplete="off" />
+
+        <label for="agent-token">@Lang.T("Web.ColToken")</label>
+        <div class="agent-token-field">
+            <input id="agent-token" class="mono" @bind="_token" @bind:event="oninput" autocomplete="off" />
+            <button class="btn" type="button" @onclick="Regenerate">@Lang.T("Web.GenerateToken")</button>
+        </div>
+
+        <button class="btn primary" type="button" @onclick="Add">@Lang.T("Web.AddMachine")</button>
+    </div>
+</section>
+
+<section class="card">
+    @if (Admin.Agents.Count == 0)
+    {
+        <p class="muted">@Lang.T("Web.NoAgents")</p>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>@Lang.T("Web.ColMachine")</th>
+                    <th>@Lang.T("Web.ColLink")</th>
+                    <th>@Lang.T("Web.ColToken")</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var agent in Admin.Agents)
+                {
+                    <tr>
+                        <td><strong>@agent.Name</strong></td>
+                        <td>
+                            <span class="dot @(Find(agent.Name)?.Online == true ? "online" : "offline")"></span>
+                            <span class="muted">@Presence(agent.Name)</span>
+                        </td>
+                        <td>
+                            @if (_revealed.Contains(agent.Name))
+                            {
+                                <code class="token">@agent.Token</code>
+                            }
+                            else
+                            {
+                                <code class="token muted">@Lang.T("Web.TokenHidden")</code>
+                            }
+                            <button class="btn" type="button" @onclick="() => ToggleReveal(agent.Name)">
+                                @Lang.T(_revealed.Contains(agent.Name) ? "Web.HideToken" : "Web.ShowToken")
+                            </button>
+                        </td>
+                        <td class="actions">
+                            @if (_confirming == agent.Name)
+                            {
+                                <span class="muted small">@Lang.T("Web.ConfirmRemove", agent.Name)</span>
+                                <button class="btn danger" type="button" @onclick="() => Remove(agent.Name)">@Lang.T("Web.Remove")</button>
+                                <button class="btn" type="button" @onclick="() => _confirming = null">@Lang.T("Web.Cancel")</button>
+                            }
+                            else
+                            {
+                                <button class="btn" type="button" @onclick="() => _confirming = agent.Name">@Lang.T("Web.Remove")</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    private readonly HashSet<string> _revealed = new(StringComparer.OrdinalIgnoreCase);
+
+    private string _name = string.Empty;
+    private string _token = AgentAdmin.NewToken();
+    private string? _confirming;
+    private string? _notice;
+    private bool _noticeOk;
+
+    protected override void OnInitialized()
+    {
+        Registry.Changed += OnChanged;
+        Lang.Changed += OnChanged;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private MachineView? Find(string name)
+        => Registry.Machines.FirstOrDefault(m => string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Giống trang Máy: đã rớt mạng thì nói lần cuối thấy, đừng nói "chưa từng kết nối".</summary>
+    private string Presence(string name)
+    {
+        var machine = Find(name);
+
+        if (machine is null || machine.LastSeen is null)
+            return Lang.T("Web.NeverConnected");
+
+        return machine.Online
+            ? Lang.T("Web.Online")
+            : Lang.T("Web.LastSeen", machine.LastSeen.Value.ToString("dd/MM HH:mm"));
+    }
+
+    private void Regenerate() => _token = AgentAdmin.NewToken();
+
+    private void Add()
+    {
+        var name = _name.Trim();
+        var change = Admin.Add(name, _token);
+
+        _noticeOk = change.Ok;
+        _notice = Describe(change, name, "Web.AgentAdded");
+
+        if (!change.Ok)
+            return;
+
+        // Hiện luôn token vừa cấp: đây là lúc duy nhất người dùng cần chép nó đi.
+        _revealed.Add(name);
+        _name = string.Empty;
+        _token = AgentAdmin.NewToken();
+    }
+
+    private void Remove(string name)
+    {
+        var change = Admin.Remove(name);
+
+        _confirming = null;
+        _noticeOk = change.Ok;
+        _notice = Describe(change, name, "Web.AgentRemoved");
+
+        if (change.Ok)
+            _revealed.Remove(name);
+    }
+
+    private void ToggleReveal(string name)
+    {
+        if (!_revealed.Remove(name))
+            _revealed.Add(name);
+    }
+
+    private string Describe(AgentChange change, string name, string okKey) => change.Status switch
+    {
+        AgentChangeStatus.Ok => Lang.T(okKey, name),
+        AgentChangeStatus.NameEmpty => Lang.T("Web.NameEmpty"),
+        AgentChangeStatus.NameDuplicate => Lang.T("Web.NameDuplicate"),
+        AgentChangeStatus.TokenTooShort => Lang.T("Web.TokenTooShort", AgentDirectory.MinimumTokenLength),
+        AgentChangeStatus.TokenDuplicate => Lang.T("Web.TokenDuplicate"),
+        AgentChangeStatus.NotFound => Lang.T("Web.AgentNotFound"),
+        _ => Lang.T("Web.SaveFailed", change.Detail ?? string.Empty),
+    };
+
+    public void Dispose()
+    {
+        Registry.Changed -= OnChanged;
+        Lang.Changed -= OnChanged;
+    }
+}

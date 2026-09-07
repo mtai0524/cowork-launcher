@@ -77,6 +77,42 @@ public sealed class MachineRegistry
         }
     }
 
+    /// <summary>
+    /// Một máy vừa được cấp token: hiện nó ra ngay ở trạng thái ngoại tuyến, để người quản trị
+    /// thấy máy đã tạo xong và đang chờ dán token, chứ không phải chờ nó nối rồi mới xuất hiện.
+    /// </summary>
+    public void Track(string machineName)
+    {
+        lock (_gate)
+        {
+            if (_byName.ContainsKey(machineName))
+                return;
+
+            _byName[machineName] = new Entry(machineName);
+        }
+
+        Changed?.Invoke();
+    }
+
+    /// <summary>
+    /// Một máy vừa bị thu hồi token. Gỡ luôn khỏi bảng kết nối, nhờ vậy kết nối cũ còn treo
+    /// (đã xác thực từ trước) không báo trạng thái lên được nữa và cũng không nhận được lệnh.
+    /// </summary>
+    public bool Forget(string machineName)
+    {
+        lock (_gate)
+        {
+            if (!_byName.Remove(machineName, out var entry))
+                return false;
+
+            if (entry.ConnectionId is not null)
+                _byConnection.Remove(entry.ConnectionId);
+        }
+
+        Changed?.Invoke();
+        return true;
+    }
+
     public void Connected(string machineName, string connectionId)
     {
         lock (_gate)

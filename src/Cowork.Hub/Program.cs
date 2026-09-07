@@ -11,17 +11,38 @@ var builder = WebApplication.CreateBuilder(args);
 
 // ---------- Cấu hình ----------
 var web = builder.Configuration.GetSection("Web").Get<WebOptions>() ?? new WebOptions();
-var agents = builder.Configuration.GetSection("Agents").Get<List<AgentOptions>>() ?? new List<AgentOptions>();
-HubOptions.Validate(web, agents);
+var seed = builder.Configuration.GetSection("Agents").Get<List<AgentOptions>>() ?? new List<AgentOptions>();
 
+// Danh sách máy sửa được trên web nên nó phải sống ngoài appsettings.json — file đó bị
+// WebDeploy đồng bộ đè mỗi lần deploy. App_Data nằm ngoài phạm vi đồng bộ, sống qua được.
+//
+// Dựng sớm chứ không qua factory của DI: cấu hình sai phải làm hub chết ngay lúc khởi động,
+// chứ không phải im lặng tới khi có người mở trang đầu tiên.
+using var startupLogging = LoggerFactory.Create(logging => logging
+    .AddConfiguration(builder.Configuration.GetSection("Logging"))
+    .AddConsole());
+
+// Đường dẫn đổi được để test chỉ vào thư mục tạm — nếu không, test sẽ đọc phải file
+// mà một lần chạy hub ở local vô tình để lại trong thư mục dự án.
+var storePath = builder.Configuration["AgentStorePath"]
+    ?? Path.Combine(builder.Environment.ContentRootPath, "App_Data", "agents.json");
+
+var store = new JsonAgentStore(storePath, new HubLogger(startupLogging.CreateLogger("Cowork.Hub.Agents")));
+
+// appsettings.json chỉ là giống ban đầu: dùng cho lần chạy đầu, sau đó file đã lưu thắng.
+var effective = store.Load() ?? seed.Select(a => new AgentCredential(a.Name, a.Token)).ToList();
+HubOptions.Validate(web, effective);
+
+builder.Services.AddSingleton<IAgentStore>(store);
+builder.Services.AddSingleton(new AgentDirectory(effective));
 builder.Services.AddSingleton(web);
-builder.Services.AddSingleton(new AgentDirectory(agents.Select(a => new AgentCredential(a.Name, a.Token))));
 builder.Services.AddSingleton<IClock>(Cowork.Core.Services.SystemClock.Instance);
 builder.Services.AddSingleton<IAgentCommandSender, HubCommandSender>();
 builder.Services.AddSingleton(sp => new MachineRegistry(
     sp.GetRequiredService<IAgentCommandSender>(),
     sp.GetRequiredService<IClock>(),
     sp.GetRequiredService<AgentDirectory>().Names));
+builder.Services.AddSingleton<AgentAdmin>();
 
 // ---------- Web ----------
 builder.Services.AddSignalR();

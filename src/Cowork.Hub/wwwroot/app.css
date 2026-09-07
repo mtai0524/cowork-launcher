@@ -111,3 +111,32 @@ tr.disabled td { opacity: .55; }
     padding: 8px 10px; font: inherit;
 }
 .login input:focus { outline: none; border-color: var(--accent); }
+
+/* ---------- Trang cấp token ---------- */
+.nav { display: flex; gap: 4px; margin-left: 18px; }
+
+.nav-link {
+    padding: 5px 10px; border-radius: 6px; color: var(--muted);
+    font-weight: 600; font-size: 13px;
+}
+.nav-link:hover { background: var(--hover); color: var(--text); }
+.nav-link.active { background: var(--surface-alt); color: var(--text); }
+
+.agent-form { display: flex; flex-direction: column; gap: 6px; max-width: 560px; }
+.agent-form label { color: var(--muted); font-size: 12px; }
+.agent-form > .btn { align-self: flex-start; margin-top: 10px; }
+
+.agent-token-field { display: flex; gap: 6px; }
+.agent-token-field input { flex: 1; }
+
+.agent-form input {
+    padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface-alt); color: var(--text); font-size: 14px;
+}
+.agent-form input:focus { outline: none; border-color: var(--accent); }
+
+.mono, .token { font-family: "Cascadia Mono", Consolas, monospace; }
+
+.token { font-size: 12px; word-break: break-all; margin-right: 8px; }
+
+.btn.danger { border-color: var(--danger); color: var(--danger); }

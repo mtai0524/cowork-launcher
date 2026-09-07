@@ -5,6 +5,14 @@
 <div class="shell">
     <header class="topbar">
         <a class="brand" href="/">Cowork Hub</a>
+        <AuthorizeView>
+            <Authorized>
+                <nav class="nav">
+                    <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">@Lang.T("Web.NavMachines")</NavLink>
+                    <NavLink class="nav-link" href="/agents">@Lang.T("Web.NavAgents")</NavLink>
+                </nav>
+            </Authorized>
+        </AuthorizeView>
         <div class="topbar-right">
             <button class="btn" type="button" @onclick="Lang.Toggle">@Lang.T("Web.SwitchLanguage")</button>
             <AuthorizeView>

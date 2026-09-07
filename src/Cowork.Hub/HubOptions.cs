@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Cowork.Remote;
 
 namespace Cowork.Hub;
 
@@ -28,7 +29,7 @@ public static class HubOptions
     /// Kiểm tra cấu hình trước khi mở cổng. Một hub ra lệnh chạy chương trình trên nhiều máy
     /// mà mật khẩu còn là mẫu thì tệ hơn là không chạy — nên ném lỗi thẳng.
     /// </summary>
-    public static void Validate(WebOptions web, IReadOnlyList<AgentOptions> agents)
+    public static void Validate(WebOptions web, IReadOnlyList<AgentCredential> agents)
     {
         ArgumentNullException.ThrowIfNull(web);
         ArgumentNullException.ThrowIfNull(agents);

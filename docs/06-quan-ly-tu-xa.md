@@ -42,11 +42,12 @@ Sửa `/opt/cowork-hub/appsettings.json`:
 ```
 
 Hub **từ chối chạy** khi mật khẩu còn là giá trị mẫu, ngắn hơn 8 ký tự, hay token còn là mẫu.
-Sinh token nhanh bằng PowerShell:
 
-```powershell
-[guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N")
-```
+Mảng `Agents` ở đây chỉ là **giống ban đầu**, dùng cho lần chạy đầu tiên. Từ lần đó trở đi, danh
+sách máy nằm ở `App_Data/agents.json` bên cạnh hub và **file này thắng** — thêm hay bớt máy làm
+trên web (xem *Cấp token* bên dưới), không sửa `appsettings.json` nữa.
+
+Đặt `AgentStorePath` trong cấu hình để đổi chỗ lưu, chẳng hạn ra ngoài thư mục deploy.
 
 Chạy sau một reverse proxy có HTTPS. Ví dụ với Caddy, `Caddyfile`:
 
@@ -91,13 +92,30 @@ toàn bộ được gửi lại mỗi 30 giây (làm nhịp tim, đồng thời 
 Nút góc trên đổi ngôn ngữ cho riêng phiên trình duyệt đó. Riêng cột *Lịch* và câu trả lời của agent
 là chữ agent gửi lên, theo ngôn ngữ đang đặt trên máy agent.
 
+### Cấp token
+
+Tab **Cấp token** (`/agents`) là nơi thêm và thu hồi máy. Nhập tên máy, lấy chuỗi ở ô token — đã
+điền sẵn một chuỗi ngẫu nhiên, bấm *Sinh token* để đổi cái khác — rồi bấm *Thêm máy*. Dán token vừa
+cấp vào ô **Mã agent (token)** trong Thiết lập của Cowork trên máy đó.
+
+Token có hiệu lực **ngay**, không phải khởi động lại hub: sổ agent sửa được lúc chạy chứ không còn
+dựng một lần lúc mở cổng. *Thu hồi* cũng vậy — máy bị thu hồi không nối lại được, và kết nối đang
+treo của nó thôi báo trạng thái lên ngay lập tức.
+
+Danh sách được ghi xuống `App_Data/agents.json` trước khi giao diện báo thành công. Ghi hỏng thì
+thay đổi bị hoàn tác và trang báo lỗi kèm lời của hệ điều hành — để không có chuyện web hiện một
+máy mà lần khởi động sau nó biến mất.
+
+Khi deploy bằng WebDeploy nhớ **chừa `App_Data` ra** (`-skip:Directory="App_Data"`): `-verb:sync`
+xoá mọi thứ không có trong thư mục nguồn, không skip là mất sạch máy đã cấp token.
+
 ## Bảo mật — đọc trước khi mở ra internet
 
 Một trang web ra lệnh chạy chương trình trên nhiều máy **về bản chất là công cụ thực thi từ xa**. Tài
 khoản web bị lộ nghĩa là kẻ khác chạy được mọi app đã khai trên mọi máy của bạn.
 
 - **HTTPS bắt buộc.** Token agent và cookie đăng nhập đi qua đường này; HTTP trần là lộ hết.
-- **Mật khẩu web dài**, và token **riêng cho từng máy** — thu hồi một máy chỉ cần xoá dòng của nó.
+- **Mật khẩu web dài**, và token **riêng cho từng máy** — thu hồi một máy chỉ cần bấm *Thu hồi*.
 - Web **chỉ kích hoạt app đã khai sẵn** trên máy. Không sửa được đường dẫn, tham số, lịch hay file
   cấu hình từ xa — đây là chủ ý, để tài khoản web bị lộ vẫn không biến thành "chạy bất kỳ thứ gì".
 - Token được lưu **dạng thường** trong `workspace.json` của từng máy, ngang mức các file cấu hình

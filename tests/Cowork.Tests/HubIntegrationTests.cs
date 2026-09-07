@@ -23,6 +23,11 @@ public sealed class HubIntegrationTests : IDisposable
 
     private readonly WebApplicationFactory<Program> _factory;
 
+    // Sổ máy phải nằm trong thư mục tạm riêng của từng lần chạy. Mặc định nó là
+    // src/Cowork.Hub/App_Data — chạy hub ở local một lần là test dính luôn máy để lại ở đó.
+    private readonly string _storeDirectory =
+        Path.Combine(Path.GetTempPath(), "cowork-hub-test-" + Guid.NewGuid().ToString("N"));
+
     // Với minimal hosting, cấu hình thêm qua WithWebHostBuilder bị nạp TRƯỚC appsettings.json
     // nên bị file đó đè lại; biến môi trường thì được nạp sau, nên đè được giá trị mẫu.
     private static readonly Dictionary<string, string> Environment = new()
@@ -36,6 +41,9 @@ public sealed class HubIntegrationTests : IDisposable
     {
         foreach (var (key, value) in Environment)
             System.Environment.SetEnvironmentVariable(key, value);
+
+        System.Environment.SetEnvironmentVariable(
+            "AgentStorePath", Path.Combine(_storeDirectory, "agents.json"));
 
         _factory = new WebApplicationFactory<Program>();
     }
@@ -113,6 +121,46 @@ public sealed class HubIntegrationTests : IDisposable
         await WaitUntilAsync(() => !Registry.Machines.Single(m => m.Name == "may-test").Online, "máy ngoại tuyến");
     }
 
+    /// <summary>
+    /// Lời hứa của trang cấp token: máy thêm trên web nối được ngay. Nếu sổ agent còn được
+    /// dựng một lần lúc khởi động như trước, token mới sẽ bị từ chối cho tới lần deploy sau.
+    /// </summary>
+    [Fact]
+    public async Task TokenIssuedAtRuntime_LetsANewMachineConnect_WithoutRestart()
+    {
+        var admin = _factory.Services.GetRequiredService<AgentAdmin>();
+        var token = AgentAdmin.NewToken();
+
+        Assert.True(admin.Add("may-moi", token).Ok);
+        Assert.Contains(Registry.Machines, m => m.Name == "may-moi" && !m.Online);
+
+        await using var client = CreateClient(new FakeAgent());
+        await client.StartAsync(BaseAddress, token);
+
+        await WaitUntilAsync(
+            () => Registry.Machines.Any(m => m.Name == "may-moi" && m.Online),
+            "máy vừa cấp token lên trực tuyến");
+    }
+
+    /// <summary>Thu hồi token thì máy đó không nối lại được nữa, cũng không cần khởi động hub.</summary>
+    [Fact]
+    public async Task RevokedToken_IsRefusedOnTheNextConnection()
+    {
+        var admin = _factory.Services.GetRequiredService<AgentAdmin>();
+        var token = AgentAdmin.NewToken();
+        Assert.True(admin.Add("may-tam", token).Ok);
+        Assert.True(admin.Remove("may-tam").Ok);
+
+        var states = new List<HubLinkState>();
+        await using var client = CreateClient(new FakeAgent());
+        client.StateChanged += (_, state) => { lock (states) states.Add(state); };
+
+        await client.StartAsync(BaseAddress, token);
+        await WaitUntilAsync(() => { lock (states) return states.Contains(HubLinkState.Failed); }, "client báo thất bại");
+
+        Assert.DoesNotContain(Registry.Machines, m => m.Name == "may-tam");
+    }
+
     [Fact]
     public async Task WrongToken_IsRejected_AndTheMachineNeverShowsOnline()
     {
@@ -131,5 +179,9 @@ public sealed class HubIntegrationTests : IDisposable
         _factory.Dispose();
         foreach (var key in Environment.Keys)
             System.Environment.SetEnvironmentVariable(key, null);
+
+        System.Environment.SetEnvironmentVariable("AgentStorePath", null);
+        if (Directory.Exists(_storeDirectory))
+            Directory.Delete(_storeDirectory, recursive: true);
     }
 }
