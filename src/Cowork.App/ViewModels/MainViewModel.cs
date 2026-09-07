@@ -77,10 +77,9 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         AppsView = CollectionViewSource.GetDefaultView(Apps);
         AppsView.Filter = FilterApp;
 
+        History = new ObservableCollection<AppRunRecord>(_history.All());
         HistoryView = CollectionViewSource.GetDefaultView(History);
         HistoryView.Filter = FilterHistory;
-
-        History = new ObservableCollection<AppRunRecord>(_history.All());
 
         foreach (var app in _workspace.Apps.OrderBy(a => a.Order))
             Apps.Add(CreateAppViewModel(app));
