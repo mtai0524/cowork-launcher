@@ -413,6 +413,33 @@ hiện bong bóng ở khay hệ thống kể cả khi đang thu nhỏ; bấm và
 thì không báo, vì bạn đang nhìn thanh trạng thái. App có đặt *Thử lại khi lỗi* chỉ báo khi hết lượt
 vẫn lỗi. Tắt ở tab **Thiết lập → Chạy nền** nếu thấy phiền.
 
+Muốn biết cả khi không ngồi trước máy thì xem [Báo ra ngoài khi app lỗi](#báo-ra-ngoài-khi-app-lỗi)
+— hai công tắc tách riêng, tắt bong bóng vẫn nhận được Telegram.
+
+## Báo ra ngoài khi app lỗi
+
+Bong bóng ở khay chỉ đủ khi bạn đang ngồi trước máy. Tab **Thiết lập → Cảnh báo ra ngoài**, bật
+*Gửi cảnh báo ra ngoài khi app lỗi* rồi khai ít nhất một trong ba kênh:
+
+| Kênh | Cần gì |
+|---|---|
+| **Webhook** | Một địa chỉ `https://…`. Cowork POST một JSON có trường `text`, nên Slack, Discord, Teams đọc được ngay |
+| **Telegram** | Token bot (tạo bằng `@BotFather`) và mã đoạn chat |
+| **Email** | Máy chủ SMTP, cổng, tài khoản, người gửi, người nhận (nhiều người thì cách nhau bằng dấu phẩy) |
+
+Khai bao nhiêu kênh cũng được — Cowork gửi song song tất cả, kênh nào hỏng cũng không ảnh hưởng
+kênh còn lại. Bấm **Gửi thử** để kiểm tra ngay; dòng bên cạnh nói rõ kênh nào thông, kênh nào không.
+
+*Khoảng lặng cho cảnh báo trùng* (mặc định 5 phút) chặn việc một app hỏng hẳn rung điện thoại cả
+đêm: cùng một app với cùng một loại cảnh báo chỉ gửi một lần trong khoảng đó. App khác vẫn báo bình
+thường. Đặt `0` nếu muốn nhận mọi lần.
+
+Cảnh báo được gửi ở đúng những chỗ khay hệ thống báo: app lỗi (không tính chạy tay), hết lượt thử
+lại vẫn lỗi, không giữ chạy được, app treo, và có app bị bỏ qua trong lượt Chạy tất cả.
+
+> **Về bí mật:** token bot và mật khẩu SMTP nằm trong `workspace.json` dưới dạng thường, giống mã
+> agent của hub. Với Gmail hãy dùng *mật khẩu ứng dụng* riêng chứ đừng dùng mật khẩu tài khoản.
+
 ## Chạy nền
 
 Tab **Thiết lập**:
@@ -444,6 +471,8 @@ chỉ file do Cowork tự sinh mới bị xoá, file khác chép vào thư mục
 | App đơ nhưng Cowork vẫn báo đang chạy | Keep-alive chỉ thấy app *thoát*. Đặt **Kiểm tra sức khoẻ** ở tab Tổng quan: thăm dò cổng/URL, hoặc watchdog theo output. |
 | Lịch sử báo **Treo** mà app vẫn tốt | Ngưỡng quá gắt: tăng *Lỗi liên tiếp*, *Chờ phản hồi tối đa*, *Bỏ qua kiểm tra trong N giây đầu*, hoặc nới *không có output trong N phút*. Lý do cụ thể nằm ở cột Ghi chú. |
 | Đặt watchdog theo output mà không thấy tác dụng | Cần bật *Thu nhật ký output* và tắt *Chạy với quyền quản trị*. Cowork cảnh báo ngay dưới ô cấu hình khi thiếu. |
+| Bấm Gửi thử mà không có gì tới | Xem dòng kết quả cạnh nút: "chưa khai kênh nào" nghĩa là thiếu thông tin bắt buộc (Telegram cần **cả** token lẫn mã chat; email cần host, người gửi và người nhận). Lỗi cụ thể của từng kênh nằm trong file log của Cowork. |
+| Cảnh báo chỉ tới một lần rồi im | Đúng thiết kế: *Khoảng lặng cho cảnh báo trùng* gộp các lần lỗi giống nhau của cùng một app. Giảm số phút hoặc đặt `0` nếu muốn nhận mọi lần. |
 | Tick "khi máy thức dậy" mà app không chạy | Cowork phải đang mở (kể cả dưới khay). Kiểm tra thêm: app đang bật · không phải vừa chạy vì đúng sự kiện đó trong vòng một phút · không đang chạy sẵn với *Không chạy chồng*. |
 | Đặt phụ thuộc nhưng bấm ▶ Chạy vẫn chạy ngay | Phụ thuộc chỉ áp dụng cho **Chạy tất cả**. Bấm Chạy cho một app là chỉ đích danh app đó. |
 | "… bị bỏ qua vì … không thành công" | Đúng như tên gọi: app đi trước lỗi nên app sau không chạy. Sửa app đi trước rồi Chạy tất cả lại. |

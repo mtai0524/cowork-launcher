@@ -40,6 +40,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     private readonly RunQueue _runQueue;
     private readonly ISystemEventSource _systemEvents;
     private readonly SystemTriggerSupervisor _systemTriggers;
+    private readonly AlertDispatcher _alerts;
     private readonly HubClient _hubClient;
     private HubLinkState _hubState = HubLinkState.Disabled;
     private readonly Dispatcher _dispatcher;
@@ -90,6 +91,20 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         _hubUrl = _workspace.Settings.HubUrl;
         _hubToken = _workspace.Settings.HubToken;
 
+        var alerts = _workspace.Settings.Notifications;
+        _alertsEnabled = alerts.Enabled;
+        _alertWebhookUrl = alerts.WebhookUrl;
+        _alertTelegramBotToken = alerts.TelegramBotToken;
+        _alertTelegramChatId = alerts.TelegramChatId;
+        _alertSmtpHost = alerts.SmtpHost;
+        _alertSmtpPort = alerts.SmtpPort;
+        _alertSmtpUseSsl = alerts.SmtpUseSsl;
+        _alertSmtpUser = alerts.SmtpUser;
+        _alertSmtpPassword = alerts.SmtpPassword;
+        _alertEmailFrom = alerts.EmailFrom;
+        _alertEmailTo = alerts.EmailTo;
+        _alertDedupeMinutes = alerts.DedupeMinutes;
+
         ThemeOptions = ThemeManager.Available
             .Select(t => new ChoiceViewModel<AppTheme>(t, x => Loc.T(ThemeManager.LabelKey(x))))
             .ToList();
@@ -138,6 +153,12 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             _systemEvents, this, _processManager, SystemClock.Instance, _logger);
         _systemTriggers.Due += OnSystemTriggerDue;
         _systemEvents.Start();
+
+        _alerts = new AlertDispatcher(
+            () => _workspace.Settings.Notifications,
+            new IAlertChannel[] { new WebhookAlertChannel(), new TelegramAlertChannel(), new EmailAlertChannel() },
+            SystemClock.Instance,
+            _logger);
 
         _hubClient = new HubClient(this, _logger);
         _hubClient.StateChanged += OnHubStateChanged;
@@ -245,10 +266,16 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     /// <summary>Thông báo cần đưa ra ngoài cửa sổ (khay hệ thống). Cửa sổ chính lắng nghe.</summary>
     public event EventHandler<UserNotification>? NotificationRaised;
 
-    private void Notify(string title, string message, NotificationSeverity severity)
+    /// <summary>
+    /// Một chỗ duy nhất cho mọi cảnh báo: bong bóng ở khay cho người đang ngồi đây, và các kênh
+    /// ngoài (webhook, Telegram, email) cho lúc không ai ngồi. Hai đường có công tắc riêng.
+    /// </summary>
+    private void Notify(string title, string message, NotificationSeverity severity, string? appName = null)
     {
         if (NotifyOnFailure)
             NotificationRaised?.Invoke(this, new UserNotification(title, message, severity));
+
+        _alerts.Send(new Alert(title, message, appName, DateTimeOffset.Now));
     }
 
     partial void OnSchedulerEnabledChanged(bool value)
@@ -292,6 +319,88 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     {
         _workspace.Settings.NotifyOnFailure = value;
         MarkDirty();
+    }
+
+    // ---------- Cảnh báo ra ngoài máy ----------
+
+    [ObservableProperty] private bool _alertsEnabled;
+    [ObservableProperty] private string _alertWebhookUrl = string.Empty;
+    [ObservableProperty] private string _alertTelegramBotToken = string.Empty;
+    [ObservableProperty] private string _alertTelegramChatId = string.Empty;
+    [ObservableProperty] private string _alertSmtpHost = string.Empty;
+    [ObservableProperty] private int _alertSmtpPort;
+    [ObservableProperty] private bool _alertSmtpUseSsl;
+    [ObservableProperty] private string _alertSmtpUser = string.Empty;
+    [ObservableProperty] private string _alertSmtpPassword = string.Empty;
+    [ObservableProperty] private string _alertEmailFrom = string.Empty;
+    [ObservableProperty] private string _alertEmailTo = string.Empty;
+    [ObservableProperty] private int _alertDedupeMinutes;
+
+    /// <summary>Kết quả lần "Gửi thử" gần nhất.</summary>
+    [ObservableProperty] private string _alertTestResult = string.Empty;
+
+    private NotificationSettings Alerts => _workspace.Settings.Notifications;
+
+    partial void OnAlertsEnabledChanged(bool value) => SyncAlerts(() => Alerts.Enabled = value);
+    partial void OnAlertWebhookUrlChanged(string value) => SyncAlerts(() => Alerts.WebhookUrl = value.Trim());
+    partial void OnAlertTelegramBotTokenChanged(string value) => SyncAlerts(() => Alerts.TelegramBotToken = value.Trim());
+    partial void OnAlertTelegramChatIdChanged(string value) => SyncAlerts(() => Alerts.TelegramChatId = value.Trim());
+    partial void OnAlertSmtpHostChanged(string value) => SyncAlerts(() => Alerts.SmtpHost = value.Trim());
+    partial void OnAlertSmtpPortChanged(int value) => SyncAlerts(() => Alerts.SmtpPort = Math.Clamp(value, 1, 65535));
+    partial void OnAlertSmtpUseSslChanged(bool value) => SyncAlerts(() => Alerts.SmtpUseSsl = value);
+    partial void OnAlertSmtpUserChanged(string value) => SyncAlerts(() => Alerts.SmtpUser = value.Trim());
+    partial void OnAlertSmtpPasswordChanged(string value) => SyncAlerts(() => Alerts.SmtpPassword = value);
+    partial void OnAlertEmailFromChanged(string value) => SyncAlerts(() => Alerts.EmailFrom = value.Trim());
+    partial void OnAlertEmailToChanged(string value) => SyncAlerts(() => Alerts.EmailTo = value.Trim());
+    partial void OnAlertDedupeMinutesChanged(int value) => SyncAlerts(() => Alerts.DedupeMinutes = Math.Max(0, value));
+
+    private void SyncAlerts(Action apply)
+    {
+        apply();
+        MarkDirty();
+        OnPropertyChanged(nameof(AlertChannelSummary));
+    }
+
+    /// <summary>Câu tóm tắt "đang gửi qua những kênh nào", để người dùng biết đã khai đủ chưa.</summary>
+    public string AlertChannelSummary
+    {
+        get
+        {
+            var settings = Alerts;
+            var names = _alerts.Channels
+                .Where(c => c.IsConfigured(settings))
+                .Select(c => Loc.T("Alert.Channel." + c.Name))
+                .ToList();
+
+            if (names.Count == 0)
+                return Loc.T("Alert.NoChannel");
+
+            return settings.Enabled
+                ? Loc.T("Alert.Channels", string.Join(", ", names))
+                : Loc.T("Alert.ChannelsOff", string.Join(", ", names));
+        }
+    }
+
+    [RelayCommand]
+    private async Task SendTestAlertAsync()
+    {
+        AlertTestResult = Loc.T("Alert.TestSending");
+
+        var result = await _alerts
+            .SendTestAsync(new Alert(Loc.T("Alert.TestTitle"), Loc.T("Alert.TestBody"), null, DateTimeOffset.Now))
+            .ConfigureAwait(true);
+
+        AlertTestResult = (result.Delivered.Count, result.Failed.Count) switch
+        {
+            (0, 0) => Loc.T("Alert.NoChannel"),
+            (_, 0) => Loc.T("Alert.TestOk", string.Join(", ", Describe(result.Delivered))),
+            (0, _) => Loc.T("Alert.TestFailed", string.Join(", ", Describe(result.Failed))),
+            _ => Loc.T("Alert.TestPartial",
+                string.Join(", ", Describe(result.Delivered)), string.Join(", ", Describe(result.Failed))),
+        };
+
+        static IEnumerable<string> Describe(IEnumerable<string> names)
+            => names.Select(n => Loc.T("Alert.Channel." + n));
     }
 
     // ---------- Quản lý từ xa ----------
@@ -824,7 +933,10 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
                 // người dùng đang nhìn; lịch, khởi động, giữ chạy thường xảy ra lúc Cowork nằm dưới khay.
                 var retryOwnsIt = RetryPolicy.AppliesTo(app.Model) && RetryPolicy.IsRetryable(record.Outcome);
                 if (!retryOwnsIt && (record.Trigger != RunTrigger.Manual || app.Model.KeepAlive))
-                    Notify(Loc.T("Notify.FailedTitle"), DescribeFailure(app, record), NotificationSeverity.Error);
+                {
+                    Notify(Loc.T("Notify.FailedTitle"), DescribeFailure(app, record),
+                        NotificationSeverity.Error, app.DisplayTitle);
+                }
             }
 
             MarkDirty();
@@ -943,7 +1055,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             app.RuntimeState = AppRuntimeState.Failed;
             StatusMessage = message;
             PushToHub(app);
-            Notify(Loc.T("Notify.GaveUpTitle"), message, NotificationSeverity.Error);
+            Notify(Loc.T("Notify.GaveUpTitle"), message, NotificationSeverity.Error, app.DisplayTitle);
         });
 
     // ---------- Thử lại khi lỗi ----------
@@ -1000,7 +1112,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             };
             Notify(Loc.T("Notify.RetryGaveUpTitle"),
                 Loc.T("Notify.RetryGaveUpBody", app.DisplayTitle, e.Attempts, reason),
-                NotificationSeverity.Error);
+                NotificationSeverity.Error, app.DisplayTitle);
         });
 
     // ---------- IAppSource ----------
@@ -1526,6 +1638,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         _systemTriggers.Due -= OnSystemTriggerDue;
         _systemTriggers.Dispose();
         _systemEvents.Dispose();
+        _alerts.Dispose();
 
         _hubClient.StateChanged -= OnHubStateChanged;
         try

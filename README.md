@@ -39,6 +39,7 @@ không cần mở Notepad tìm đường dẫn.
 | **Sự kiện của máy** | Chạy khi máy thức dậy sau khi ngủ, khi mở khoá màn hình, hoặc khi có mạng trở lại — độc lập với lịch, có độ trễ và khoảng lặng chống bắn trùng |
 | **Theo dõi** | Nhật ký output realtime, lịch sử chạy có mã thoát và thời lượng, log ra file, thông báo ở khay khi app chạy lỗi |
 | **Output từng lần chạy** | Mỗi lần chạy một file log riêng; bấm một dòng ở tab Lịch sử là xem lại đúng output của lần đó |
+| **Cảnh báo ra ngoài** | App lỗi lúc nửa đêm thì báo qua webhook (Slack/Discord/Teams), Telegram hoặc email — gửi song song mọi kênh đã khai, có khoảng lặng chống spam |
 | **Chạy nền** | Thu nhỏ xuống khay hệ thống, khởi động cùng Windows |
 | **Quản lý từ xa** | Nhiều máy nối ra một hub web: xem trạng thái, bấm Chạy / Dừng / Khởi động lại từ trình duyệt — xem [docs/06](docs/06-quan-ly-tu-xa.md) |
 

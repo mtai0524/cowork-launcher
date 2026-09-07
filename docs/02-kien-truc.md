@@ -294,6 +294,33 @@ vì nó kéo theo package và đăng ký AUMID, trong khi bong bóng khay có s�
 Chạy tay thì không thông báo — người dùng đang nhìn thanh trạng thái. Thông báo chỉ dành cho lúc
 Cowork nằm dưới khay: lịch, khởi động, và mọi app bật keep-alive.
 
+### Cảnh báo ra ngoài máy
+
+`MainViewModel.Notify` là chỗ duy nhất phát cảnh báo, và nó rẽ hai đường: bong bóng ở khay (công
+tắc `NotifyOnFailure`) và `AlertDispatcher` (công tắc riêng trong `Notifications`). Tách hai công
+tắc vì hai nhu cầu khác nhau — tắt bong bóng cho đỡ phiền nhưng vẫn muốn Telegram báo lúc nửa đêm.
+
+```
+Notify(title, body, severity, appName)
+   ├─ NotificationRaised ──> MainWindow ──> bong bóng khay
+   └─ AlertDispatcher.Send(Alert)
+          │ AlertPolicy.ShouldSend(settings, lầnGửiTrước, now)   ← khoảng lặng theo khoá app+tiêu đề
+          └─ Task.WhenAll ──> WebhookAlertChannel · TelegramAlertChannel · EmailAlertChannel
+```
+
+Ba điểm đáng biết:
+
+- **Không chờ, không ném.** `Send` trả về ngay; mọi lỗi của kênh bị bắt và ghi log. Chỗ gọi nó là
+  luồng giao diện ngay sau khi một app vừa lỗi, không thể đứng chờ mạng.
+- **Mỗi kênh tách phần dựng nội dung ra thành hàm tĩnh** (`BuildPayload`, `BuildText`, `BuildBody`),
+  nên hình dạng tin nhắn kiểm thử được mà không gọi mạng.
+- **Khoảng lặng theo khoá `app + tiêu đề`.** Một app hỏng hẳn lỗi liên tục, và một lượt "Chạy tất
+  cả" hỏng sinh cả loạt cảnh báo cùng lúc; không chặn thì điện thoại rung cả đêm cho một sự việc.
+  App khác nhau vẫn báo riêng.
+
+Token Telegram và mật khẩu SMTP nằm trong `workspace.json` dưới dạng thường, cùng mức với `HubToken`
+— đây là file cấu hình của một máy cá nhân, không phải kho bí mật.
+
 ## Quản lý từ xa
 
 Hai dự án thêm vào, cố ý tách để phần quyết định vẫn test được như Core:

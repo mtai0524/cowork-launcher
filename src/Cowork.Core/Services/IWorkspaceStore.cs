@@ -134,6 +134,7 @@ public sealed class JsonWorkspaceStore : IWorkspaceStore
     {
         workspace.Apps ??= new List<ManagedApp>();
         workspace.Settings ??= new WorkspaceSettings();
+        workspace.Settings.Notifications ??= new NotificationSettings();
 
         var order = 0;
         foreach (var app in workspace.Apps)

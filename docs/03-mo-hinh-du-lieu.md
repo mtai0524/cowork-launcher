@@ -159,10 +159,26 @@ Lưu trong `history.json`, tối đa 5000 bản ghi (trần cứng, ngoài cấu
 | `HistoryRetentionDays` | `30` | Số ngày giữ lịch sử chạy |
 | `LogRetentionDays` | `30` | Số ngày giữ file log trong thư mục `logs`; dọn lúc mở Cowork và đầu mỗi ngày |
 | `NotifyOnFailure` | `true` | Bong bóng ở khay khi app chạy lỗi hoặc không giữ chạy được |
+| `Notifications` | — | Cảnh báo ra ngoài máy (webhook / Telegram / email); xem [`NotificationSettings`](#notificationsettings). Công tắc riêng, không phụ thuộc `NotifyOnFailure` |
 | `Theme` | `Dark` | `Dark` / `Light` / `Midnight` / `HighContrast` |
 | `Language` | `Vietnamese` | `Vietnamese` / `English` |
 | `HubUrl` | `""` | Địa chỉ hub quản lý từ xa; trống = không kết nối |
 | `HubToken` | `""` | Token của máy này, khớp với một dòng trong `Agents` của hub. **Lưu dạng thường** |
+
+## `NotificationSettings`
+
+Nằm trong `WorkspaceSettings.Notifications`. Kênh nào khai đủ thì kênh đó được gửi; gửi song song,
+kênh hỏng không ảnh hưởng kênh còn lại.
+
+| Trường | Mặc định | Ý nghĩa |
+|---|---|---|
+| `Enabled` | `false` | Công tắc chung; tắt thì không kênh nào gửi |
+| `WebhookUrl` | `""` | POST JSON tới đây. Đủ điều kiện khi là URL http/https |
+| `TelegramBotToken` · `TelegramChatId` | `""` | Đủ điều kiện khi **cả hai** có giá trị. Token **lưu dạng thường** |
+| `SmtpHost` · `SmtpPort` · `SmtpUseSsl` | `""` · `587` · `true` | Máy chủ gửi mail |
+| `SmtpUser` · `SmtpPassword` | `""` | Bỏ trống tài khoản ⇒ không xác thực. Mật khẩu **lưu dạng thường** |
+| `EmailFrom` · `EmailTo` | `""` | Đủ điều kiện khi có host, người gửi và ít nhất một người nhận (cách nhau bằng `,` hoặc `;`) |
+| `DedupeMinutes` | `5` | Khoảng lặng cho cảnh báo trùng khoá (cùng app + cùng tiêu đề). `0` = gửi mọi lần |
 
 ## Schema `workspace.json`
 
@@ -244,6 +260,16 @@ Enum ghi thành chuỗi, `TimeSpan` ghi dạng `"HH:mm:ss"` — file đọc và 
     "HistoryRetentionDays": 30,
     "LogRetentionDays": 30,
     "NotifyOnFailure": true,
+    "Notifications": {
+      "Enabled": true,
+      "WebhookUrl": "https://hooks.slack.com/services/…",
+      "TelegramBotToken": "",
+      "TelegramChatId": "",
+      "SmtpHost": "",
+      "SmtpPort": 587,
+      "SmtpUseSsl": true,
+      "DedupeMinutes": 5
+    },
     "HubUrl": "",
     "HubToken": "",
     "Theme": "Dark",

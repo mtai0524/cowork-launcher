@@ -59,10 +59,13 @@ vẫn giữ định dạng là bài toán khó hơn nhiều so với giá trị 
 Cowork theo dõi tối đa một tiến trình cho mỗi app. Tắt `SingleInstance` thì vẫn khởi chạy được nhiều
 lần, nhưng chỉ tiến trình mới nhất được theo dõi và dừng được từ giao diện.
 
-### Thông báo chỉ là bong bóng ở khay
+### Cảnh báo ra ngoài chỉ gửi một chiều
 
-Cowork báo lỗi bằng bong bóng khay hệ thống, đủ cho người ngồi tại máy. Không có email, không có
-webhook — app lỗi lúc 2h sáng thì sáng ra vẫn phải nhìn khay hoặc tab Lịch sử.
+Webhook, Telegram và email đưa được tin ra khỏi máy, nhưng không có đường ngược lại: không trả lời
+để chạy lại app, không xác nhận đã đọc. Cảnh báo cũng chỉ gửi khi Cowork đang chạy — Cowork tắt thì
+không có gì báo rằng nó đã tắt.
+
+Token bot và mật khẩu SMTP nằm trong `workspace.json` dưới dạng thường, cùng mức với `HubToken`.
 
 ### Phụ thuộc chỉ áp dụng cho "Chạy tất cả"
 
@@ -135,6 +138,7 @@ song: app nào chọn "lịch hệ thống" thì đăng ký sang Task Scheduler.
 | Kiểu thăm dò sức khoẻ mới | Thêm giá trị vào `HealthProbeKind`, xử lý trong `NetworkHealthProbe.ProbeAsync`, thêm quy tắc vào `HealthTarget.IsValid`, khai nhãn `HealthProbe.<tên>` ở cả hai bảng ngôn ngữ |
 | Kiểu chờ phụ thuộc mới | Thêm giá trị vào `DependencyWait`, xử lý trong `RunQueue.Evaluate`, thêm quy tắc vào `DependencyGraph.Validate`, khai nhãn `DependencyWait.<tên>` ở cả hai bảng ngôn ngữ |
 | Sự kiện hệ thống mới | Thêm giá trị vào `SystemEventKind`, bắt sự kiện Windows trong `WindowsSystemEventSource`, thêm ô tick ở tab Lịch chạy, khai nhãn `SystemEvent.<tên>` ở cả hai bảng ngôn ngữ |
+| Kênh cảnh báo mới | Cài `IAlertChannel` (tách phần dựng nội dung thành hàm tĩnh để test được), thêm vào danh sách kênh trong `MainViewModel`, thêm ô nhập ở tab Thiết lập, khai nhãn `Alert.Channel.<tên>` ở cả hai bảng ngôn ngữ |
 | Chỗ khác cần bảng so sánh | Dựng `DiffViewModel(tiêu đề, nhãn trái, nhãn phải, text trái, text phải)` rồi mở `Views.DiffWindow`; truyền thêm `restore` nếu cần nút khôi phục |
 
 **Ràng buộc phải giữ**

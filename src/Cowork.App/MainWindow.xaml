@@ -1218,6 +1218,142 @@
 
                             <Border Style="{StaticResource Card}">
                                 <StackPanel>
+                                    <TextBlock Text="{loc:Tr Settings.AlertCard}"
+                                               Style="{StaticResource HeadingText}" />
+                                    <TextBlock Style="{StaticResource HintText}"
+                                               Text="{loc:Tr Settings.AlertHint}" />
+
+                                    <CheckBox Content="{loc:Tr Settings.AlertEnable}"
+                                              IsChecked="{Binding AlertsEnabled}" Margin="0,10,0,0" />
+
+                                    <TextBlock Text="{loc:Tr Settings.AlertWebhook}"
+                                               Style="{StaticResource LabelText}" Margin="0,12,0,4" />
+                                    <TextBox Text="{Binding AlertWebhookUrl, UpdateSourceTrigger=LostFocus}"
+                                             ToolTip="https://hooks.slack.com/services/…" />
+                                    <TextBlock Style="{StaticResource HintText}"
+                                               Text="{loc:Tr Settings.AlertWebhookHint}" />
+
+                                    <Grid Margin="0,12,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2*" />
+                                            <ColumnDefinition Width="12" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{loc:Tr Settings.AlertTelegramToken}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <TextBox Text="{Binding AlertTelegramBotToken, UpdateSourceTrigger=LostFocus}"
+                                                     FontFamily="Cascadia Mono, Consolas, monospace" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{loc:Tr Settings.AlertTelegramChat}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <TextBox Text="{Binding AlertTelegramChatId, UpdateSourceTrigger=LostFocus}"
+                                                     FontFamily="Cascadia Mono, Consolas, monospace" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource HintText}"
+                                               Text="{loc:Tr Settings.AlertTelegramHint}" />
+
+                                    <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0"
+                                            Margin="0,14,0,0" Padding="0,12,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="{loc:Tr Settings.AlertEmailTitle}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="2*" />
+                                                    <ColumnDefinition Width="12" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="12" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="{loc:Tr Settings.AlertSmtpHost}"
+                                                               Style="{StaticResource LabelText}" />
+                                                    <TextBox Text="{Binding AlertSmtpHost, UpdateSourceTrigger=LostFocus}" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="{loc:Tr Settings.AlertSmtpPort}"
+                                                               Style="{StaticResource LabelText}" />
+                                                    <TextBox Text="{Binding AlertSmtpPort, UpdateSourceTrigger=LostFocus}" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="4" VerticalAlignment="Bottom">
+                                                    <CheckBox Content="{loc:Tr Settings.AlertSmtpSsl}"
+                                                              IsChecked="{Binding AlertSmtpUseSsl}" Margin="0,0,0,6" />
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <Grid Margin="0,10,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="12" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="{loc:Tr Settings.AlertSmtpUser}"
+                                                               Style="{StaticResource LabelText}" />
+                                                    <TextBox Text="{Binding AlertSmtpUser, UpdateSourceTrigger=LostFocus}" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="{loc:Tr Settings.AlertSmtpPassword}"
+                                                               Style="{StaticResource LabelText}" />
+                                                    <TextBox Text="{Binding AlertSmtpPassword, UpdateSourceTrigger=LostFocus}" />
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <Grid Margin="0,10,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="12" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="{loc:Tr Settings.AlertEmailFrom}"
+                                                               Style="{StaticResource LabelText}" />
+                                                    <TextBox Text="{Binding AlertEmailFrom, UpdateSourceTrigger=LostFocus}" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="{loc:Tr Settings.AlertEmailTo}"
+                                                               Style="{StaticResource LabelText}" />
+                                                    <TextBox Text="{Binding AlertEmailTo, UpdateSourceTrigger=LostFocus}" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <TextBlock Style="{StaticResource HintText}"
+                                                       Text="{loc:Tr Settings.AlertEmailHint}" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Grid Margin="0,12,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="12" />
+                                            <ColumnDefinition Width="2*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{loc:Tr Settings.AlertDedupe}"
+                                                       Style="{StaticResource LabelText}" TextWrapping="Wrap" />
+                                            <TextBox Text="{Binding AlertDedupeMinutes, UpdateSourceTrigger=LostFocus}"
+                                                     Width="120" HorizontalAlignment="Left" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
+                                            <TextBlock Text="{Binding AlertChannelSummary}"
+                                                       Foreground="{DynamicResource MutedBrush}" FontSize="12"
+                                                       TextWrapping="Wrap" Margin="0,0,0,6" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button Content="{loc:Tr Settings.AlertTest}"
+                                                        Command="{Binding SendTestAlertCommand}" />
+                                                <TextBlock Text="{Binding AlertTestResult}" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource MutedBrush}" FontSize="12"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
                                     <TextBlock Text="{loc:Tr Settings.RemoteCard}"
                                                Style="{StaticResource HeadingText}" />
                                     <TextBlock Text="{loc:Tr Settings.HubUrl}" Style="{StaticResource LabelText}" />

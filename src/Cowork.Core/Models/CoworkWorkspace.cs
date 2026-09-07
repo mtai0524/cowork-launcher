@@ -52,6 +52,9 @@ public sealed class WorkspaceSettings
     /// <summary>Hiện thông báo ở khay hệ thống khi app chạy lỗi hoặc không giữ chạy được.</summary>
     public bool NotifyOnFailure { get; set; } = true;
 
+    /// <summary>Gửi cảnh báo ra ngoài máy (webhook, Telegram, email) — cho lúc không ai ngồi trước màn hình.</summary>
+    public NotificationSettings Notifications { get; set; } = new();
+
     /// <summary>Địa chỉ hub quản lý từ xa (https://…). Trống = không kết nối.</summary>
     public string HubUrl { get; set; } = string.Empty;
 

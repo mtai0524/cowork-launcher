@@ -43,7 +43,8 @@ Một cửa sổ duy nhất chứa đủ ba việc:
 - Thử lại job lỗi: kết thúc lỗi hay quá giờ thì chạy lại vài lần rồi mới báo; mã thoát nào là thành
   công đặt được cho từng app.
 - Dừng lịch sự: đóng cửa sổ chính, hoặc gửi Ctrl+C cho app console, hết thời gian ân hạn mới kill.
-- Nhật ký output, lịch sử chạy, log ra file, thông báo ở khay khi app lỗi.
+- Nhật ký output, lịch sử chạy, log riêng cho từng lần chạy, thông báo ở khay khi app lỗi.
+- Cảnh báo ra ngoài máy khi app lỗi: webhook, Telegram, email.
 - Chạy nền dưới khay hệ thống, khởi động cùng Windows.
 - Quản lý từ xa: nhiều máy nối ra một hub web, xem trạng thái và bấm Chạy / Dừng / Khởi động lại.
 
