@@ -268,7 +268,7 @@ public sealed class MachineRegistry
 
             var finished = await Task.WhenAny(completion.Task, Task.Delay(timeout, cancellationToken)).ConfigureAwait(false);
             if (finished != completion.Task)
-                return ScreenshotResult.Failed(requestId, ScreenshotFailure.CaptureFailed, _clock.Now);
+                return ScreenshotResult.Failed(requestId, ScreenshotFailure.Timeout, _clock.Now);
 
             return await completion.Task.ConfigureAwait(false);
         }

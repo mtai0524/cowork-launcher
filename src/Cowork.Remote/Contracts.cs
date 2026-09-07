@@ -62,6 +62,12 @@ public enum ScreenshotFailure
 
     /// <summary>Có cửa sổ nhưng hệ điều hành không cho chụp.</summary>
     CaptureFailed,
+
+    /// <summary>
+    /// Máy đang nối nhưng không trả lời trong thời hạn. Hay gặp nhất khi agent chạy bản cũ
+    /// chưa biết lệnh chụp — nó lặng lẽ bỏ qua, và bên này chỉ thấy im lặng.
+    /// </summary>
+    Timeout,
 }
 
 /// <summary>

@@ -548,6 +548,7 @@ internal static class StringsEn
             ["Web.ScreenUnknownApp"] = "That machine no longer has this app.",
             ["Web.ScreenNotRunning"] = "The app is not running, so there is nothing to capture.",
             ["Web.ScreenNoWindow"] = "The app is running but has no window — a background service or a hidden console cannot be captured.",
+            ["Web.ScreenTimeout"] = "The machine did not answer the capture request. If Cowork over there is running an older build, rebuild it and reopen the app.",
             ["Web.ScreenCaptureFailed"] = "Could not capture this app's window.",
 
             ["WebState.Idle"] = "Idle",

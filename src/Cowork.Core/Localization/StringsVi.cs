@@ -548,6 +548,7 @@ internal static class StringsVi
             ["Web.ScreenUnknownApp"] = "Máy đó không còn app này.",
             ["Web.ScreenNotRunning"] = "App không chạy nên không có gì để chụp.",
             ["Web.ScreenNoWindow"] = "App đang chạy nhưng không có cửa sổ — dịch vụ nền hoặc console ẩn thì không chụp được.",
+            ["Web.ScreenTimeout"] = "Máy không trả lời yêu cầu chụp. Nếu Cowork trên máy đó đang chạy bản cũ thì phải build lại và mở lại app.",
             ["Web.ScreenCaptureFailed"] = "Không chụp được cửa sổ của app này.",
 
             ["WebState.Idle"] = "Nghỉ",

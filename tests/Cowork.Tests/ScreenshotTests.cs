@@ -135,6 +135,84 @@ public class AppScreenshotServiceTests
     }
 }
 
+/// <summary>Đường đi của yêu cầu chụp ở phía hub.</summary>
+public class ScreenshotRequestTests
+{
+    private static readonly DateTimeOffset Now = new(2026, 9, 7, 14, 0, 0, TimeSpan.FromHours(7));
+
+    private static (MachineRegistry Registry, RecordingSender Sender) Build()
+    {
+        var sender = new RecordingSender();
+        var registry = new MachineRegistry(sender, new FixedClock(Now), new[] { "may-a" });
+        sender.Registry = registry;
+        return (registry, sender);
+    }
+
+    [Fact]
+    public async Task OfflineMachine_IsReportedAsOffline_AndNothingIsSent()
+    {
+        var (registry, sender) = Build();
+
+        var result = await registry.RequestScreenshotAsync("may-a", Guid.NewGuid(), TimeSpan.FromMilliseconds(50));
+
+        Assert.Equal(ScreenshotFailure.MachineOffline, result.Failure);
+        Assert.Empty(sender.Shots);
+    }
+
+    [Fact]
+    public async Task UnknownMachine_IsReportedAsOffline()
+    {
+        var (registry, _) = Build();
+
+        var result = await registry.RequestScreenshotAsync("khong-co", Guid.NewGuid(), TimeSpan.FromMilliseconds(50));
+
+        Assert.Equal(ScreenshotFailure.MachineOffline, result.Failure);
+    }
+
+    /// <summary>
+    /// Agent bản cũ không có bộ xử lý lệnh chụp nên lặng lẽ bỏ qua; phía hub chỉ thấy im lặng.
+    /// Phải gọi đúng tên là hết giờ chờ, đừng nói "không chụp được" — hai chuyện cần hai cách xử lý khác nhau.
+    /// </summary>
+    [Fact]
+    public async Task SilentAgent_IsReportedAsTimeout_NotCaptureFailure()
+    {
+        var (registry, _) = Build();
+        registry.Connected("may-a", "c1");
+
+        var result = await registry.RequestScreenshotAsync("may-a", Guid.NewGuid(), TimeSpan.FromMilliseconds(100));
+
+        Assert.Equal(ScreenshotFailure.Timeout, result.Failure);
+    }
+
+    [Fact]
+    public async Task AnsweredRequest_ComesBackWithTheImage()
+    {
+        var (registry, sender) = Build();
+        registry.Connected("may-a", "c1");
+        sender.OnScreenshot = request =>
+            new ScreenshotResult(request.RequestId, ScreenshotFailure.None, new byte[] { 7, 7 }, 320, 240, Now);
+
+        var result = await registry.RequestScreenshotAsync("may-a", Guid.NewGuid(), TimeSpan.FromSeconds(5));
+
+        Assert.True(result.Ok);
+        Assert.Equal(new byte[] { 7, 7 }, result.Png);
+        Assert.Equal("c1", Assert.Single(sender.Shots).ConnectionId);
+    }
+
+    /// <summary>Ảnh về muộn sau khi đã quá hạn thì bỏ, không được gán vào yêu cầu khác.</summary>
+    [Fact]
+    public async Task LateAnswer_IsIgnored()
+    {
+        var (registry, _) = Build();
+        registry.Connected("may-a", "c1");
+
+        await registry.RequestScreenshotAsync("may-a", Guid.NewGuid(), TimeSpan.FromMilliseconds(50));
+
+        Assert.False(registry.Complete(
+            new ScreenshotResult(Guid.NewGuid(), ScreenshotFailure.None, new byte[] { 1 }, 10, 10, Now)));
+    }
+}
+
 /// <summary>Kho ảnh tạm của hub: có hạn dùng và có trần, vì đây là ảnh màn hình máy người ta.</summary>
 public class ScreenshotCacheTests
 {
