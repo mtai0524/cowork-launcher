@@ -1,100 +1,103 @@
 # Cowork
 
-Ứng dụng desktop Windows (C# / WPF) để **quản lý những app bạn phải chạy mỗi ngày**: khai báo một
-lần, rồi bấm chạy hoặc để Cowork tự chạy theo lịch — và sửa file cấu hình của chúng ngay trong app,
-không cần mở Notepad tìm đường dẫn.
+A Windows desktop app (C# / WPF) for **managing the programs you have to run every day**: declare
+them once, then launch them by hand or let Cowork run them on a schedule — and edit their config
+files inside the app, without hunting for paths in Notepad.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  Cowork   ▶ Chạy   ■ Dừng  │  Chạy tất cả  Dừng tất cả  Kiểm tra lịch│
+│  Cowork   ▶ Run   ■ Stop   │  Run all   Stop all   Check schedule   │
 ├──────────────────┬──────────────────────────────────────────────────┤
-│ Danh sách app    │ Tổng quan │ Biến MT │ File cấu hình │ Lịch chạy…  │
+│ Apps             │ Overview │ Env vars │ Config files │ Schedule…    │
 │                  │                                                  │
-│ ● Sao lưu CSDL   │  Tên app     [ Sao lưu CSDL          ]           │
-│   Đang chạy      │  Chương trình[ C:\tools\backup.bat   ] [Chọn…]   │
-│   Kế tiếp: 02:15 │  Tham số     [ --full --verbose      ]           │
+│ ● DB backup      │  Name        [ DB backup             ]           │
+│   Running        │  Program     [ C:\tools\backup.bat   ] [Browse…] │
+│   Next: 02:15    │  Arguments   [ --full --verbose      ]           │
 │                  │                                                  │
-│ ● Báo cáo sáng   │  ☑ Không chạy chồng   ☑ Thu nhật ký output       │
-│   Chạy lần cuối… │                                                  │
+│ ● Morning report │  ☑ No overlapping runs   ☑ Capture output        │
+│   Last run…      │                                                  │
 └──────────────────┴──────────────────────────────────────────────────┘
 ```
 
-## Làm được gì
+## What it does
 
-| Nhóm | Chức năng |
+| Area | Features |
 |---|---|
-| **Quản lý app** | Thêm / sửa / xoá / nhân bản, gom nhóm, sắp thứ tự, bật-tắt từng app, tìm kiếm |
-| **Chạy** | Chạy tay từng app hoặc "Chạy tất cả", khởi động lại một phát, chặn chạy chồng, tự dừng khi quá giờ; kết quả chấm theo danh sách **mã thoát thành công** của từng app (robocopy trả 1 vẫn là xong việc) |
-| **Phụ thuộc** | "Chỉ chạy B sau khi A xong và thành công", hoặc "sau khi A đã lên" cho dịch vụ; "Chạy tất cả" xếp thứ tự theo đó, phụ thuộc lỗi thì bỏ qua phần phía sau thay vì chạy vào khoảng không |
-| **Dừng lịch sự** | Đóng cửa sổ chính với app GUI, gửi **Ctrl+C** cho app console (node, python, .bat), chờ số giây ân hạn của app rồi mới kill cả cây tiến trình |
-| **Giữ luôn chạy** | App tự thoát hay crash thì Cowork khởi động lại sau vài giây; có trần số lần mỗi giờ để không lặp vô tận với app đã hỏng hẳn |
-| **Bắt app treo** | Thăm dò cổng TCP hoặc URL định kỳ, và theo dõi output (im lặng quá lâu, hoặc in ra mẫu như `FATAL`); treo thì Cowork dừng app rồi để keep-alive / thử lại lo phần chạy lại |
-| **Thử lại khi lỗi** | Job kết thúc lỗi hoặc quá giờ thì chạy lại sau N giây, tối đa M lần; chỉ báo ở khay khi hết lượt vẫn lỗi. Bấm Dừng thì không thử lại |
-| **Tìm chương trình** | Quét thư mục dò `.exe`/`.bat`/`.cmd`/`.ps1`, xếp hạng tin cậy; file `.ps1` được tự bọc qua `powershell.exe` |
-| **Cấu hình app con** | Tham số dòng lệnh, thư mục làm việc, biến môi trường riêng, kiểu cửa sổ, quyền admin |
-| **Tìm file cấu hình** | Quét thư mục của app, tự dò file nào là cấu hình — kể cả file **không có đuôi** như `~/.config/app/config` — chấm điểm tin cậy Cao/Vừa/Thấp, bỏ qua `node_modules`/`bin`/file lock |
-| **Sửa file cấu hình** | Mở JSON / INI / .env / XML / App.config ngay trong Cowork — dạng bảng khoá-giá trị hoặc sửa nguồn, có backup tự động; file bị công cụ khác sửa thì cảnh báo trước khi ghi đè |
-| **Xem khác biệt** | So nội dung sắp ghi với nội dung trên đĩa, hoặc so bản `.cowork.bak` với bản hiện tại — kèm nút khôi phục |
-| **Lịch chạy** | Mốc giờ cố định trong ngày, chu kỳ lặp, chạy khi mở Cowork; lọc theo ngày trong tuần; chạy bù khi lỡ |
-| **Sự kiện của máy** | Chạy khi máy thức dậy sau khi ngủ, khi mở khoá màn hình, hoặc khi có mạng trở lại — độc lập với lịch, có độ trễ và khoảng lặng chống bắn trùng |
-| **Theo dõi** | Nhật ký output realtime, lịch sử chạy có mã thoát và thời lượng, log ra file, thông báo ở khay khi app chạy lỗi |
-| **Output từng lần chạy** | Mỗi lần chạy một file log riêng; bấm một dòng ở tab Lịch sử là xem lại đúng output của lần đó |
-| **Cảnh báo ra ngoài** | App lỗi lúc nửa đêm thì báo qua webhook (Slack/Discord/Teams), Telegram hoặc email — gửi song song mọi kênh đã khai, có khoảng lặng chống spam |
-| **Chạy nền** | Thu nhỏ xuống khay hệ thống, khởi động cùng Windows |
-| **Quản lý từ xa** | Nhiều máy nối ra một hub web: xem trạng thái, bấm Chạy / Dừng / Khởi động lại từ trình duyệt — xem [docs/06](docs/06-quan-ly-tu-xa.md) |
+| **App management** | Add / edit / delete / duplicate, group, reorder, enable or disable individually, search |
+| **Running** | Run one app by hand or "Run all", restart in one click, block overlapping runs, stop on timeout; the result is judged against each app's own list of **success exit codes** (robocopy returning 1 still means the job is done) |
+| **Dependencies** | "Only run B after A finishes successfully", or "after A is up" for services; "Run all" orders itself accordingly, and a failed dependency skips what comes after instead of running into thin air |
+| **Graceful stop** | Closes the main window for GUI apps, sends **Ctrl+C** to console apps (node, python, .bat), waits out the app's own grace period before killing the whole process tree |
+| **Keep alive** | If an app exits or crashes on its own, Cowork restarts it a few seconds later; a per-hour cap keeps it from looping forever on an app that is truly broken |
+| **Hang detection** | Probes a TCP port or URL on an interval, and watches output (silent too long, or printing a pattern like `FATAL`); on a hang Cowork stops the app and lets keep-alive / retry handle restarting it |
+| **Retry on failure** | A job that ends in failure or times out runs again after N seconds, up to M times; the tray only notifies once the attempts are used up. Pressing Stop cancels the retry |
+| **Program discovery** | Scans a folder for `.exe`/`.bat`/`.cmd`/`.ps1` and ranks them by confidence; `.ps1` files are wrapped in `powershell.exe` automatically |
+| **Per-app setup** | Command-line arguments, working directory, private environment variables, window style, admin rights |
+| **Config file discovery** | Scans the app's folder and works out which files are configuration — including **extensionless** ones like `~/.config/app/config` — scoring each High/Medium/Low and skipping `node_modules`, `bin`, and lock files |
+| **Config editing** | Opens JSON / INI / .env / XML / App.config inside Cowork — as a key-value table or as raw source — with automatic backups, and a warning before overwriting a file another tool has changed |
+| **Diffs** | Compares what is about to be written against what is on disk, or a `.cowork.bak` against the current file — with a restore button |
+| **Schedules** | Fixed times of day, repeating intervals, run-on-startup; filtered by day of week; catch-up runs for missed slots |
+| **Machine events** | Run when the machine wakes from sleep, when the screen unlocks, or when the network comes back — independent of the schedule, with a delay and a quiet period to stop double firing |
+| **Monitoring** | Live output log, run history with exit codes and durations, logging to file, tray notifications when an app fails |
+| **Per-run output** | Every run gets its own log file; clicking a row in the History tab replays exactly that run's output |
+| **Outbound alerts** | When an app fails at midnight, get it via webhook (Slack/Discord/Teams), Telegram, or email — sent to every configured channel in parallel, with a quiet period against spam |
+| **Background operation** | Minimize to the system tray, start with Windows |
+| **Remote management** | Several machines connect out to one web hub: see their status and hit Run / Stop / Restart from a browser, and issue agent tokens from the web — see [docs/06](docs/06-quan-ly-tu-xa.md) |
 
-## Chạy thử
+## Getting started
 
 ```bash
-dotnet build                                  # build toàn bộ solution
-dotnet test                                   # toàn bộ test
-dotnet run --project src/Cowork.App           # mở ứng dụng
-dotnet run --project src/Cowork.Hub           # hub quản lý từ xa (đặt mật khẩu trong appsettings.json trước)
+dotnet build                                  # build the whole solution
+dotnet test                                   # run every test
+dotnet run --project src/Cowork.App           # open the app
+dotnet run --project src/Cowork.Hub           # remote management hub (set a password in appsettings.json first)
 ```
 
-Yêu cầu: Windows + .NET 8 SDK (`dotnet --list-sdks` phải có bản 8.x trở lên).
+Requirements: Windows and the .NET 8 SDK (`dotnet --list-sdks` must show 8.x or newer).
 
-## Cấu trúc
+## Layout
 
 ```
-Cowork.sln
-├─ src/Cowork.Core/     Model, service, bộ đọc-ghi config — không phụ thuộc WPF
+Cowork.slnx
+├─ src/Cowork.Core/     Models, services, config readers and writers — no WPF dependency
 │   ├─ Models/          ManagedApp, ScheduleRule, ConfigFileRef, AppRunRecord…
 │   ├─ Configuration/   JsonConfigEditor, IniConfigEditor, XmlConfigEditor, ConfigFileScanner, ProgramScanner…
 │   ├─ Services/        ProcessManager, DailyScheduler, KeepAliveSupervisor, RetrySupervisor, HealthMonitor, RunQueue, SystemTriggerSupervisor, LogPruner, JsonWorkspaceStore…
 │   └─ Validation/      AppValidator
 ├─ src/Cowork.App/      WPF, MVVM (CommunityToolkit.Mvvm)
 │   ├─ ViewModels/      MainViewModel, AppViewModel, ConfigFileViewModel, ScanConfigViewModel, ScanProgramViewModel…
-│   ├─ Converters/      Converter cho binding
-│   ├─ Localization/    Nhãn đa ngôn ngữ cho XAML
-│   └─ Themes/          Kiểu dáng điều khiển + bốn bảng màu
-├─ src/Cowork.Remote/   Hợp đồng dữ liệu, sổ máy, client SignalR — dùng chung cho agent và hub, không WPF/ASP.NET
-├─ src/Cowork.Hub/      Hub quản lý từ xa: ASP.NET Core + Blazor Server, chạy được trên Linux
-├─ tests/Cowork.Tests/  xUnit — lịch, config editor, lưu trữ, chạy tiến trình thật, hub trong tiến trình
-└─ docs/                Tài liệu chi tiết
+│   ├─ Converters/      Binding converters
+│   ├─ Localization/    Multi-language labels for XAML
+│   └─ Themes/          Control styles and four colour palettes
+├─ src/Cowork.Remote/   Data contracts, machine registry, SignalR client — shared by agent and hub, no WPF or ASP.NET
+├─ src/Cowork.Hub/      Remote management hub: ASP.NET Core + Blazor Server, runs on Linux too
+├─ tests/Cowork.Tests/  xUnit — schedules, config editors, storage, real process launches, in-process hub
+└─ docs/                Detailed documentation (in Vietnamese)
 ```
 
-Tách `Cowork.Core` khỏi WPF là chủ ý: mọi logic quyết định (khi nào tới giờ chạy, ghi giá trị nào
-vào file config) đều test được mà không cần dựng cửa sổ.
+Keeping `Cowork.Core` free of WPF is deliberate: every decision — when a run is due, what value to
+write into a config file — is testable without standing up a window.
 
-## Dữ liệu người dùng
+## User data
 
-Nằm trong `%APPDATA%\Cowork`:
+Lives in `%APPDATA%\Cowork`:
 
-| File | Nội dung |
+| File | Contents |
 |---|---|
-| `workspace.json` | Danh sách app + thiết lập. Sao lưu file này là sao lưu toàn bộ cấu hình. |
-| `history.json` | Lịch sử các lần chạy |
-| `backups\workspace-YYYYMMDD.json` | Ảnh chụp workspace đầu mỗi ngày, giữ 10 bản gần nhất |
-| `logs\cowork-YYYYMMDD.log` | Log hoạt động của Cowork |
-| `logs\run-YYYYMMDD-<mã lần chạy>.log` | Output đầy đủ của **một lần chạy**; file cũ hơn số ngày đặt trong Thiết lập được tự xoá |
+| `workspace.json` | The app list and settings. Back this file up and you have backed up everything. |
+| `history.json` | Run history |
+| `backups\workspace-YYYYMMDD.json` | A snapshot of the workspace taken at the start of each day; the 10 most recent are kept |
+| `logs\cowork-YYYYMMDD.log` | Cowork's own activity log |
+| `logs\run-YYYYMMDD-<run id>.log` | The full output of **a single run**; files older than the retention set in Settings are deleted automatically |
 
-## Tài liệu
+## Documentation
 
-| Tài liệu | Nội dung |
+The documents themselves are written in Vietnamese.
+
+| Document | Contents |
 |---|---|
-| [docs/01-tong-quan.md](docs/01-tong-quan.md) | Bài toán, phạm vi, khái niệm |
-| [docs/02-kien-truc.md](docs/02-kien-truc.md) | Kiến trúc, luồng dữ liệu, quyết định thiết kế |
-| [docs/03-mo-hinh-du-lieu.md](docs/03-mo-hinh-du-lieu.md) | Model và schema `workspace.json` |
-| [docs/04-huong-dan-su-dung.md](docs/04-huong-dan-su-dung.md) | Hướng dẫn dùng theo từng tình huống |
-| [docs/05-lo-trinh.md](docs/05-lo-trinh.md) | Giới hạn hiện tại và hướng phát triển |
+| [docs/01-tong-quan.md](docs/01-tong-quan.md) | The problem, the scope, the concepts |
+| [docs/02-kien-truc.md](docs/02-kien-truc.md) | Architecture, data flow, design decisions |
+| [docs/03-mo-hinh-du-lieu.md](docs/03-mo-hinh-du-lieu.md) | The model and the `workspace.json` schema |
+| [docs/04-huong-dan-su-dung.md](docs/04-huong-dan-su-dung.md) | A walkthrough for each situation |
+| [docs/05-lo-trinh.md](docs/05-lo-trinh.md) | Current limits and where this is going |
+| [docs/06-quan-ly-tu-xa.md](docs/06-quan-ly-tu-xa.md) | Remote management: the hub, agent tokens, deployment |
