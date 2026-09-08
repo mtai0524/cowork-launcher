@@ -1,5 +1,6 @@
 using Cowork.Core.Localization;
 using Cowork.Core.Models;
+using Cowork.Core.News;
 using Cowork.Hub;
 
 namespace Cowork.Tests;
@@ -67,4 +68,74 @@ public class UiPreferencesTests
         => Assert.Equal(
             Enum.GetValues<AppTheme>().OrderBy(t => t),
             UiTheme.Available.OrderBy(t => t));
+
+    /// <summary>
+    /// Chủ đề tin nằm trong cookie, nên giá trị vào cũng có thể là bất cứ thứ gì —
+    /// kể cả cookie do một bản Cowork cũ hơn để lại.
+    /// </summary>
+    [Fact]
+    public void ParseNews_ReadsTopicsAndTheVietnamFlag()
+    {
+        var selection = UiPreferences.ParseNews("Ai,Agents|vn");
+
+        Assert.Equal(new[] { NewsTopic.Ai, NewsTopic.Agents }, selection.Topics);
+        Assert.True(selection.IncludeVietnam);
+    }
+
+    [Fact]
+    public void ParseNews_WithoutTheFlag_LeavesVietnamOut()
+        => Assert.False(UiPreferences.ParseNews("Technology").IncludeVietnam);
+
+    [Fact]
+    public void ParseNews_IgnoresNamesItDoesNotKnow()
+    {
+        var selection = UiPreferences.ParseNews("Ai,ChuDeKhongTonTai,99|vn");
+
+        Assert.Equal(NewsTopic.Ai, Assert.Single(selection.Topics));
+    }
+
+    /// <summary>Chưa chọn gì thì lấy mặc định của bảng tin, không phải một trang trống.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void ParseNews_WithNoCookie_UsesTheSameDefaultsAsTheApp(string? value)
+    {
+        var selection = UiPreferences.ParseNews(value);
+        var defaults = new NewsSettings();
+
+        Assert.Equal(defaults.Topics, selection.Topics);
+        Assert.Equal(defaults.IncludeVietnam, selection.IncludeVietnam);
+    }
+
+    /// <summary>Bỏ hết tick là một lựa chọn có thật — không được lẳng lặng quay về mặc định.</summary>
+    [Fact]
+    public void ParseNews_WithAnEmptyTopicList_StaysEmpty()
+        => Assert.Empty(UiPreferences.ParseNews("|vn").Topics);
+
+    [Fact]
+    public void FormatNews_AndParseNews_RoundTrip()
+    {
+        var cookie = UiPreferences.FormatNews(new[] { NewsTopic.Security, NewsTopic.Ai }, includeVietnam: false);
+        var selection = UiPreferences.ParseNews(cookie);
+
+        Assert.Equal(new[] { NewsTopic.Security, NewsTopic.Ai }, selection.Topics);
+        Assert.False(selection.IncludeVietnam);
+    }
+
+    /// <summary>Lựa chọn trên web phải ra cùng một bảng tin như lựa chọn tương đương trên máy.</summary>
+    [Fact]
+    public void Selection_TurnsIntoTheSameDigestOptionsAsTheApp()
+    {
+        var options = new NewsSelection(new[] { NewsTopic.Ai }, IncludeVietnam: true).ToDigestOptions();
+        var fromApp = new NewsSettings { Topics = new() { NewsTopic.Ai } }.ToDigestOptions();
+
+        // So từng phần chứ không so cả bản ghi: Topics là một danh sách, mà record so
+        // danh sách bằng tham chiếu — hai bản ghi giống hệt nội dung vẫn báo khác nhau.
+        Assert.Equal(fromApp.Topics, options.Topics);
+        Assert.Equal(fromApp.IncludeVietnam, options.IncludeVietnam);
+        Assert.Equal(fromApp.VietnamPercent, options.VietnamPercent);
+        Assert.Equal(fromApp.MaxItems, options.MaxItems);
+        Assert.Equal(fromApp.MaxAgeDays, options.MaxAgeDays);
+        Assert.Equal(fromApp.MaxPerSource, options.MaxPerSource);
+    }
 }

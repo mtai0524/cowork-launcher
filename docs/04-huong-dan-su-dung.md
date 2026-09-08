@@ -440,6 +440,98 @@ lại vẫn lỗi, không giữ chạy được, app treo, và có app bị bỏ
 > **Về bí mật:** token bot và mật khẩu SMTP nằm trong `workspace.json` dưới dạng thường, giống mã
 > agent của hub. Với Gmail hãy dùng *mật khẩu ứng dụng* riêng chứ đừng dùng mật khẩu tài khoản.
 
+## Đọc tin mỗi ngày
+
+Thẻ **Tin tức** là một trình đọc RSS gọn nằm ngay trong Cowork: mở app buổi sáng để xem app nào đã
+chạy, và đọc luôn tin trong ngày mà không phải mở thêm trang nào.
+
+Trên thanh lọc, tick những chủ đề muốn theo:
+
+| Chủ đề | Nguồn dựng sẵn |
+|---|---|
+| **AI** | OpenAI, Google DeepMind, Google AI, Hugging Face, TechCrunch AI, The Decoder, MIT Technology Review, arXiv cs.AI |
+| **Agent** | OpenAI, Simon Willison, Latent Space, arXiv cs.MA, Hacker News (lọc "AI agent"), GitHub Blog |
+| **Công nghệ** | Hacker News, The Verge, Ars Technica, The Register, TechCrunch |
+| **Lập trình** | The Pragmatic Engineer, .NET Blog, martinfowler.com, GitHub Blog, Hacker News |
+| **Khởi nghiệp** | TechCrunch Startups, TechCrunch, CafeBiz |
+| **An ninh mạng** | Krebs on Security, The Hacker News, Dark Reading |
+| **Kho mã** | GitHub Trending (hôm nay / tuần / Python / TypeScript), và bản phát hành của `anthropics/claude-code`, `claude-agent-sdk-python`, `anthropic-sdk-python`, `modelcontextprotocol/servers` và `python-sdk`, `openai/codex`, `langchain-ai/langgraph`, `browser-use`, `litellm`, `ollama`, `vllm`, `huggingface/transformers` |
+| **Trong nước** | VnExpress Số hoá, GenK, Tinh tế, VietnamNet Công nghệ, Tuổi Trẻ Nhịp sống số, CafeBiz |
+
+Bỏ tick **Kèm tin trong nước** thì Cowork không gọi tới các báo Việt Nam nữa.
+
+Bấm **tiêu đề bài** để mở nó ở trình duyệt mặc định — Cowork không tải nội dung bài về, nó chỉ đọc
+phần tóm tắt mà feed công bố.
+
+### Tìm repo đáng xem
+
+Chủ đề **Kho mã** không đọc báo mà đọc GitHub, bằng hai đường khác nhau:
+
+- **GitHub Trending** — bảng xếp hạng repo đang lên của hôm nay và của tuần, cộng hai bảng riêng cho
+  Python và TypeScript. Đây là đường để *khám phá* thứ chưa biết. Bốn bảng này trùng nhau khá nhiều;
+  Cowork gộp trùng theo địa chỉ repo nên mỗi repo chỉ hiện một lần.
+- **Bản phát hành** của một số repo AI/agent đáng theo — trong đó có `anthropics/claude-code`,
+  `claude-agent-sdk-python`, `anthropic-sdk-python` và hai repo của Model Context Protocol. Đây là
+  đường để *theo* thứ đã biết: mỗi mục là một bản phát hành, tiêu đề là số hiệu, phần tóm tắt là ghi
+  chú phát hành.
+
+Muốn theo một repo bất kỳ, thêm feed riêng với địa chỉ `https://github.com/<chủ>/<repo>/releases.atom`
+và chọn chủ đề **Kho mã**. Danh sách dựng sẵn chỉ nhận những repo có ghi chú phát hành đọc được —
+repo chạy tàu nightly hay alpha (gemini-cli, llama.cpp) bị bỏ ra vì mỗi ngày vài bản mà tiêu đề chỉ
+là số hiệu bản dựng.
+
+Bản phát hành thưa hơn tin báo nhiều: một thư viện có thể vài tuần mới ra bản mới. Nếu thấy phần kho
+mã hơi trống, nới **Chỉ lấy bài trong (ngày)** lên 7 hoặc 14 — bảng xếp hạng thịnh hành vẫn tươi mỗi
+ngày, còn các bản phát hành sẽ hiện đủ hơn.
+
+### Tin nước ngoài trước, tin trong nước giữ một phần
+
+Mặc định 25% số chỗ dành cho báo trong nước, 75% còn lại cho báo nước ngoài — đổi ở thẻ **Thiết lập
+→ Bảng tin → Phần tin trong nước (%)**. Đặt `0` thì chỉ còn tin nước ngoài, đặt `100` thì ngược lại.
+
+Hạn mức thắng thứ tự thời gian: một buổi sáng các báo trong nước đăng dày hơn thì họ vẫn chỉ được
+25% chỗ, tin nước ngoài không bị đẩy khỏi bảng. Chiều ngược lại thì hạn mức nới ra — bên nào không
+đủ bài, bên kia lấp vào, nên bảng tin không ngắn đi vì một nguồn im ắng.
+
+Vì thế bảng tin **không** xếp thuần theo giờ: tin trong nước được rải đều xuống dọc trang thay vì
+dồn lên đầu, để đoạn nào của bảng cũng giữ đúng tỉ lệ đã đặt. Trong từng bên thì vẫn mới trước, cũ
+sau. Muốn đọc thuần theo giờ thì đặt phần tin trong nước về `0` hoặc `100`.
+
+### Các con số khác
+
+Ở thẻ **Thiết lập → Bảng tin**:
+
+| Ô | Ý nghĩa |
+|---|---|
+| **Số bài tối đa** | Độ dài bảng tin. `60` là vừa cho một lượt đọc buổi sáng |
+| **Chỉ lấy bài trong (ngày)** | Đây là bảng tin theo ngày, không phải kho lưu trữ |
+| **Tối đa mỗi nguồn** | Giữ cho một báo đăng dày (Hacker News, GenK) không chiếm hết bảng |
+| **Tự lấy lại sau (phút)** | `0` ⇒ chỉ lấy khi bấm **Lấy tin mới** |
+
+### Bật, tắt và thêm nguồn
+
+Danh sách nguồn ngay dưới đó: bỏ tick để ngừng lấy từ một nguồn. Nguồn nào không phục vụ chủ đề đang
+chọn thì dù bật cũng không được tải — Cowork không gọi tới thứ sẽ không hiển thị.
+
+Muốn theo một blog không có trong danh sách, dán địa chỉ RSS/Atom của nó vào ô **Thêm feed**, chọn
+chủ đề và vùng rồi bấm **Thêm feed**. Feed tự thêm nằm trong `workspace.json`, nên nó chỉ có trên
+máy này — hub web dùng danh mục dựng sẵn.
+
+### Khi một nguồn không lấy được
+
+Dòng dưới cùng của bảng tin nói lần lấy gần nhất là khi nào và nguồn nào hỏng. Một nguồn hỏng chỉ
+làm mất phần bài của chính nó: bài của các nguồn khác vẫn còn, và bài của lần lấy trước từ chính
+nguồn đó cũng được giữ lại cho tới khi nó sống lại.
+
+Nguồn báo hỏng thường vì ba lý do: báo đó đổi địa chỉ feed, máy chủ của họ chặn theo IP hoặc trả 429
+vì bị gọi quá nhiều, hoặc máy bạn mất mạng. Chi tiết nằm trong `logs\cowork-YYYYMMDD.log`.
+
+### Đọc trên web
+
+Hub cũng có thẻ **Tin tức** với cùng danh mục nguồn. Hub tự gọi RSS chứ không xin tin từ máy nào,
+nên nó có tin cả khi máy ở nhà đang tắt. Chủ đề chọn trên web lưu trong cookie của chính trình duyệt
+đó, tách khỏi lựa chọn trên máy — điện thoại đọc kiểu khác máy bàn cũng được.
+
 ## Chạy nền
 
 Tab **Thiết lập**:

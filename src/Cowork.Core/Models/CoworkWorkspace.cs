@@ -66,4 +66,7 @@ public sealed class WorkspaceSettings
 
     /// <summary>Ngôn ngữ giao diện đang dùng.</summary>
     public AppLanguage Language { get; set; } = AppLanguage.Vietnamese;
+
+    /// <summary>Bảng tin hằng ngày: chủ đề, nguồn, tỉ lệ tin trong nước.</summary>
+    public NewsSettings News { get; set; } = new();
 }

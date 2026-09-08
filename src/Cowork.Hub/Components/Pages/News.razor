@@ -1,0 +1,151 @@
+@page "/news"
+@attribute [Authorize]
+@inject HubNewsFeed Feed
+@inject UiNews Prefs
+@inject UiLanguage Lang
+@inject IClock Clock
+
+<h1>@Lang.T("Web.NewsTitle")</h1>
+<p class="lede">@Lang.T("Web.NewsIntro")</p>
+
+<section class="card">
+    <header class="card-head">
+        <span class="card-title">@Lang.T("Web.NewsTopics")</span>
+        <span class="muted small">@Updated</span>
+        <span class="screen-actions">
+            <button class="btn" type="button" disabled="@_busy" @onclick="RefreshAsync">
+                @(_busy ? Lang.T("Web.NewsLoading") : Lang.T("Web.NewsRefresh"))
+            </button>
+        </span>
+    </header>
+
+    @* Lựa chọn đi qua form POST chứ không giữ trong bộ nhớ vòng đời trang: nó phải sống
+       qua lần tải trang sau, và cookie là chỗ duy nhất hub biết về người đang xem. *@
+    <form class="topics" method="post" action="/ui/news">
+        <input type="hidden" name="returnUrl" value="/news" />
+
+        @foreach (var topic in Topics)
+        {
+            <label class="topic">
+                <input type="checkbox" name="topic" value="@topic" checked="@Prefs.Selection.Topics.Contains(topic)" />
+                <span>@Lang.T("Topic." + topic)</span>
+            </label>
+        }
+
+        <label class="topic">
+            <input type="checkbox" name="vietnam" value="1" checked="@Prefs.Selection.IncludeVietnam" />
+            <span>@Lang.T("Web.NewsVietnam")</span>
+        </label>
+
+        <button class="btn primary" type="submit">@Lang.T("Web.NewsApply")</button>
+    </form>
+
+    @if (Feed.FailedSources.Count > 0)
+    {
+        <p class="muted small">
+            @Lang.T("Web.NewsSourcesFailed", Feed.FailedSources.Count, string.Join(", ", Feed.FailedSources))
+        </p>
+    }
+</section>
+
+@if (Prefs.Selection.Topics.Count == 0)
+{
+    <div class="notice bad">@Lang.T("Web.NewsNoTopic")</div>
+}
+else if (_stories.Count == 0)
+{
+    <section class="card">
+        <p class="muted">@(_busy ? Lang.T("Web.NewsLoading") : Lang.T("Web.NewsEmpty"))</p>
+    </section>
+}
+else
+{
+    <section class="card">
+        @foreach (var story in _stories)
+        {
+            <article class="news-item">
+                <div class="news-meta">
+                    <span class="news-when">@NewsTime.Describe(Lang.Current, story.PublishedAt, _renderedAt)</span>
+                    <span class="news-source">@story.SourceName</span>
+                    @foreach (var topic in story.Topics.Where(Prefs.Selection.Topics.Contains))
+                    {
+                        <span class="badge">@Lang.T("Topic." + topic)</span>
+                    }
+                    @if (story.Region == NewsRegion.Vietnam)
+                    {
+                        <span class="badge">@Lang.T("Region.Vietnam")</span>
+                    }
+                </div>
+
+                @* Bài đến từ feed của người khác: mở tab mới, và cắt hẳn quan hệ opener. *@
+                <a class="news-title" href="@story.Link" target="_blank" rel="noopener noreferrer">@story.Title</a>
+
+                @if (!string.IsNullOrWhiteSpace(story.Summary))
+                {
+                    <p class="news-summary">@story.Summary</p>
+                }
+            </article>
+        }
+    </section>
+}
+
+@code {
+    private static readonly IReadOnlyList<NewsTopic> Topics = Enum.GetValues<NewsTopic>();
+
+    private IReadOnlyList<NewsItem> _stories = Array.Empty<NewsItem>();
+    private DateTimeOffset _renderedAt;
+    private bool _busy;
+
+    /// <summary>
+    /// Dựng trang bằng tin đang có trước, rồi mới đi lấy. Lần mở đầu tiên sau khi hub khởi động
+    /// phải gọi vào ba mươi báo — chờ xong mới vẽ gì thì người dùng nhìn màn hình trắng cả chục giây.
+    /// </summary>
+    protected override void OnInitialized() => Load();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        _busy = true;
+        StateHasChanged();
+
+        try
+        {
+            await Feed.EnsureFreshAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        Load();
+        StateHasChanged();
+    }
+
+    private async Task RefreshAsync()
+    {
+        _busy = true;
+
+        try
+        {
+            await Feed.RefreshAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        Load();
+    }
+
+    private void Load()
+    {
+        _renderedAt = Clock.Now;
+        _stories = NewsDigest.Build(Feed.Items, Prefs.Selection.ToDigestOptions(), _renderedAt);
+    }
+
+    private string Updated => Feed.LastRefreshedAt is { } at
+        ? Lang.T("Web.NewsUpdatedAt", NewsTime.Describe(Lang.Current, at, Clock.Now))
+        : Lang.T("News.NeverUpdated");
+}

@@ -104,6 +104,20 @@ màu với app desktop) và nút đổi **ngôn ngữ**. Cả hai lưu vào cook
 nguyên sau khi tải lại, và không ảnh hưởng người khác đang mở cùng hub. Riêng cột *Lịch* và câu trả
 lời của agent là chữ agent gửi lên, theo ngôn ngữ đang đặt trên máy agent.
 
+### Bảng tin
+
+Tab **Tin tức** (`/news`) là bản web của thẻ Tin tức trên app: cùng danh mục nguồn, cùng cách cân
+tin nước ngoài với tin trong nước.
+
+Khác một điểm quan trọng: **hub tự gọi RSS**, không xin tin từ máy nào. Bảng tin không phải trạng
+thái của một máy cụ thể, và nếu phải chờ máy ở nhà bật lên thì mở web buổi sáng sẽ chẳng có gì đọc.
+Hub làm tươi tối đa 30 phút một lần, dùng chung cho mọi người đang mở trang; nút *Lấy tin mới* ép
+tải lại ngay.
+
+Chủ đề chọn trên web nằm trong cookie `cowork.news` của chính trình duyệt đó — tách khỏi lựa chọn
+trong `workspace.json` của máy, và tách khỏi người khác đang mở cùng hub. Đổi lại, feed bạn tự thêm
+trên máy **không** lên web: hub không đọc `workspace.json`.
+
 ### Cấp token
 
 Tab **Cấp token** (`/agents`) là nơi thêm và thu hồi máy. Nhập tên máy, lấy chuỗi ở ô token — đã
@@ -185,6 +199,7 @@ khoản web bị lộ nghĩa là kẻ khác chạy được mọi app đã khai 
 - Chỉ **xem + chạy/dừng/khởi động lại**. Sửa config, lịch, thêm app vẫn làm trên máy đó.
 - Không xem output từ xa; nhật ký vẫn nằm trong `%APPDATA%\Cowork\logs` của từng máy.
 - Hub không lưu lịch sử. Máy rớt mạng hiện *ngoại tuyến* kèm ảnh chụp cuối và mốc "lần cuối thấy".
+- Bảng tin trên web dùng danh mục nguồn dựng sẵn; feed tự thêm chỉ có trên máy đã thêm nó.
 - Một tài khoản web duy nhất, một mật khẩu; chưa phân quyền theo máy.
 - Kiến trúc test được đến đâu: `MachineRegistry`, `AgentDirectory`, hợp đồng dữ liệu có unit test; và
   một test tích hợp dựng hub thật trong tiến trình rồi nối bằng chính `HubClient` của Cowork

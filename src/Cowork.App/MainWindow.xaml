@@ -70,6 +70,30 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <!-- Tiêu đề bài báo: nhìn và cư xử như một liên kết, nhưng là Button để lệnh mở
+             trình duyệt đi qua view-model thay vì qua code-behind. Content xuống dòng được
+             vì tiêu đề dài hơn một dòng là chuyện thường. -->
+        <Style x:Key="NewsHeadline" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <TextBlock x:Name="Headline" Text="{TemplateBinding Content}"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Headline" Property="TextDecorations" Value="Underline" />
+                                <Setter Property="Foreground" Value="{DynamicResource AccentFillHoverBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Window.Resources>
 
     <Grid>
@@ -1128,6 +1152,134 @@
                     </Border>
                 </TabItem>
 
+                <!-- === Tin tức === -->
+                <TabItem Header="{loc:Tr Tab.News}">
+                    <Border Style="{StaticResource Card}" Margin="4,0,12,0" DataContext="{Binding News}">
+                        <DockPanel>
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                                <TextBlock Text="{loc:Tr News.Title}" Style="{StaticResource HeadingText}"
+                                           Margin="0" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding CountText, Mode=OneWay}" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource MutedBrush}" FontSize="12"
+                                               Margin="0,0,12,0" />
+                                    <Button Content="{loc:Tr News.Refresh}" Margin="0"
+                                            Style="{StaticResource PrimaryButton}"
+                                            Command="{Binding RefreshCommand}" />
+                                </StackPanel>
+                            </DockPanel>
+
+                            <TextBlock DockPanel.Dock="Top" Style="{StaticResource HintText}"
+                                       Text="{loc:Tr News.Intro}" Margin="0,0,0,8" />
+
+                            <!-- Bộ lọc lúc đọc: chủ đề và có kèm tin trong nước hay không.
+                                 Các con số tinh chỉnh nằm ở thẻ Thiết lập, không bày ra đây. -->
+                            <Border DockPanel.Dock="Top" Background="{DynamicResource SurfaceAltBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                    CornerRadius="6" Padding="10,8" Margin="0,0,0,10">
+                                <DockPanel>
+                                    <CheckBox DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0"
+                                              Content="{loc:Tr News.IncludeVietnam}"
+                                              IsChecked="{Binding IncludeVietnam}" />
+                                    <ItemsControl ItemsSource="{Binding Topics}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox Content="{Binding Label}" IsChecked="{Binding IsSelected}"
+                                                          Margin="0,0,16,0" VerticalAlignment="Center" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </DockPanel>
+                            </Border>
+
+                            <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource HintText}"
+                                       Text="{Binding StatusText, Mode=OneWay}" Margin="0,8,0,0" />
+
+                            <Grid>
+                                <ListBox ItemsSource="{Binding Stories}"
+                                         HorizontalContentAlignment="Stretch"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         VirtualizingStackPanel.IsVirtualizing="True">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Padding" Value="0" />
+                                            <Setter Property="Background" Value="Transparent" />
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <ContentPresenter />
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="{DynamicResource DividerBrush}"
+                                                    BorderThickness="0,0,0,1" Padding="4,10">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                        <TextBlock Text="{Binding When, Mode=OneWay}"
+                                                                   Foreground="{DynamicResource SubtleBrush}"
+                                                                   FontSize="11" Margin="0,0,10,0" />
+                                                        <TextBlock Text="{Binding SourceName}"
+                                                                   Foreground="{DynamicResource MutedBrush}"
+                                                                   FontSize="11" FontWeight="SemiBold"
+                                                                   Margin="0,0,10,0" />
+                                                        <TextBlock Text="{Binding TopicsLabel}"
+                                                                   Foreground="{DynamicResource SubtleBrush}"
+                                                                   FontSize="11" Margin="0,0,10,0" />
+                                                        <TextBlock Text="{Binding RegionLabel}"
+                                                                   Foreground="{DynamicResource SubtleBrush}"
+                                                                   FontSize="11"
+                                                                   Visibility="{Binding IsLocal,
+                                                                       Converter={StaticResource BoolToVisibility}}" />
+                                                    </StackPanel>
+
+                                                    <Button Content="{Binding Title}"
+                                                            Style="{StaticResource NewsHeadline}"
+                                                            Command="{Binding DataContext.OpenCommand,
+                                                                RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip="{Binding Link}" />
+
+                                                    <TextBlock Text="{Binding Summary}" TextWrapping="Wrap"
+                                                               Foreground="{DynamicResource MutedBrush}"
+                                                               FontSize="12" Margin="0,4,0,0"
+                                                               Visibility="{Binding HasSummary,
+                                                                   Converter={StaticResource BoolToVisibility}}" />
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <TextBlock Text="{Binding EmptyText, Mode=OneWay}" TextWrapping="Wrap"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource MutedBrush}" MaxWidth="420"
+                                           TextAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Stories.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </DockPanel>
+                    </Border>
+                </TabItem>
+
                 <!-- === Thiết lập === -->
                 <TabItem Header="{loc:Tr Tab.Settings}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -1352,6 +1504,169 @@
                                             </StackPanel>
                                         </StackPanel>
                                     </Grid>
+                                </StackPanel>
+                            </Border>
+
+
+                            <Border Style="{StaticResource Card}" DataContext="{Binding News}">
+                                <StackPanel>
+                                    <TextBlock Text="{loc:Tr Settings.NewsCard}"
+                                               Style="{StaticResource HeadingText}" />
+                                    <TextBlock Style="{StaticResource HintText}"
+                                               Text="{loc:Tr Settings.NewsHint}" />
+
+                                    <CheckBox Content="{loc:Tr Settings.NewsEnable}"
+                                              IsChecked="{Binding Enabled}" Margin="0,10,0,0" />
+
+                                    <Grid Margin="0,12,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="16" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="16" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{loc:Tr Settings.NewsVietnamPercent}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <TextBox Text="{Binding VietnamPercent, UpdateSourceTrigger=LostFocus}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{loc:Tr Settings.NewsMaxItems}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <TextBox Text="{Binding MaxItems, UpdateSourceTrigger=LostFocus}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="4">
+                                            <TextBlock Text="{loc:Tr Settings.NewsMaxAgeDays}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <TextBox Text="{Binding MaxAgeDays, UpdateSourceTrigger=LostFocus}" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <TextBlock Style="{StaticResource HintText}"
+                                               Text="{loc:Tr Settings.NewsVietnamPercentHint}" />
+
+                                    <Grid Margin="0,12,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="16" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{loc:Tr Settings.NewsMaxPerSource}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <TextBox Text="{Binding MaxPerSource, UpdateSourceTrigger=LostFocus}"
+                                                     Width="120" HorizontalAlignment="Left" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{loc:Tr Settings.NewsRefreshMinutes}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <TextBox Text="{Binding RefreshMinutes, UpdateSourceTrigger=LostFocus}"
+                                                     Width="120" HorizontalAlignment="Left" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <TextBlock Style="{StaticResource HintText}"
+                                               Text="{loc:Tr Settings.NewsRefreshHint}" />
+
+                                    <TextBlock Text="{loc:Tr Settings.NewsSources}"
+                                               Style="{StaticResource LabelText}" Margin="0,16,0,4" />
+                                    <TextBlock Style="{StaticResource HintText}"
+                                               Text="{loc:Tr Settings.NewsSourcesHint}" Margin="0,0,0,6" />
+
+                                    <Border Background="{DynamicResource SurfaceAltBrush}"
+                                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                            CornerRadius="6" MaxHeight="260">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl ItemsSource="{Binding Sources}" Margin="8">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <DockPanel Margin="0,3">
+                                                            <Button DockPanel.Dock="Right" Margin="8,0,0,0"
+                                                                    Padding="8,2" FontSize="11"
+                                                                    Content="{loc:Tr Settings.NewsRemoveSource}"
+                                                                    Style="{StaticResource DangerButton}"
+                                                                    Command="{Binding DataContext.RemoveSourceCommand,
+                                                                        RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Visibility="{Binding IsCustom,
+                                                                        Converter={StaticResource BoolToVisibility}}" />
+                                                            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center"
+                                                                       Text="{loc:Tr Settings.NewsCustomBadge}"
+                                                                       Foreground="{DynamicResource SubtleBrush}"
+                                                                       FontSize="11" Margin="8,0,0,0"
+                                                                       Visibility="{Binding IsCustom,
+                                                                           Converter={StaticResource BoolToVisibility}}" />
+                                                            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center"
+                                                                       Text="{Binding RegionLabel}"
+                                                                       Foreground="{DynamicResource SubtleBrush}"
+                                                                       FontSize="11" Margin="8,0,0,0" />
+                                                            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center"
+                                                                       Text="{Binding TopicsLabel}"
+                                                                       Foreground="{DynamicResource MutedBrush}"
+                                                                       FontSize="11" Margin="8,0,0,0" />
+                                                            <CheckBox Content="{Binding Name}"
+                                                                      IsChecked="{Binding IsEnabled}"
+                                                                      ToolTip="{Binding FeedUrl}"
+                                                                      VerticalAlignment="Center" />
+                                                        </DockPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Border>
+
+                                    <!-- Thêm feed riêng: nguồn nào không có trong danh sách dựng sẵn
+                                         thì dán thẳng địa chỉ RSS vào đây. -->
+                                    <Grid Margin="0,10,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="1.6*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{loc:Tr Settings.NewsSourceName}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <TextBox Text="{Binding NewSourceName, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{loc:Tr Settings.NewsSourceUrl}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <TextBox Text="{Binding NewSourceUrl, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="https://example.com/feed.xml" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="4">
+                                            <TextBlock Text="{loc:Tr Settings.NewsSourceTopic}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <ComboBox ItemsSource="{Binding TopicOptions}"
+                                                      SelectedItem="{Binding NewSourceTopic}"
+                                                      DisplayMemberPath="Label" MinWidth="110" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="6">
+                                            <TextBlock Text="{loc:Tr Settings.NewsSourceRegion}"
+                                                       Style="{StaticResource LabelText}" />
+                                            <ComboBox ItemsSource="{Binding RegionOptions}"
+                                                      SelectedItem="{Binding NewSourceRegion}"
+                                                      DisplayMemberPath="Label" MinWidth="110" />
+                                        </StackPanel>
+                                        <Button Grid.Column="8" VerticalAlignment="Bottom" Margin="0"
+                                                Content="{loc:Tr Settings.NewsAddSource}"
+                                                Command="{Binding AddSourceCommand}" />
+                                    </Grid>
+
+                                    <TextBlock Style="{StaticResource ErrorText}"
+                                               Text="{Binding AddSourceError, Mode=OneWay}"
+                                               Visibility="{Binding AddSourceError,
+                                                   Converter={StaticResource StringToVisibility}}" />
                                 </StackPanel>
                             </Border>
 

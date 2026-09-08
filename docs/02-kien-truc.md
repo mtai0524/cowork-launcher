@@ -347,6 +347,116 @@ minh `Loc.T(language, key)` vì server phục vụ nhiều người thì biến 
 
 Chi tiết cài đặt, bảo mật và giới hạn: [06-quan-ly-tu-xa.md](06-quan-ly-tu-xa.md).
 
+## Bảng tin
+
+Thẻ **Tin tức** đọc RSS/Atom của một danh mục báo dựng sẵn rồi trộn thành một bảng tin theo ngày.
+Không tài khoản, không khoá API, không dịch vụ trung gian: Cowork gọi thẳng vào feed công khai của
+từng báo, đúng như một trình đọc RSS.
+
+```
+NewsCatalog.Resolve(settings)     ← nguồn nào cần tải: đúng chủ đề, chưa bị tắt
+   └─▶ NewsService.RefreshAsync
+          │ Parallel.ForEachAsync (6 luồng)
+          │   └─ INewsFeedClient.DownloadAsync ──▶ FeedParser.Parse ──▶ List<NewsItem>
+          └─▶ bộ nhớ đệm theo TỪNG nguồn  ──▶ news-cache.json
+                     │
+                     └─▶ NewsDigest.Build(items, options, now) ──▶ bảng tin hiển thị
+```
+
+Toàn bộ `Cowork.Core/News` là mã thuần: không WPF, không ASP.NET, và `now` luôn là tham số — nhờ vậy
+cùng một bộ mã phục vụ cả app trên máy lẫn hub web, và mọi quyết định đều kiểm được bằng test.
+
+### Bộ đọc feed
+
+`FeedParser` nhận cả ba định dạng đang lưu hành — RSS 2.0, RSS 1.0/RDF (arXiv dùng) và Atom — bằng
+cách **bỏ qua namespace và tra theo tên cục bộ của thẻ**. Ba định dạng đặt tên khác nhau nhưng chỗ
+chứa tiêu đề, liên kết, tóm tắt và ngày thì tương ứng một-một, nên một bộ đọc là đủ; viết ba nhánh
+riêng chỉ tạo thêm ba chỗ để lệch nhau.
+
+Bốn điều bộ đọc phải chịu được, vì feed là dữ liệu của người lạ:
+
+- **DTD bị cấm hẳn** (`DtdProcessing.Prohibit`, `XmlResolver = null`). Một thực thể ngoài trong feed
+  có thể sai Cowork đi đọc file trên máy rồi đăng nội dung đó lên bảng tin.
+- **Chỉ nhận liên kết http/https.** Tiêu đề bài là thứ bấm vào sẽ mở, nên một `javascript:` hay
+  `file:` lọt qua đây là lỗ hổng chứ không phải một bài lỗi.
+- **Tóm tắt luôn là HTML** — gỡ thẻ, giải mã thực thể hai lần (nhiều feed bọc HTML đã escape bên
+  trong CDATA đã escape), gộp khoảng trắng, cắt ở ranh giới từ.
+- **XML hỏng trả về danh sách rỗng**, không ném. Một nguồn trả trang lỗi không được làm hỏng cả bảng.
+
+Ngày tháng có một chỗ đáng nhớ: .NET đối chiếu thứ trong tuần của dạng RFC 1123 và từ chối **cả
+chuỗi** khi nó sai — mà `Mon` cho một ngày thứ Ba là lỗi quen thuộc của trình sinh feed. Bỏ nguyên
+ngày vì lý do đó thì bài mới nhất mang giờ lấy về và trôi lên đầu bảng, nên bộ đọc cắt phần thứ rồi
+đọc lại.
+
+### Cân bảng tin
+
+`NewsDigest.Build` là chỗ duy nhất quyết định bài nào lên bảng, và nó là hàm thuần nhận `now`:
+
+1. Bỏ bài không thuộc chủ đề đang chọn.
+2. Bỏ bài quá cũ, và bỏ luôn bài ghi ngày **quá xa trong tương lai** — feed sai múi giờ mà được tin
+   thì bài đó đứng đầu bảng cho tới khi hết hạn.
+3. Gộp trùng theo địa chỉ đã chuẩn hoá (bỏ `www.`, bỏ chuỗi truy vấn, bỏ `/` cuối) — cùng một bài đi
+   qua vài nguồn với đuôi `?utm_source=…` khác nhau vẫn là một bài.
+4. Chặn trần số bài mỗi nguồn, để một báo đăng dày không nuốt cả trang.
+5. **Chia hạn mức theo vùng.** Tin nước ngoài lấy phần của mình trước, phần còn lại mới tới tin trong
+   nước. Bên nào không đủ bài thì bên kia lấp vào — ngày các báo trong nước im ắng, bảng tin không
+   ngắn đi.
+6. **Rải đều hai bên** thay vì nối lại rồi sắp chung theo thời gian.
+
+Bước cuối đáng nói vì nó là chỗ duy nhất bảng tin cố ý lệch khỏi thứ tự thời gian. Sắp chung theo
+giờ thì hạn mức vẫn đúng trên *cả bảng*, nhưng không đúng trên *màn hình đầu tiên*: sáng nào các báo
+trong nước đăng dày hơn thì bảy tám bài đầu đều là tin trong nước, và người đọc — vốn chỉ nhìn tới
+đó — thấy ngược hẳn với "ưu tiên nước ngoài". Rải đều thì mọi đoạn của bảng đều giữ đúng tỉ lệ, và
+bên trong từng bên thứ tự mới-trước-cũ-sau vẫn nguyên.
+
+### Kho mã đi cùng đường với tin
+
+Chủ đề **Repos** không cần thêm gì vào đường ống: một repo đang thịnh hành hay một bản phát hành cũng
+là tiêu đề + liên kết + tóm tắt + thời điểm, đúng hình dạng của `NewsItem`. Nó chỉ là thêm nguồn
+vào danh mục.
+
+Một chi tiết bắt buộc phải xử lý: **GitHub Trending không ghi ngày cho từng mục**. Feed là ảnh chụp
+bảng xếp hạng của một ngày, ngày nằm ở mức channel. Lùi thẳng về giờ tải như mọi bài thiếu ngày khác
+thì cả feed mang nhãn "vừa xong" và leo lên đỉnh bảng tin sau *mỗi* lần làm tươi — nên bộ đọc lùi qua
+ngày của feed trước, rồi mới tới giờ tải. Cả hai trường hợp vẫn đánh dấu `DateEstimated`, vì đó không
+phải ngày của chính bài.
+
+Dùng `releases.atom` chứ không `commits.atom`: feed commit hầu hết là `chore: …` do bot đẩy, còn một
+bản phát hành là thứ tác giả chủ động công bố. Và danh sách mặc định chỉ nhận repo có ghi chú phát
+hành đọc được — repo chạy tàu nightly (gemini-cli) hay đánh số bản dựng (llama.cpp) ra vài bản mỗi
+ngày với tiêu đề là con số và phần ghi chú rỗng, chúng lấp hết hạn mức mỗi nguồn mà không nói gì.
+
+Chủ đề gắn ở **nguồn** chứ không ở từng bài: đọc chủ đề từ nội dung đòi hỏi phân loại văn bản, còn
+"feed AI của TechCrunch chỉ đăng tin AI" thì đúng gần như luôn và không tốn gì.
+
+### Giữ tin
+
+`NewsService` giữ bài **theo từng nguồn** thay vì gộp một rổ. Một nguồn hỏng thì chỉ phần của nó là
+cũ, phần còn lại vẫn tươi; nếu gộp, một lần mất mạng sẽ xoá trắng bảng tin. Nguồn không còn trong
+danh sách được giao thì bị bỏ hẳn — nếu không, tắt một chủ đề xong bài của nó vẫn nằm lại.
+
+Tải được nhưng đọc ra 0 bài cũng tính là hỏng: hoặc feed đổi địa chỉ, hoặc máy chủ trả về một trang
+lỗi dạng HTML với mã 200.
+
+App trên máy ghi bộ nhớ đệm xuống `news-cache.json` (file tạm rồi `File.Replace`, đúng ràng buộc số
+4) nên mở lên là có tin ngay. Hub chạy liên tục nên giữ trong bộ nhớ là đủ.
+
+### Hai mặt, hai đường lấy tin
+
+Hub **tự gọi RSS**, không xin tin từ máy nào. Bảng tin không phải trạng thái của một máy cụ thể, và
+nếu phải chờ máy ở nhà bật lên thì mở web buổi sáng sẽ chẳng có gì đọc.
+
+Hub luôn tải **nguyên danh mục** rồi mới lọc theo từng người xem, chứ không tải theo lựa chọn của
+người đang mở trang: `NewsService` bỏ nguồn không nằm trong danh sách được giao, nên tải theo lựa
+chọn của người này sẽ xoá tin của người kia.
+
+| | App trên máy | Hub web |
+|---|---|---|
+| Lựa chọn chủ đề lưu ở | `workspace.json` | cookie `cowork.news` của trình duyệt |
+| Nguồn tải về | đúng chủ đề đang chọn | cả danh mục, lọc lúc hiển thị |
+| Bộ nhớ đệm | `news-cache.json` | trong bộ nhớ, làm tươi mỗi 30 phút |
+| Feed tự thêm | có | không — hub không đọc `workspace.json` |
+
 ## Bộ đọc-ghi cấu hình
 
 Tất cả cài `IConfigEditor` với hai thao tác: `Parse` (text → bảng khoá-giá trị) và `ApplyChanges`

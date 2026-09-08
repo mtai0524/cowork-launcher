@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Cowork.Core.Configuration;
 using Cowork.Core.Localization;
 using Cowork.Core.Models;
+using Cowork.Core.News;
 
 namespace Cowork.Tests;
 
@@ -64,6 +65,8 @@ public class LocalizationTests
             AssertAllNamed<HealthProbeKind>("HealthProbe.");
             AssertAllNamed<DependencyWait>("DependencyWait.");
             AssertAllNamed<SystemEventKind>("SystemEvent.");
+            AssertAllNamed<NewsTopic>("Topic.");
+            AssertAllNamed<NewsRegion>("Region.");
         });
     }
 

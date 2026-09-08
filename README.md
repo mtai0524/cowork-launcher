@@ -40,6 +40,8 @@ files inside the app, without hunting for paths in Notepad.
 | **Monitoring** | Live output log, run history with exit codes and durations, logging to file, tray notifications when an app fails |
 | **Per-run output** | Every run gets its own self-describing log file — a header with the command, arguments, working directory, trigger and PID, then output tagged by source (`out` / `ERR` / `cowork` for lifecycle events like a stop request or a grace-period kill), then a footer with the exit code, outcome and duration. Environment variable *names* are recorded, never their values. Filter the History tab to one app, or read any run's log from the web hub |
 | **Outbound alerts** | When an app fails at midnight, get it via webhook (Slack/Discord/Teams), Telegram, or email — sent to every configured channel in parallel, with a quiet period against spam |
+| **Daily news** | A built-in RSS reader: pick your topics — AI, agents, technology, programming, startups, security, repos — and Cowork pulls the public feeds of about thirty outlets into one dated briefing. Mostly foreign press, with a share of the Vietnamese press held back for it — spread down the page rather than clumped at the top, so any screenful keeps the ratio; a quiet day on one side is filled from the other rather than leaving the page short. Duplicates across outlets collapse into one story, no single feed can take over the page, and your own feeds can be added by URL. The **repos** topic reads GitHub rather than the press: the trending boards for discovering something new, and the release feeds of `anthropics/claude-code`, the Model Context Protocol SDKs and a dozen other AI/agent repos for keeping up with what you already use |
+| **News on the web** | The hub carries the same briefing and fetches the feeds itself, so it has today’s news even while every machine is off; topics are per-browser |
 | **Background operation** | Minimize to the system tray, start with Windows |
 | **Remote management** | Several machines connect out to one web hub: see their status, hit Run / Stop / Restart from a browser, take a screenshot of a running app's window, and issue agent tokens from the web — see [docs/06](docs/06-quan-ly-tu-xa.md) |
 
@@ -61,6 +63,7 @@ Cowork.slnx
 ├─ src/Cowork.Core/     Models, services, config readers and writers — no WPF dependency
 │   ├─ Models/          ManagedApp, ScheduleRule, ConfigFileRef, AppRunRecord…
 │   ├─ Configuration/   JsonConfigEditor, IniConfigEditor, XmlConfigEditor, ConfigFileScanner, ProgramScanner…
+│   ├─ News/            FeedParser, NewsDigest, NewsService, NewsCatalog — RSS in, one dated briefing out
 │   ├─ Services/        ProcessManager, DailyScheduler, KeepAliveSupervisor, RetrySupervisor, HealthMonitor, RunQueue, SystemTriggerSupervisor, LogPruner, JsonWorkspaceStore…
 │   └─ Validation/      AppValidator
 ├─ src/Cowork.App/      WPF, MVVM (CommunityToolkit.Mvvm)
@@ -85,6 +88,7 @@ Lives in `%APPDATA%\Cowork`:
 |---|---|
 | `workspace.json` | The app list and settings. Back this file up and you have backed up everything. |
 | `history.json` | Run history |
+| `news-cache.json` | The stories pulled by the last news refresh, so the panel has something to show the moment you open the app. Safe to delete — it is refetched |
 | `backups\workspace-YYYYMMDD.json` | A snapshot of the workspace taken at the start of each day; the 10 most recent are kept |
 | `logs\cowork-YYYYMMDD.log` | Cowork's own activity log |
 | `logs\run-YYYYMMDD-<run id>.log` | The full output of **a single run**; files older than the retention set in Settings are deleted automatically |

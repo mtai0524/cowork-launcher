@@ -2,6 +2,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Cowork.Core.Models;
+using Cowork.Core.News;
 
 namespace Cowork.Core.Services;
 
@@ -135,6 +136,10 @@ public sealed class JsonWorkspaceStore : IWorkspaceStore
         workspace.Apps ??= new List<ManagedApp>();
         workspace.Settings ??= new WorkspaceSettings();
         workspace.Settings.Notifications ??= new NotificationSettings();
+        workspace.Settings.News ??= new NewsSettings();
+        workspace.Settings.News.Topics ??= new List<NewsTopic>();
+        workspace.Settings.News.DisabledSourceIds ??= new List<string>();
+        workspace.Settings.News.CustomSources ??= new List<CustomNewsSource>();
 
         var order = 0;
         foreach (var app in workspace.Apps)
