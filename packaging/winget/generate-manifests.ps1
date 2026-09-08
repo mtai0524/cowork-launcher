@@ -89,18 +89,22 @@ Write-Host "  Url         : $url"
 
 PackageIdentifier: $identifier
 PackageVersion: $version
-DefaultLocale: vi-VN
+DefaultLocale: en-US
 ManifestType: version
 ManifestVersion: 1.6.0
 "@ | Set-Content (Join-Path $outDir "$identifier.yaml") -Encoding utf8
 
 # ---------- locale ----------
+# Ngon ngu mac dinh la en-US, khong phai vi-VN: day la kho goi toan cau, va mo ta tieng
+# Viet viet trong chinh file .ps1 nay se bi hong dau. Windows PowerShell 5.1 doc script
+# theo bang ma ANSI cua he thong, nen "Quan ly" va "Quan ly" khong con phan biet duoc.
+# Muon them ban vi-VN thi de van ban ra file mau .yaml rieng va doc bang -Encoding utf8.
 @"
 # yaml-language-server: `$schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
 
 PackageIdentifier: $identifier
 PackageVersion: $version
-PackageLocale: vi-VN
+PackageLocale: en-US
 Publisher: $Owner
 PublisherUrl: https://github.com/$Owner
 PublisherSupportUrl: $Repo/issues
@@ -109,26 +113,30 @@ PackageName: $Package
 PackageUrl: $Repo
 License: Proprietary
 Copyright: Copyright (c) $Owner
-ShortDescription: Quan ly va chay cac ung dung hang ngay tren Windows
+ShortDescription: Declare the programs you run every day, then launch them by hand or on a schedule
 Description: |-
-  Cowork khai bao mot lan nhung chuong trinh ban phai chay moi ngay, roi chay chung
-  bang tay hoac theo lich. Sua file cau hinh cua tung app ngay trong app, xem nhat ky
-  va lich su chay, giu app luon song, bat app treo, va bao ra ngoai khi co loi.
-  Kem mot bang tin doc RSS theo chu de va mot hub quan ly nhieu may tu xa.
+  Cowork keeps the programs you have to run every day in one window: declare each one
+  once with its arguments, working directory and environment, then launch it by hand or
+  let Cowork run it on a schedule or on a machine event such as waking from sleep.
+  It edits those programs' JSON, INI, .env and XML config files in place with backups
+  and diffs, keeps services alive, catches hung ones, retries failed jobs, and writes a
+  self-describing log for every run. Several machines can report to one web hub. A
+  built-in RSS reader gives you the day's news and trending GitHub repos by topic.
 Moniker: cowork
 Tags:
 - automation
 - launcher
+- rss
 - scheduler
 - task-runner
 - windows
 ReleaseNotesUrl: $Repo/releases/tag/v$version
 Documentations:
-- DocumentLabel: Huong dan su dung
+- DocumentLabel: Documentation
   DocumentUrl: $Repo/blob/main/docs/04-huong-dan-su-dung.md
 ManifestType: defaultLocale
 ManifestVersion: 1.6.0
-"@ | Set-Content (Join-Path $outDir "$identifier.locale.vi-VN.yaml") -Encoding utf8
+"@ | Set-Content (Join-Path $outDir "$identifier.locale.en-US.yaml") -Encoding utf8
 
 # ---------- installer ----------
 # Scope: user vi goi cai theo nguoi dung (Cowork.wxs dat Scope="perUser") -- khong hoi UAC.
@@ -137,7 +145,6 @@ ManifestVersion: 1.6.0
 
 PackageIdentifier: $identifier
 PackageVersion: $version
-InstallerLocale: vi-VN
 MinimumOSVersion: 10.0.17763.0
 InstallerType: wix
 Scope: user

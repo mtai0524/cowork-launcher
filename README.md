@@ -62,27 +62,30 @@ them on a web page.
 
 ## Installing
 
-**Windows** — the desktop app:
+**Windows** — the desktop app. One line, nothing to download by hand:
 
 ```powershell
-winget install mtai0524.Cowork
+$msi = "$env:TEMP\Cowork.msi"
+Invoke-WebRequest https://github.com/mtai0524/cowork-launcher/releases/download/v1.0.0/Cowork-1.0.0-win-x64.msi -OutFile $msi
+msiexec /i $msi
 ```
 
-Per-user, so no UAC prompt. Or, from a downloaded `.msi`:
-
-```powershell
-msiexec /i Cowork-1.0.0-win-x64.msi          # with a wizard
-msiexec /i Cowork-1.0.0-win-x64.msi /qn      # silently
-```
+Add `/qn` to the last line to install without a wizard. It is a per-user install, so no UAC prompt
+either way.
 
 It lands in `%LOCALAPPDATA%\Programs\Cowork`, adds a Start Menu entry, and puts itself on your `PATH`
 so `cowork` opens the app from any terminal. Your data lives in `%APPDATA%\Cowork` and uninstalling
 leaves it alone.
 
+> **`winget install mtai0524.Cowork` does not work yet.** Publishing a release here does not put the
+> package in winget's catalogue — that takes a separate pull request to
+> [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs), which Microsoft reviews. The
+> manifests are ready in `packaging/winget/`; this note goes away once the package is accepted.
+
 **Linux** — the hub only:
 
 ```bash
-curl -LO https://github.com/mtai0524/cowork-launcher/releases/latest/download/cowork-hub_1.0.0_amd64.deb
+curl -LO https://github.com/mtai0524/cowork-launcher/releases/download/v1.0.0/cowork-hub_1.0.0_amd64.deb
 sudo apt install ./cowork-hub_1.0.0_amd64.deb
 sudo nano /etc/cowork-hub/cowork-hub.env    # set the web password
 sudo systemctl enable --now cowork-hub
