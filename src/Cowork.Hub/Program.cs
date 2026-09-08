@@ -53,6 +53,11 @@ builder.Services.AddSingleton<StaticAssets>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<UiLanguage>();
 builder.Services.AddScoped<UiTheme>();
+builder.Services.AddScoped<UiNews>();
+
+// Bảng tin: hub tự gọi RSS, một bộ tin dùng chung cho mọi người đang mở trang.
+builder.Services.AddSingleton<Cowork.Core.News.INewsFeedClient>(_ => new Cowork.Core.News.HttpNewsFeedClient());
+builder.Services.AddSingleton<HubNewsFeed>();
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -118,6 +123,25 @@ static CookieOptions PreferenceCookie(HttpContext http) => new()
     Secure = http.Request.IsHttps,
     IsEssential = true,
 };
+
+// Chủ đề tin cũng đi qua form POST như ngôn ngữ và phong cách, cùng một lý do: đặt cookie
+// xong nạp lại trang, để trang dựng ra đã mang sẵn lựa chọn mới.
+app.MapPost("/ui/news", async (HttpContext http) =>
+{
+    var form = await http.Request.ReadFormAsync();
+
+    var topics = form["topic"]
+        .Select(value => Enum.TryParse<Cowork.Core.News.NewsTopic>(value, ignoreCase: true, out var topic) && Enum.IsDefined(topic)
+            ? topic
+            : (Cowork.Core.News.NewsTopic?)null)
+        .Where(topic => topic is not null)
+        .Select(topic => topic!.Value);
+
+    var cookie = UiPreferences.FormatNews(topics, form["vietnam"].Count > 0);
+
+    http.Response.Cookies.Append(UiPreferences.NewsCookie, cookie, PreferenceCookie(http));
+    return Results.Redirect(UiPreferences.SafeReturnUrl(form["returnUrl"]));
+}).DisableAntiforgery().RequireAuthorization();
 
 app.MapPost("/auth/logout", async (HttpContext http) =>
 {

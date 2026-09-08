@@ -1,0 +1,22 @@
+<Project>
+
+  <!--
+    Số phiên bản của cả sản phẩm, khai một chỗ.
+
+    Trước đây mỗi .csproj tự khai <Version>, và bản đóng gói thì khai lần nữa trong file .wxs
+    và trong manifest winget — bốn chỗ để lệch nhau. Giờ mọi thứ đọc từ đây: hai script đóng
+    gói lấy giá trị này ra bằng `dotnet msbuild -getProperty:Version`.
+
+    Đổi số ở đây rồi gắn tag `v<số>` là đủ để workflow phát hành chạy.
+  -->
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <Product>Cowork</Product>
+    <Company>Cowork</Company>
+    <Authors>mtai0524</Authors>
+    <Copyright>Copyright © mtai0524</Copyright>
+    <RepositoryUrl>https://github.com/mtai0524/cowork-launcher</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+</Project>

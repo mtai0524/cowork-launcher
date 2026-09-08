@@ -1,0 +1,29 @@
+#!/bin/sh
+# Sau khi gỡ. Phân biệt rõ hai mức:
+#   remove — bỏ chương trình, GIỮ cấu hình và sổ máy, để cài lại là chạy tiếp.
+#   purge  — bỏ hết, kể cả mật khẩu và danh sách máy đã cấp token.
+set -e
+
+case "$1" in
+    remove)
+        if [ -d /run/systemd/system ]; then
+            systemctl disable cowork-hub >/dev/null 2>&1 || true
+            systemctl daemon-reload >/dev/null 2>&1 || true
+        fi
+        ;;
+
+    purge)
+        rm -rf /var/lib/cowork-hub
+        rm -rf /etc/cowork-hub
+
+        if getent passwd cowork-hub >/dev/null; then
+            deluser --system cowork-hub >/dev/null 2>&1 || true
+        fi
+
+        if [ -d /run/systemd/system ]; then
+            systemctl daemon-reload >/dev/null 2>&1 || true
+        fi
+        ;;
+esac
+
+exit 0

@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Cowork.Core.Configuration;
 using Cowork.Core.Models;
+using Cowork.Core.News;
 using Cowork.Core.Services;
 using Cowork.Core.Validation;
 using Cowork.Core.Localization;
@@ -42,6 +43,7 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
     private readonly ISystemEventSource _systemEvents;
     private readonly SystemTriggerSupervisor _systemTriggers;
     private readonly AlertDispatcher _alerts;
+    private readonly NewsService _newsService;
     private readonly HubClient _hubClient;
     private readonly AppScreenshotService _screenshots;
     private HubLinkState _hubState = HubLinkState.Disabled;
@@ -77,10 +79,9 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         AppsView = CollectionViewSource.GetDefaultView(Apps);
         AppsView.Filter = FilterApp;
 
+        History = new ObservableCollection<AppRunRecord>(_history.All());
         HistoryView = CollectionViewSource.GetDefaultView(History);
         HistoryView.Filter = FilterHistory;
-
-        History = new ObservableCollection<AppRunRecord>(_history.All());
 
         foreach (var app in _workspace.Apps.OrderBy(a => a.Order))
             Apps.Add(CreateAppViewModel(app));
@@ -165,6 +166,13 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             SystemClock.Instance,
             _logger);
 
+        // Bảng tin gọi thẳng RSS của từng báo. Tách riêng khỏi phần quản lý app: nó không
+        // đụng tiến trình nào, và giữ nó ngoài lớp này để MainViewModel không phình thêm.
+        _newsService = new NewsService(
+            new HttpNewsFeedClient(), SystemClock.Instance, _logger, _paths.NewsCacheFile);
+        News = new NewsViewModel(
+            _workspace.Settings.News, _newsService, SystemClock.Instance, _dispatcher, _logger, MarkDirty);
+
         _screenshots = new AppScreenshotService(_processManager, new GdiWindowCapture(), SystemClock.Instance);
         _hubClient = new HubClient(this, _logger);
         _hubClient.StateChanged += OnHubStateChanged;
@@ -179,12 +187,16 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
             _scheduler.Start();
 
         _scheduler.RunStartupApps();
+        News.Start();
         ConnectHub();
     }
 
     public ObservableCollection<AppViewModel> Apps { get; }
 
     public ICollectionView AppsView { get; }
+
+    /// <summary>Thẻ Tin tức và phần thiết lập của nó.</summary>
+    public NewsViewModel News { get; }
 
     public ObservableCollection<AppRunRecord> History { get; }
 
@@ -264,6 +276,8 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
 
         foreach (var app in Apps)
             app.RefreshLocalizedText();
+
+        News.RefreshLabels();
 
         // Bảng lịch sử vẽ trực tiếp từ model thuần, không có PropertyChanged để bám;
         // nạp lại danh sách là cách rẻ nhất buộc DataGrid dựng lại các nhãn đã dịch.
@@ -1681,6 +1695,8 @@ public sealed partial class MainViewModel : ObservableObject, IAppSource, IAgent
         _disposed = true;
 
         Loc.LanguageChanged -= OnLanguageChanged;
+
+        News.Dispose();
 
         _uiRefreshTimer.Stop();
         _scheduler.AppDue -= OnAppDue;

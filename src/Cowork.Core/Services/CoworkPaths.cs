@@ -27,6 +27,12 @@ public sealed class CoworkPaths
 
     public string LogDirectory => Path.Combine(Root, "logs");
 
+    /// <summary>
+    /// Tin đã tải về lần gần nhất. Để riêng khỏi workspace.json: đây là dữ liệu tải lại được,
+    /// mất cũng không sao, và nó thay đổi mỗi giờ trong khi workspace.json thì hiếm khi.
+    /// </summary>
+    public string NewsCacheFile => Path.Combine(Root, "news-cache.json");
+
     /// <summary>Ảnh chụp workspace theo ngày, để cứu lại khi file chính bị ghi hỏng.</summary>
     public string BackupDirectory => Path.Combine(Root, "backups");
 

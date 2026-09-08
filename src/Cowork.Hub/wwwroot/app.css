@@ -510,3 +510,62 @@ input:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring
     white-space: pre-wrap;
     word-break: break-word;
 }
+
+/* ---------- Bảng tin ---------- */
+
+/* Ô chọn chủ đề: một hàng gói xuống, để trên điện thoại không phải cuộn ngang. */
+.topics {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+}
+
+.topic {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.topic input { accent-color: var(--accent); }
+
+.news-item {
+    padding: 14px 0;
+    border-top: 1px solid var(--divider);
+}
+.news-item:first-child { padding-top: 0; border-top: none; }
+.news-item:last-child { padding-bottom: 0; }
+
+.news-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+    font-size: 12px;
+    color: var(--subtle);
+}
+
+.news-when { font-variant-numeric: tabular-nums; }
+.news-source { font-weight: 650; color: var(--muted); }
+
+/* Tiêu đề là thứ duy nhất bấm được trong một bài — cho nó cả chiều rộng dòng. */
+.news-title {
+    display: block;
+    font-size: 15px;
+    font-weight: 650;
+    line-height: 1.4;
+    color: var(--accent);
+    text-decoration: none;
+}
+.news-title:hover { text-decoration: underline; }
+
+.news-summary {
+    margin: 5px 0 0;
+    max-width: 80ch;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+}

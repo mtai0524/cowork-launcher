@@ -1,5 +1,6 @@
 using Cowork.Core.Localization;
 using Cowork.Core.Models;
+using Cowork.Core.News;
 
 namespace Cowork.Hub;
 
@@ -14,6 +15,7 @@ public static class UiPreferences
 {
     public const string LanguageCookie = "cowork.lang";
     public const string ThemeCookie = "cowork.theme";
+    public const string NewsCookie = "cowork.news";
 
     /// <summary>Một năm — đây là sở thích hiển thị, không phải phiên đăng nhập.</summary>
     public static readonly TimeSpan CookieLifetime = TimeSpan.FromDays(365);
@@ -30,6 +32,38 @@ public static class UiPreferences
 
     /// <summary>Giá trị cho thuộc tính <c>data-theme</c>, khớp với khoá trong app.css.</summary>
     public static string Slug(AppTheme theme) => theme.ToString().ToLowerInvariant();
+
+    /// <summary>
+    /// Chủ đề tin của trình duyệt này. Giá trị trong cookie có dạng
+    /// <c>Ai,Agents,Technology|vn</c> — danh sách chủ đề, rồi cờ có kèm tin trong nước.
+    /// Tên nào không nhận ra thì bỏ qua: cookie cũ còn sót lại không được làm hỏng trang.
+    /// </summary>
+    public static NewsSelection ParseNews(string? value)
+    {
+        var defaults = new NewsSettings();
+
+        if (string.IsNullOrWhiteSpace(value))
+            return new NewsSelection(defaults.Topics, defaults.IncludeVietnam);
+
+        var parts = value.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        var topics = (parts.Length > 0 ? parts[0] : string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(name => Enum.TryParse<NewsTopic>(name, ignoreCase: true, out var topic) && Enum.IsDefined(topic)
+                ? topic
+                : (NewsTopic?)null)
+            .Where(topic => topic is not null)
+            .Select(topic => topic!.Value)
+            .Distinct()
+            .ToList();
+
+        var vietnam = parts.Skip(1).Any(p => p.Equals("vn", StringComparison.OrdinalIgnoreCase));
+
+        return new NewsSelection(topics, vietnam);
+    }
+
+    public static string FormatNews(IEnumerable<NewsTopic> topics, bool includeVietnam)
+        => string.Join(",", topics.Distinct()) + (includeVietnam ? "|vn" : string.Empty);
 
     /// <summary>
     /// Chỉ nhận đường dẫn nội bộ. Nếu không, một liên kết dựng sẵn có thể lái người dùng
@@ -75,4 +109,24 @@ public sealed class UiTheme
     {
         AppTheme.Dark, AppTheme.Midnight, AppTheme.Light, AppTheme.HighContrast,
     };
+}
+
+/// <summary>Chủ đề và vùng mà một trình duyệt đang chọn đọc.</summary>
+public sealed record NewsSelection(IReadOnlyList<NewsTopic> Topics, bool IncludeVietnam)
+{
+    /// <summary>Đưa về dạng bộ chọn bài dùng, giữ nguyên các con số mặc định của bảng tin.</summary>
+    public NewsDigestOptions ToDigestOptions()
+    {
+        var defaults = new NewsSettings { Topics = Topics.ToList(), IncludeVietnam = IncludeVietnam };
+        return defaults.ToDigestOptions();
+    }
+}
+
+/// <summary>Lựa chọn bảng tin của phiên trình duyệt hiện tại.</summary>
+public sealed class UiNews
+{
+    public UiNews(IHttpContextAccessor accessor)
+        => Selection = UiPreferences.ParseNews(accessor.HttpContext?.Request.Cookies[UiPreferences.NewsCookie]);
+
+    public NewsSelection Selection { get; }
 }

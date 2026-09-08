@@ -160,6 +160,7 @@ Lưu trong `history.json`, tối đa 5000 bản ghi (trần cứng, ngoài cấu
 | `LogRetentionDays` | `30` | Số ngày giữ file log trong thư mục `logs`; dọn lúc mở Cowork và đầu mỗi ngày |
 | `NotifyOnFailure` | `true` | Bong bóng ở khay khi app chạy lỗi hoặc không giữ chạy được |
 | `Notifications` | — | Cảnh báo ra ngoài máy (webhook / Telegram / email); xem [`NotificationSettings`](#notificationsettings). Công tắc riêng, không phụ thuộc `NotifyOnFailure` |
+| `News` | — | Bảng tin hằng ngày: chủ đề, nguồn, tỉ lệ tin trong nước; xem [`NewsSettings`](#newssettings) |
 | `Theme` | `Dark` | `Dark` / `Light` / `Midnight` / `HighContrast` |
 | `Language` | `Vietnamese` | `Vietnamese` / `English` |
 | `HubUrl` | `""` | Địa chỉ hub quản lý từ xa; trống = không kết nối |
@@ -179,6 +180,40 @@ kênh hỏng không ảnh hưởng kênh còn lại.
 | `SmtpUser` · `SmtpPassword` | `""` | Bỏ trống tài khoản ⇒ không xác thực. Mật khẩu **lưu dạng thường** |
 | `EmailFrom` · `EmailTo` | `""` | Đủ điều kiện khi có host, người gửi và ít nhất một người nhận (cách nhau bằng `,` hoặc `;`) |
 | `DedupeMinutes` | `5` | Khoảng lặng cho cảnh báo trùng khoá (cùng app + cùng tiêu đề). `0` = gửi mọi lần |
+
+## `NewsSettings`
+
+Nằm trong `WorkspaceSettings.News`. Chỉ thiết lập — bài đã tải nằm ở `news-cache.json`, một file
+riêng vì nó tải lại được và thay đổi mỗi giờ, trong khi `workspace.json` thì hiếm khi.
+
+| Trường | Mặc định | Ý nghĩa |
+|---|---|---|
+| `Enabled` | `true` | Tắt thì Cowork không gọi ra mạng để lấy tin |
+| `Topics` | `["Ai","Agents","Technology"]` | `Ai` / `Agents` / `Technology` / `Programming` / `Startups` / `Security` / `Repos`. Danh sách rỗng ⇒ bảng tin rỗng, không phải "lấy tất cả" |
+| `IncludeVietnam` | `true` | Có lấy báo trong nước không |
+| `VietnamPercent` | `25` | Phần trăm chỗ để dành cho tin trong nước; phần còn lại là tin nước ngoài |
+| `MaxItems` | `60` | Số bài tối đa của một lần đọc |
+| `MaxAgeDays` | `3` | Bài cũ hơn ngần này ngày không hiện nữa |
+| `MaxPerSource` | `6` | Trần số bài lấy từ một nguồn |
+| `RefreshMinutes` | `60` | Bao lâu tự lấy lại. `0` = chỉ lấy khi bấm nút |
+| `DisabledSourceIds` | `[]` | Mã những nguồn dựng sẵn đã tắt (`"hacker-news"`, `"genk"`…) |
+| `CustomSources` | `[]` | Feed tự thêm; xem [`CustomNewsSource`](#customnewssource) |
+
+Danh mục nguồn dựng sẵn nằm trong mã (`Cowork.Core/News/NewsCatalog.cs`), không nằm trong
+`workspace.json`: thêm một báo là một thay đổi của bản phát hành, còn file người dùng chỉ giữ những
+gì họ đã đổi so với mặc định.
+
+## `CustomNewsSource`
+
+| Trường | Ý nghĩa |
+|---|---|
+| `Name` | Tên hiển thị. Bỏ trống ⇒ lấy tên miền |
+| `FeedUrl` | Địa chỉ RSS/Atom. Phải là http/https, nếu không nguồn bị bỏ qua |
+| `Region` | `Global` / `Vietnam` — quyết định nó nằm bên nào của hạn mức |
+| `Topics` | Ít nhất một chủ đề, nếu không nguồn bị bỏ qua |
+
+Mã của một feed tự thêm sinh từ chính địa chỉ (`custom:<url>`) nên nó ổn định qua các lần chạy —
+bộ nhớ đệm dựa vào đó để giữ lại bài của lần lấy trước.
 
 ## Schema `workspace.json`
 
@@ -273,7 +308,26 @@ Enum ghi thành chuỗi, `TimeSpan` ghi dạng `"HH:mm:ss"` — file đọc và 
     "HubUrl": "",
     "HubToken": "",
     "Theme": "Dark",
-    "Language": "Vietnamese"
+    "Language": "Vietnamese",
+    "News": {
+      "Enabled": true,
+      "Topics": ["Ai", "Agents", "Technology"],
+      "IncludeVietnam": true,
+      "VietnamPercent": 25,
+      "MaxItems": 60,
+      "MaxAgeDays": 3,
+      "MaxPerSource": 6,
+      "RefreshMinutes": 60,
+      "DisabledSourceIds": ["arxiv-ai"],
+      "CustomSources": [
+        {
+          "Name": "Blog nội bộ",
+          "FeedUrl": "https://blog.congty.vn/feed.xml",
+          "Region": "Vietnam",
+          "Topics": ["Programming"]
+        }
+      ]
+    }
   }
 }
 ```
