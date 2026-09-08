@@ -1,0 +1,48 @@
+#!/bin/sh
+# Sau khi cài: tạo người dùng hệ thống và nạp lại systemd.
+#
+# Cố ý KHÔNG bật dịch vụ. Hub từ chối khởi động khi mật khẩu web còn là giá trị mẫu, nên bật
+# ngay ở đây chỉ tạo ra một dịch vụ chết trong log. Người dùng sửa cấu hình xong thì tự bật.
+set -e
+
+case "$1" in
+    configure)
+        if ! getent passwd cowork-hub >/dev/null; then
+            adduser --system --group --no-create-home \
+                    --home /var/lib/cowork-hub \
+                    --gecos "Cowork Hub" cowork-hub >/dev/null
+        fi
+
+        chown root:cowork-hub /etc/cowork-hub/cowork-hub.env
+        chmod 0640 /etc/cowork-hub/cowork-hub.env
+
+        if [ -d /run/systemd/system ]; then
+            systemctl daemon-reload >/dev/null 2>&1 || true
+        fi
+
+        # Chỉ nói khi cài lần đầu; nâng cấp thì người dùng đã biết rồi.
+        if [ -z "$2" ]; then
+            cat <<'MESSAGE'
+
+Cowork Hub đã cài xong. Còn hai bước:
+
+  1. Đặt mật khẩu web và token cho từng máy:
+       sudo nano /etc/cowork-hub/cowork-hub.env
+
+  2. Bật dịch vụ:
+       sudo systemctl enable --now cowork-hub
+
+Xem trạng thái : systemctl status cowork-hub
+Xem log        : journalctl -u cowork-hub -f
+Mặc định hub nghe ở http://127.0.0.1:5099 — đặt reverse proxy có HTTPS phía trước
+trước khi mở ra internet.
+
+MESSAGE
+        fi
+        ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+esac
+
+exit 0

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+  Gói cài Windows cho Cowork.
+
+  Cài theo NGƯỜI DÙNG (Scope="perUser"), không phải theo máy. Ba lý do:
+    · Không hỏi UAC — `winget install` chạy trọn vẹn trong một cửa sổ terminal thường.
+    · Cowork ghi khoá HKCU\...\Run cho tuỳ chọn "khởi động cùng Windows"; cài theo máy mà
+      thiết lập lại nằm theo người dùng là mâu thuẫn.
+    · Dữ liệu của Cowork vốn đã nằm ở %APPDATA%\Cowork, tức là theo người dùng.
+
+  UpgradeCode không bao giờ được đổi: nó là thứ Windows dùng để nhận ra "vẫn là Cowork"
+  giữa các phiên bản. Đổi nó thì bản mới cài chồng thay vì nâng cấp bản cũ.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <Package Name="Cowork"
+           Manufacturer="mtai0524"
+           Version="$(Version)"
+           UpgradeCode="6f3d2a41-8c7b-4f0e-9d1a-2b5e7c4a9f30"
+           Scope="perUser"
+           Compressed="yes"
+           Codepage="65001">
+
+    <SummaryInformation Description="Cowork — quản lý và chạy các ứng dụng hằng ngày" />
+
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="Máy đang có bản Cowork mới hơn. Gỡ bản đó trước khi cài bản này." />
+
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- Cowork ghi %APPDATA%\Cowork và có thể đang chạy dưới khay lúc nâng cấp. Đóng nó
+         trước, nếu không MSI sẽ đòi khởi động lại máy để thay được file đang khoá. -->
+    <util:CloseApplication xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+                           Id="CloseCowork"
+                           Target="Cowork.exe"
+                           CloseMessage="yes"
+                           RebootPrompt="no"
+                           Timeout="10" />
+
+    <Feature Id="Main" Title="Cowork" Level="1">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentGroupRef Id="AppShortcuts" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <!-- %LOCALAPPDATA%\Programs\Cowork — chỗ quy ước cho ứng dụng cài theo người dùng. -->
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="Cowork" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder" />
+  </Fragment>
+
+  <Fragment>
+    <!-- Bản publish self-contained: gần 300 file, khai tay là không thực tế.
+         `Files` gom cả cây thư mục, mỗi file một component, tự sinh GUID ổn định. -->
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="!(bindpath.Publish)\**" />
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="AppShortcuts">
+      <Component Id="StartMenuShortcut" Directory="ProgramMenuFolder" Guid="9c1e6b73-5a24-4d8f-b3c6-71e0d9a84512">
+        <Shortcut Id="CoworkStartMenu"
+                  Name="Cowork"
+                  Description="Quản lý và chạy các ứng dụng hằng ngày"
+                  Target="[INSTALLFOLDER]Cowork.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+
+        <!-- Cài theo người dùng thì KeyPath phải nằm dưới HKCU; ProgramMenuFolder không
+             phải chỗ Windows chấp nhận làm KeyPath. -->
+        <RegistryValue Root="HKCU" Key="Software\mtai0524\Cowork"
+                       Name="StartMenu" Type="integer" Value="1" KeyPath="yes" />
+
+        <RemoveFolder Id="RemoveStartMenuFolder" Directory="ProgramMenuFolder" On="uninstall" />
+      </Component>
+
+      <!-- Thư mục cài vào PATH để gõ `cowork` ở terminal là mở được app — đúng tinh thần
+           của việc cài bằng một dòng lệnh. Part="last" để không chen lên trước thứ khác. -->
+      <Component Id="PathEntry" Directory="INSTALLFOLDER" Guid="2d84f5a9-7b13-4e6c-8a02-c4d91f7b6e28">
+        <Environment Id="CoworkPath" Name="PATH" Value="[INSTALLFOLDER]"
+                     Permanent="no" Part="last" Action="set" System="no" />
+
+        <RegistryValue Root="HKCU" Key="Software\mtai0524\Cowork"
+                       Name="Path" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+
+</Wix>

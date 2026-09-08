@@ -1,0 +1,41 @@
+[Unit]
+Description=Cowork Hub — quản lý từ xa các máy chạy Cowork
+Documentation=https://github.com/mtai0524/cowork-launcher/blob/main/docs/06-quan-ly-tu-xa.md
+After=network-online.target
+Wants=network-online.target
+
+# Hub từ chối khởi động khi mật khẩu web còn là giá trị mẫu — đó là chủ ý, xem HubOptions.Validate.
+# Không có hai dòng dưới đây thì một file cấu hình chưa sửa sẽ thành vòng lặp khởi động lại vô tận.
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=cowork-hub
+Group=cowork-hub
+WorkingDirectory=/opt/cowork-hub
+
+# Mật khẩu web và token của từng máy đi qua biến môi trường, không qua appsettings.json:
+# ASP.NET nạp biến môi trường SAU file cấu hình nên chúng đè lên giá trị mẫu, và một file
+# 0600 ngoài /etc là chỗ quen thuộc để giữ bí mật trên Linux.
+EnvironmentFile=/etc/cowork-hub/cowork-hub.env
+
+ExecStart=/opt/cowork-hub/Cowork.Hub
+
+Restart=on-failure
+RestartSec=5
+
+# systemd tự tạo /var/lib/cowork-hub đúng chủ sở hữu; sổ máy cấp token nằm ở đó.
+StateDirectory=cowork-hub
+
+# Hub chỉ đọc mã của chính nó và ghi đúng một file. Không cần gì hơn.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

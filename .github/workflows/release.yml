@@ -1,0 +1,160 @@
+# Dựng gói cài cho một bản phát hành.
+#
+# Chạy khi đẩy tag `v<số>` khớp với <Version> trong Directory.Build.props, hoặc chạy tay
+# từ tab Actions (khi đó chỉ dựng gói và đính vào artifact, không tạo release).
+#
+# Hai gói ra từ hai hệ điều hành khác nhau vì lý do bắt buộc, không phải cho tiện:
+#   · MSI cần WiX chạy trên Windows.
+#   · .deb cần dpkg-deb, và quyền file phải là của Linux — dựng trên ổ Windows thì mọi thứ
+#     hiện ra 777 và dpkg-deb từ chối.
+
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      # Chạy trên Windows vì bộ test có phần khởi chạy tiến trình thật.
+      - run: dotnet test tests/Cowork.Tests/Cowork.Tests.csproj -c Release --nologo
+
+  windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      # Ghim phiên bản WiX: extension phải khớp đúng bản của công cụ, lệch một bậc là
+      # lỗi WIX6101 "Could not find expected package root folder".
+      - run: dotnet tool install --global wix --version 5.0.2
+
+      - name: Kiểm tra tag khớp Version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $version = (dotnet msbuild src/Cowork.App/Cowork.App.csproj -getProperty:Version -nologo).Trim()
+          $tag = '${{ github.ref_name }}'.TrimStart('v')
+          if ($version -ne $tag) {
+            throw "Tag $tag khong khop <Version> $version trong Directory.Build.props"
+          }
+          Write-Host "Version $version khop tag" -ForegroundColor Green
+
+      - name: Dựng MSI
+        shell: pwsh
+        run: ./packaging/windows/build-msi.ps1
+
+      - name: Sinh manifest winget
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem artifacts/release/*.msi | Select-Object -First 1
+          ./packaging/winget/generate-manifests.ps1 -Msi $msi.FullName
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            artifacts/release/*.msi
+            artifacts/winget/**
+
+  linux:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Dựng .deb
+        run: bash packaging/linux/build-deb.sh
+
+      # dpkg-deb chấp nhận gói không có nghĩa là dpkg cài được nó. Bước này cài thật rồi gỡ.
+      - name: Thử cài và gỡ
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ./artifacts/release/cowork-hub_*.deb
+          test -x /opt/cowork-hub/Cowork.Hub
+          test -f /etc/cowork-hub/cowork-hub.env
+          test -f /usr/lib/systemd/system/cowork-hub.service
+          getent passwd cowork-hub
+          sudo apt-get purge -y cowork-hub
+          test ! -d /etc/cowork-hub
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: artifacts/release/*.deb
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: downloaded
+
+      # Tag là `v1.0.0` nhưng tên file gói là `1.0.0` — lệch một ký tự là mọi lệnh
+      # curl trong phần mô tả bản phát hành đều 404.
+      - name: Số phiên bản từ tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Bảng băm để đối chiếu
+        run: |
+          cd downloaded
+          find . -name '*.msi' -o -name '*.deb' | sort | xargs sha256sum | tee ../SHA256SUMS
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            downloaded/windows/release/*.msi
+            downloaded/linux/*.deb
+            SHA256SUMS
+          generate_release_notes: true
+          body: |
+            ## Cài đặt
+
+            **Windows** — cài app Cowork:
+
+            ```powershell
+            winget install mtai0524.Cowork
+            ```
+
+            Chưa có trong kho winget thì tải file `.msi` bên dưới rồi:
+
+            ```powershell
+            msiexec /i Cowork-${{ env.VERSION }}-win-x64.msi
+            ```
+
+            **Linux** — cài hub quản lý từ xa (app desktop là WPF, chỉ chạy trên Windows):
+
+            ```bash
+            curl -LO https://github.com/mtai0524/cowork-launcher/releases/download/${{ github.ref_name }}/cowork-hub_${{ env.VERSION }}_amd64.deb
+            sudo apt install ./cowork-hub_*.deb
+            sudo nano /etc/cowork-hub/cowork-hub.env    # đặt mật khẩu web
+            sudo systemctl enable --now cowork-hub
+            ```
+
+            Chi tiết: [docs/07-cai-dat.md](https://github.com/mtai0524/cowork-launcher/blob/main/docs/07-cai-dat.md)

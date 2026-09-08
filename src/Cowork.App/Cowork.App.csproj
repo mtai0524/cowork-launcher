@@ -9,8 +9,6 @@
     <AssemblyName>Cowork</AssemblyName>
     <RootNamespace>Cowork.App</RootNamespace>
     <ApplicationIcon>Assets\cowork.ico</ApplicationIcon>
-    <Version>1.0.0</Version>
-    <Product>Cowork</Product>
     <Description>Quản lý và chạy các ứng dụng hằng ngày</Description>
   </PropertyGroup>
 

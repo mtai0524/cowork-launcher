@@ -50,6 +50,8 @@ Một cửa sổ duy nhất chứa đủ ba việc:
   app lẫn trên hub web.
 - Chạy nền dưới khay hệ thống, khởi động cùng Windows.
 - Quản lý từ xa: nhiều máy nối ra một hub web, xem trạng thái và bấm Chạy / Dừng / Khởi động lại.
+- Cài bằng một lệnh: `winget install` trên Windows cho app, gói `.deb` trên Debian/Ubuntu cho hub —
+  xem [07-cai-dat.md](07-cai-dat.md).
 
 ### Không làm (có chủ ý)
 

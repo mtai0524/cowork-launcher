@@ -45,7 +45,58 @@ files inside the app, without hunting for paths in Notepad.
 | **Background operation** | Minimize to the system tray, start with Windows |
 | **Remote management** | Several machines connect out to one web hub: see their status, hit Run / Stop / Restart from a browser, take a screenshot of a running app's window, and issue agent tokens from the web — see [docs/06](docs/06-quan-ly-tu-xa.md) |
 
-## Getting started
+## Download
+
+Every build lives on the **[releases page](https://github.com/mtai0524/cowork-launcher/releases/latest)**.
+Both packages carry their own runtime, so there is no .NET to install first.
+
+| File | For | Size |
+|---|---|---|
+| `Cowork-<version>-win-x64.msi` | The desktop app, Windows 10 1809 or newer, x64 | ~54 MB |
+| `cowork-hub_<version>_amd64.deb` | The hub, Debian / Ubuntu, amd64 | ~34 MB |
+| `SHA256SUMS` | Checksums for both, to verify what you downloaded | — |
+
+There is no desktop build for Linux and none for arm64: the app is WPF, which only runs on Windows
+x86/x64. Linux gets the hub — the piece that takes connections from your Windows machines and shows
+them on a web page.
+
+## Installing
+
+**Windows** — the desktop app:
+
+```powershell
+winget install mtai0524.Cowork
+```
+
+Per-user, so no UAC prompt. Or, from a downloaded `.msi`:
+
+```powershell
+msiexec /i Cowork-1.0.0-win-x64.msi          # with a wizard
+msiexec /i Cowork-1.0.0-win-x64.msi /qn      # silently
+```
+
+It lands in `%LOCALAPPDATA%\Programs\Cowork`, adds a Start Menu entry, and puts itself on your `PATH`
+so `cowork` opens the app from any terminal. Your data lives in `%APPDATA%\Cowork` and uninstalling
+leaves it alone.
+
+**Linux** — the hub only:
+
+```bash
+curl -LO https://github.com/mtai0524/cowork-launcher/releases/latest/download/cowork-hub_1.0.0_amd64.deb
+sudo apt install ./cowork-hub_1.0.0_amd64.deb
+sudo nano /etc/cowork-hub/cowork-hub.env    # set the web password
+sudo systemctl enable --now cowork-hub
+```
+
+Use `apt install ./file.deb` rather than `dpkg -i` — the package needs ICU and OpenSSL, and `apt`
+fetches them for you. The hub deliberately does not start on install: it refuses to run while the
+web password is still the placeholder, so starting it early would only produce a dead service in
+the log.
+
+Full details — what each package writes where, upgrading, uninstalling, building the packages
+yourself: [docs/07](docs/07-cai-dat.md).
+
+## Building from source
 
 ```bash
 dotnet build                                  # build the whole solution
@@ -74,6 +125,7 @@ Cowork.slnx
 ├─ src/Cowork.Remote/   Data contracts, machine registry, SignalR client — shared by agent and hub, no WPF or ASP.NET
 ├─ src/Cowork.Hub/      Remote management hub: ASP.NET Core + Blazor Server, runs on Linux too
 ├─ tests/Cowork.Tests/  xUnit — schedules, config editors, storage, real process launches, in-process hub
+├─ packaging/           MSI (WiX) for Windows, .deb for the Linux hub, winget manifests
 └─ docs/                Detailed documentation (in Vietnamese)
 ```
 
@@ -105,3 +157,4 @@ The documents themselves are written in Vietnamese.
 | [docs/04-huong-dan-su-dung.md](docs/04-huong-dan-su-dung.md) | A walkthrough for each situation |
 | [docs/05-lo-trinh.md](docs/05-lo-trinh.md) | Current limits and where this is going |
 | [docs/06-quan-ly-tu-xa.md](docs/06-quan-ly-tu-xa.md) | Remote management: the hub, agent tokens, deployment |
+| [docs/07-cai-dat.md](docs/07-cai-dat.md) | Installing on Windows and Linux, building the packages, cutting a release |

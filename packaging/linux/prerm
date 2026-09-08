@@ -1,0 +1,20 @@
+#!/bin/sh
+# Trước khi gỡ: dừng dịch vụ để dpkg không phải thay file đang chạy.
+set -e
+
+case "$1" in
+    remove|deconfigure)
+        if [ -d /run/systemd/system ]; then
+            systemctl stop cowork-hub >/dev/null 2>&1 || true
+        fi
+        ;;
+
+    upgrade|failed-upgrade)
+        # Nâng cấp thì postinst khởi động lại; dừng ở đây là đủ.
+        if [ -d /run/systemd/system ]; then
+            systemctl stop cowork-hub >/dev/null 2>&1 || true
+        fi
+        ;;
+esac
+
+exit 0
