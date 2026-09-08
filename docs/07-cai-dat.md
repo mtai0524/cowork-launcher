@@ -17,6 +17,11 @@ nhận kết nối từ các máy Windows và hiện chúng trên web.
 winget install mtai0524.Cowork
 ```
 
+> **Lệnh trên chưa chạy được.** Phát hành ở repo này không đưa gói vào kho winget — đó là một pull
+> request riêng gửi [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) và Microsoft
+> duyệt. Trong lúc chờ, dùng cách tải thẳng `.msi` ở mục dưới. Manifest đã sẵn sàng, sinh bằng
+> `packaging/winget/generate-manifests.ps1`.
+
 Gói cài **theo người dùng**, không hỏi UAC. Nó đặt:
 
 | | |
